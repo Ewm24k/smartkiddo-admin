@@ -239,7 +239,6 @@
 
                 <!-- VIEW: WEBSOURCES CODE -->
                 <section id="view-websources-code" class="hidden h-full">
-                    <!-- parent container defaults to h-[580px] -->
                     <div id="studio-workspace" class="studio-layout flex border border-[#1f1f29] rounded-xl overflow-hidden bg-[#0d0d11] h-[580px] w-full relative">
                         
                         <!-- DYNAMIC LOADER SCREEN OVERLAY -->
@@ -320,12 +319,15 @@
                                 <div class="flex-1 relative overflow-hidden" id="editor-viewport">
                                     <!-- CODE FORMAT VIEW -->
                                     <div id="code-editor-pane" class="w-full h-full flex">
-                                        <div id="editor-line-numbers" class="w-12 bg-[#09090c] text-neutral-600 font-mono text-xs select-none text-right pr-3 pt-4 border-r border-[#1f1f29]">
+                                        <!-- Line Numbers Container (Clean of spacing styles) -->
+                                        <div id="editor-line-numbers" class="w-12 bg-[#09090c] text-neutral-600 select-none text-right pr-3 border-r border-[#1f1f29]">
                                             <div>1</div>
                                         </div>
-                                        <div class="flex-1 relative h-full">
-                                            <textarea id="editor-textarea" spellcheck="false" class="absolute inset-0 bg-transparent text-transparent caret-white outline-none font-mono text-xs p-4 resize-none overflow-auto z-10 whitespace-pre leading-relaxed"></textarea>
-                                            <pre class="absolute inset-0 m-0 p-4 font-mono text-xs pointer-events-none overflow-hidden leading-relaxed"><code id="editor-highlight-target" class="language-html"></code></pre>
+                                        
+                                        <!-- Unified Editor Container Layer (Explicitly managed by style.css) -->
+                                        <div class="flex-1 relative h-full" id="editor-container">
+                                            <textarea id="editor-textarea" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"></textarea>
+                                            <pre id="editor-pre" class="pointer-events-none"><code id="editor-highlight-target"></code></pre>
                                         </div>
                                     </div>
 
