@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 2. View Tab Switching Controls (with Maximize Resets)
+    // 2. View Tab Switching Controls (With auto-reset for maximize)
     // -----------------------------------------------------------------
     const menuMapping = {
         'btn-t1era-studio': { viewId: 'view-t1era-studio', breadcrumb: 'T1ERA Studio', adjustLayout: false },
@@ -310,7 +310,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 <div class="explorer-item flex items-center justify-between py-1.5 px-3 cursor-pointer group ${isFolderSelected ? 'bg-indigo-600/10 text-white border-l-2 border-indigo-500' : ''}" style="padding-left: ${paddingLeft}px" data-folder-id="${node.id}">
                     <div class="flex items-center gap-2 flex-1 folder-toggle">
                         ${folderIcon}
-                        <span class="font-medium">${node.name}</span>
+                        <span class="font-medium text-neutral-300">${node.name}</span>
                     </div>
                     <button class="delete-node-btn opacity-0 group-hover:opacity-100 p-0.5 text-neutral-500 hover:text-red-400 rounded transition-opacity" data-node-id="${node.id}" title="Delete Folder">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
