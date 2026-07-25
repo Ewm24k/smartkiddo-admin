@@ -6,6 +6,15 @@
     <title>SmartKiddo Universe - Owner Dashboard</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Prism.js Syntax Highlighting CSS & Core JS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" defer></script>
+    <!-- Prism.js Language Modules for Syntax Parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js" defer></script>
+    
     <!-- Custom external stylesheet -->
     <link rel="stylesheet" href="assets/css/style.css">
     <!-- Custom external script -->
@@ -65,15 +74,14 @@
     </aside>
 
     <!-- MAIN BODY CONTENT CONTAINER -->
-    <main class="flex-1 flex flex-col h-screen overflow-y-auto bg-[#0f0f12]">
+    <main class="flex-1 flex flex-col h-screen overflow-hidden bg-[#0f0f12]">
         
         <!-- HEADER / NAVIGATION STATUS BAR -->
         <header class="h-16 border-b border-[#1f1f29] px-6 flex items-center justify-between flex-shrink-0">
             <div class="flex items-center gap-4">
-                <!-- Sidebar toggle control (with sliding visual updates) -->
+                <!-- Sidebar toggle control -->
                 <button id="sidebar-toggle" class="p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-[#1a1a22] transition-colors focus:outline-none" aria-label="Toggle Sidebar">
                     <span id="sidebar-toggle-icon">
-                        <!-- Default icon pointing left, indicating menu can collapse -->
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
                         </svg>
@@ -97,176 +105,214 @@
         </header>
 
         <!-- DYNAMIC CONTENT SECTIONS -->
-        <div class="p-8 max-w-7xl w-full mx-auto">
-            
-            <!-- VIEW: T1ERA STUDIO (Active Content Section) -->
-            <section id="view-t1era-studio" class="space-y-8 block">
-                <!-- Subheader -->
-                <div>
-                    <h1 class="text-3xl font-extrabold text-white tracking-tight">T1ERA Studio</h1>
-                    <p class="text-neutral-400 mt-2 max-w-2xl text-sm leading-relaxed">
-                        Create, generate, and oversee the state-of-the-art interactive AI media. Tailor high-quality digital educational resources and stories for the SmartKiddo Universe ecosystem.
-                    </p>
-                </div>
-
-                <!-- 4 Card Section (Grid layout) -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    
-                    <!-- Card 1: Create BedTime Story -->
-                    <div class="glow-card p-6 rounded-xl flex flex-col justify-between h-48 cursor-pointer">
-                        <!-- 1st Row: 2 Columns (Icon & Title) -->
-                        <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
-                            <!-- Column 1: Icon -->
-                            <div class="w-12 h-12 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
-                            </div>
-                            <!-- Column 2: Title -->
-                            <h3 class="text-lg font-bold text-white tracking-wide">Create BedTime Story</h3>
-                        </div>
-                        <!-- 2nd Row: 1 Column (Description) -->
-                        <div>
-                            <p class="text-sm text-neutral-400 leading-relaxed">
-                                Author personalized, interactive bedtime stories with AI assistance. Design magical worlds, specify developmental morals, and adjust narrative difficulty.
-                            </p>
-                        </div>
+        <div class="flex-1 overflow-y-auto" id="main-content-scroll">
+            <div class="p-8 max-w-7xl w-full mx-auto" id="main-content-inner">
+                
+                <!-- VIEW: T1ERA STUDIO -->
+                <section id="view-t1era-studio" class="space-y-8 block">
+                    <!-- Subheader -->
+                    <div>
+                        <h1 class="text-3xl font-extrabold text-white tracking-tight">T1ERA Studio</h1>
+                        <p class="text-neutral-400 mt-2 max-w-2xl text-sm leading-relaxed">
+                            Create, generate, and oversee the state-of-the-art interactive AI media. Tailor high-quality digital educational resources and stories for the SmartKiddo Universe ecosystem.
+                        </p>
                     </div>
 
-                    <!-- Card 2: Generate Images -->
-                    <div class="glow-card p-6 rounded-xl flex flex-col justify-between h-48 cursor-pointer">
-                        <!-- 1st Row: 2 Columns (Icon & Title) -->
-                        <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
-                            <!-- Column 1: Icon -->
-                            <div class="w-12 h-12 rounded-lg bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <!-- 4 Card Section (Grid layout) -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        
+                        <!-- Card 1: Create BedTime Story -->
+                        <div class="glow-card p-6 rounded-xl flex flex-col justify-between h-48 cursor-pointer">
+                            <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
+                                <div class="w-12 h-12 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                                </div>
+                                <h3 class="text-lg font-bold text-white tracking-wide">Create BedTime Story</h3>
                             </div>
-                            <!-- Column 2: Title -->
-                            <h3 class="text-lg font-bold text-white tracking-wide">Generate Images</h3>
+                            <div>
+                                <p class="text-sm text-neutral-400 leading-relaxed">
+                                    Author personalized, interactive bedtime stories with AI assistance. Design magical worlds, specify developmental morals, and adjust narrative difficulty.
+                                </p>
+                            </div>
                         </div>
-                        <!-- 2nd Row: 1 Column (Description) -->
-                        <div>
-                            <p class="text-sm text-neutral-400 leading-relaxed">
-                                Turn whimsical words into vibrant kid-friendly illustrations. Generate book covers, character references, and beautiful visual backdrops instantly.
-                            </p>
+
+                        <!-- Card 2: Generate Images -->
+                        <div class="glow-card p-6 rounded-xl flex flex-col justify-between h-48 cursor-pointer">
+                            <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
+                                <div class="w-12 h-12 rounded-lg bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                </div>
+                                <h3 class="text-lg font-bold text-white tracking-wide">Generate Images</h3>
+                            </div>
+                            <div>
+                                <p class="text-sm text-neutral-400 leading-relaxed">
+                                    Turn whimsical words into vibrant kid-friendly illustrations. Generate book covers, character references, and beautiful visual backdrops instantly.
+                                </p>
+                            </div>
                         </div>
+
+                        <!-- Card 3: Generate Videos -->
+                        <div class="glow-card p-6 rounded-xl flex flex-col justify-between h-48 cursor-pointer">
+                            <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
+                                <div class="w-12 h-12 rounded-lg bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                </div>
+                                <h3 class="text-lg font-bold text-white tracking-wide">Generate Videos</h3>
+                            </div>
+                            <div>
+                                <p class="text-sm text-neutral-400 leading-relaxed">
+                                    Bring stories to life with animated sequences. Combine voice narration, illustrations, and music into engaging videos tailored for early childhood education.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Card 4: T1ERA Ai Studio -->
+                        <div class="glow-card p-6 rounded-xl flex flex-col justify-between h-48 cursor-pointer">
+                            <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
+                                <div class="w-12 h-12 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 01-2 2h0a2 2 0 01-2-2v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                                </div>
+                                <h3 class="text-lg font-bold text-white tracking-wide">T1ERA Ai Studio</h3>
+                            </div>
+                            <div>
+                                <p class="text-sm text-neutral-400 leading-relaxed">
+                                    Access advanced configuration controls. Fine-tune generative AI behavior parameters, custom LLM prompt rules, and overall language constraints.
+                                </p>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+                <!-- VIEW: LIST USER -->
+                <section id="view-list-user" class="space-y-8 hidden">
+                    <div>
+                        <h1 class="text-3xl font-extrabold text-white tracking-tight">List User</h1>
+                        <p class="text-neutral-400 mt-2 text-sm">Manage user accounts, check subscription tiers, and review child progress metrics.</p>
+                    </div>
+                    <div class="p-8 border border-neutral-800 rounded-xl bg-[#111115] text-center text-neutral-500 text-sm">
+                        This section is a functional placeholder. Select "T1ERA Studio" or "Statistic" in the sidebar to review active dashboard environments.
+                    </div>
+                </section>
+
+                <!-- VIEW: STATISTIC -->
+                <section id="view-statistic" class="space-y-8 hidden">
+                    <div>
+                        <h1 class="text-3xl font-extrabold text-white tracking-tight">Statistics</h1>
+                        <p class="text-neutral-400 mt-2 max-w-2xl text-sm leading-relaxed">
+                            Assess product reach, user engagement parameters, database records, and marketing traffic conversions.
+                        </p>
                     </div>
 
-                    <!-- Card 3: Generate Videos -->
-                    <div class="glow-card p-6 rounded-xl flex flex-col justify-between h-48 cursor-pointer">
-                        <!-- 1st Row: 2 Columns (Icon & Title) -->
-                        <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
-                            <!-- Column 1: Icon -->
-                            <div class="w-12 h-12 rounded-lg bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Card 1: Statistic Direct SmartKiddo -->
+                        <div class="glow-card p-6 rounded-xl flex flex-col justify-between h-48 cursor-pointer">
+                            <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
+                                <div class="w-12 h-12 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                                </div>
+                                <h3 class="text-lg font-bold text-white tracking-wide">Statistic Direct SmartKiddo</h3>
                             </div>
-                            <!-- Column 2: Title -->
-                            <h3 class="text-lg font-bold text-white tracking-wide">Generate Videos</h3>
+                            <div>
+                                <p class="text-sm text-neutral-400 leading-relaxed">
+                                    Review first-party platform data including real-time active daily logs, cloud storage parameters, in-app actions, and system uptime diagnostics.
+                                </p>
+                            </div>
                         </div>
-                        <!-- 2nd Row: 1 Column (Description) -->
-                        <div>
-                            <p class="text-sm text-neutral-400 leading-relaxed">
-                                Bring stories to life with animated sequences. Combine voice narration, illustrations, and music into engaging videos tailored for early childhood education.
-                            </p>
+
+                        <!-- Card 2: statistic Google analytics -->
+                        <div class="glow-card p-6 rounded-xl flex flex-col justify-between h-48 cursor-pointer">
+                            <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
+                                <div class="w-12 h-12 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                </div>
+                                <h3 class="text-lg font-bold text-white tracking-wide">statistic Google analytics</h3>
+                            </div>
+                            <div>
+                                <p class="text-sm text-neutral-400 leading-relaxed">
+                                    Analyze external landing page performance, audience acquisition sources, regional demographics, retention percentages, and conversion funnels.
+                                </p>
+                            </div>
                         </div>
                     </div>
+                </section>
 
-                    <!-- Card 4: T1ERA Ai Studio -->
-                    <div class="glow-card p-6 rounded-xl flex flex-col justify-between h-48 cursor-pointer">
-                        <!-- 1st Row: 2 Columns (Icon & Title) -->
-                        <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
-                            <!-- Column 1: Icon -->
-                            <div class="w-12 h-12 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 01-2 2h0a2 2 0 01-2-2v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                <!-- VIEW: WEBSOURCES CODE (Enhanced with full VS Code Studio layout) -->
+                <section id="view-websources-code" class="hidden">
+                    <div class="studio-layout flex border border-[#1f1f29] rounded-xl overflow-hidden bg-[#0d0d11]">
+                        
+                        <!-- Subside (VS Code Explorer directory column) -->
+                        <div class="w-64 bg-[#111115] border-r border-[#1f1f29] flex flex-col h-[580px] flex-shrink-0 select-none">
+                            <!-- Explorer Header -->
+                            <div class="px-4 py-3 border-b border-[#1f1f29] flex items-center justify-between">
+                                <span class="text-xs font-bold tracking-wider text-neutral-400 uppercase">Explorer</span>
+                                
+                                <!-- File Explorer Action Controls -->
+                                <div class="flex items-center gap-2">
+                                    <button id="explorer-new-file" title="New File" class="p-1 text-neutral-500 hover:text-white rounded transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                    </button>
+                                    <button id="explorer-new-folder" title="New Folder" class="p-1 text-neutral-500 hover:text-white rounded transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1H4a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2zM9 5H2v14a2 2 0 002 2h16a2 2 0 002-2V8a2 2 0 00-2-2h-8L9 5z"></path></svg>
+                                    </button>
+                                    <label title="Upload File" class="p-1 text-neutral-500 hover:text-white rounded transition-colors cursor-pointer">
+                                        <input type="file" id="explorer-file-upload" class="hidden">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                                    </label>
+                                </div>
                             </div>
-                            <!-- Column 2: Title -->
-                            <h3 class="text-lg font-bold text-white tracking-wide">T1ERA Ai Studio</h3>
-                        </div>
-                        <!-- 2nd Row: 1 Column (Description) -->
-                        <div>
-                            <p class="text-sm text-neutral-400 leading-relaxed">
-                                Access advanced configuration controls. Fine-tune generative AI behavior parameters, custom LLM prompt rules, and overall language constraints.
-                            </p>
-                        </div>
-                    </div>
-
-                </div>
-            </section>
-
-            <!-- VIEW: LIST USER -->
-            <section id="view-list-user" class="space-y-8 hidden">
-                <div>
-                    <h1 class="text-3xl font-extrabold text-white tracking-tight">List User</h1>
-                    <p class="text-neutral-400 mt-2 text-sm">Manage user accounts, check subscription tiers, and review child progress metrics.</p>
-                </div>
-                <div class="p-8 border border-neutral-800 rounded-xl bg-[#111115] text-center text-neutral-500 text-sm">
-                    This section is a functional placeholder. Select "T1ERA Studio" or "Statistic" in the sidebar to review active dashboard environments.
-                </div>
-            </section>
-
-            <!-- VIEW: STATISTIC (Updated 2-Card Layout) -->
-            <section id="view-statistic" class="space-y-8 hidden">
-                <!-- Subheader -->
-                <div>
-                    <h1 class="text-3xl font-extrabold text-white tracking-tight">Statistics</h1>
-                    <p class="text-neutral-400 mt-2 max-w-2xl text-sm leading-relaxed">
-                        Assess product reach, user engagement parameters, database records, and marketing traffic conversions.
-                    </p>
-                </div>
-
-                <!-- 2 Card Section (Grid layout) -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    
-                    <!-- Card 1: Statistic Direct SmartKiddo -->
-                    <div class="glow-card p-6 rounded-xl flex flex-col justify-between h-48 cursor-pointer">
-                        <!-- 1st Row: 2 Columns (Icon & Title) -->
-                        <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
-                            <!-- Column 1: Icon -->
-                            <div class="w-12 h-12 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                            
+                            <!-- File system directories list -->
+                            <div id="explorer-file-tree" class="flex-1 overflow-y-auto py-2 text-sm text-neutral-400">
+                                <!-- Dynamically populated by assets/js/script.js -->
                             </div>
-                            <!-- Column 2: Title -->
-                            <h3 class="text-lg font-bold text-white tracking-wide">Statistic Direct SmartKiddo</h3>
                         </div>
-                        <!-- 2nd Row: 1 Column (Description) -->
-                        <div>
-                            <p class="text-sm text-neutral-400 leading-relaxed">
-                                Review first-party platform data including real-time active daily logs, cloud storage parameters, in-app actions, and system uptime diagnostics.
-                            </p>
-                        </div>
-                    </div>
 
-                    <!-- Card 2: statistic Google analytics -->
-                    <div class="glow-card p-6 rounded-xl flex flex-col justify-between h-48 cursor-pointer">
-                        <!-- 1st Row: 2 Columns (Icon & Title) -->
-                        <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
-                            <!-- Column 1: Icon -->
-                            <div class="w-12 h-12 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        <!-- Editor / Media Display Body Section -->
+                        <div class="flex-1 flex flex-col h-[580px] bg-[#09090c] overflow-hidden relative">
+                            
+                            <!-- Tab Bar Header -->
+                            <div class="h-10 bg-[#111115] border-b border-[#1f1f29] px-4 flex items-center justify-between flex-shrink-0 select-none">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                                    <span id="editor-active-filename" class="text-xs font-mono text-neutral-300">index.html</span>
+                                </div>
+                                <span class="text-[10px] text-neutral-500 font-semibold tracking-wider uppercase">T1ERA Code Studio</span>
                             </div>
-                            <!-- Column 2: Title -->
-                            <h3 class="text-lg font-bold text-white tracking-wide">statistic Google analytics</h3>
+
+                            <!-- Editor Area Content (Code view vs Media view) -->
+                            <div class="flex-1 relative overflow-hidden" id="editor-viewport">
+                                
+                                <!-- CODE FORMAT VIEW -->
+                                <div id="code-editor-pane" class="w-full h-full flex">
+                                    <!-- Sync Line Numbers Column -->
+                                    <div id="editor-line-numbers" class="w-12 bg-[#09090c] text-neutral-600 font-mono text-xs select-none text-right pr-3 pt-4 border-r border-[#1f1f29]">
+                                        <div>1</div>
+                                    </div>
+                                    
+                                    <!-- Synergized Code Layer Layout -->
+                                    <div class="flex-1 relative h-full">
+                                        <!-- Real Interactive Input Layer (transparent text overlay) -->
+                                        <textarea id="editor-textarea" spellcheck="false" class="absolute inset-0 bg-transparent text-transparent caret-white outline-none font-mono text-xs p-4 resize-none overflow-auto z-10 whitespace-pre leading-relaxed"></textarea>
+                                        <!-- Syntactically highlighted visualization backdrop layer -->
+                                        <pre class="absolute inset-0 m-0 p-4 font-mono text-xs pointer-events-none overflow-hidden leading-relaxed"><code id="editor-highlight-target" class="language-html"></code></pre>
+                                    </div>
+                                </div>
+
+                                <!-- MEDIA VIEW LAYOUT (Renders image files or video/audio clips) -->
+                                <div id="media-viewer-pane" class="w-full h-full flex items-center justify-center bg-[#07070a] hidden">
+                                    <div id="media-content-wrapper" class="max-w-md max-h-[400px] rounded-lg overflow-hidden border border-[#1f1f29] shadow-lg flex items-center justify-center p-4">
+                                        <!-- Rendered dynamically by script.js -->
+                                    </div>
+                                </div>
+
+                            </div>
                         </div>
-                        <!-- 2nd Row: 1 Column (Description) -->
-                        <div>
-                            <p class="text-sm text-neutral-400 leading-relaxed">
-                                Analyze external landing page performance, audience acquisition sources, regional demographics, retention percentages, and conversion funnels.
-                            </p>
-                        </div>
+
                     </div>
+                </section>
 
-                </div>
-            </section>
-
-            <!-- VIEW: WEBSOURCES CODE -->
-            <section id="view-websources-code" class="space-y-8 hidden">
-                <div>
-                    <h1 class="text-3xl font-extrabold text-white tracking-tight">websources code</h1>
-                    <p class="text-neutral-400 mt-2 text-sm">Inspect background source APIs and raw code integrations.</p>
-                </div>
-                <div class="p-8 border border-neutral-800 rounded-xl bg-[#111115] text-center text-neutral-500 text-sm">
-                    This section is a functional placeholder. Select "T1ERA Studio" or "Statistic" in the sidebar to review active dashboard environments.
-                </div>
-            </section>
-
+            </div>
         </div>
     </main>
 </body>
