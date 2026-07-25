@@ -1,28 +1,32 @@
-/* Color Palette Overrides & Base Styles */
-body {
-    background-color: #0f0f12;
-    color: #e5e7eb;
-}
-
-/* Custom Interactive Glowing Cards style */
+/* Custom Interactive Glowing Cards */
 .glow-card {
     background-color: #1a1a22;
     border: 1px solid #2d2d39;
-    /* Clean transition cubic-bezier setup for the zoom in/out hover states */
+    /* Clean scale zoom parameters */
     transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), 
                 box-shadow 0.3s ease, 
                 border-color 0.3s ease;
 }
 
-/* Hover Zoom-in & Custom Purple/Indigo Glow Border styling */
+/* Hover Zoom & Purple/Indigo Glow border interaction */
 .glow-card:hover {
     transform: scale(1.03);
-    border-color: #6366f1; /* Glowing indigo boundary line */
+    border-color: #6366f1; /* Glowing indigo border */
     box-shadow: 0 0 20px rgba(99, 102, 241, 0.35), 
                 0 0 40px rgba(99, 102, 241, 0.1);
 }
 
-/* Layout Custom Scrollbars */
+/* Slide Transition Settings for Sidebar Collapse */
+aside {
+    transition: margin-left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hidden State applied dynamically via JavaScript */
+.sidebar-collapsed aside {
+    margin-left: -16rem; /* Entirely hides the w-64 panel off-screen left */
+}
+
+/* Standard custom layout scrollbar styling */
 ::-webkit-scrollbar {
     width: 6px;
 }
