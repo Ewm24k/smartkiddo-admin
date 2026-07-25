@@ -106,7 +106,7 @@
 
         <!-- DYNAMIC CONTENT SECTIONS -->
         <div class="flex-1 overflow-y-auto" id="main-content-scroll">
-            <div class="p-8 max-w-7xl w-full mx-auto" id="main-content-inner">
+            <div class="p-8 max-w-7xl w-full mx-auto h-full" id="main-content-inner">
                 
                 <!-- VIEW: T1ERA STUDIO -->
                 <section id="view-t1era-studio" class="space-y-8 block">
@@ -208,7 +208,7 @@
                         <!-- Card 1: Statistic Direct SmartKiddo -->
                         <div class="glow-card p-6 rounded-xl flex flex-col justify-between h-48 cursor-pointer">
                             <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
-                                <div class="w-12 h-12 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                                <div class="w-12 h-12 rounded-lg bg-blue-500/10 border border-indigo-500/20 flex items-center justify-center text-blue-400">
                                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
                                 </div>
                                 <h3 class="text-lg font-bold text-white tracking-wide">Statistic Direct SmartKiddo</h3>
@@ -237,12 +237,13 @@
                     </div>
                 </section>
 
-                <!-- VIEW: WEBSOURCES CODE (Enhanced with full VS Code Studio layout) -->
-                <section id="view-websources-code" class="hidden">
-                    <div class="studio-layout flex border border-[#1f1f29] rounded-xl overflow-hidden bg-[#0d0d11]">
+                <!-- VIEW: WEBSOURCES CODE -->
+                <section id="view-websources-code" class="hidden h-full">
+                    <!-- parent container defaults to h-[580px] and transitions height dynamically via JS overrides -->
+                    <div id="studio-workspace" class="studio-layout flex border border-[#1f1f29] rounded-xl overflow-hidden bg-[#0d0d11] h-[580px] w-full">
                         
-                        <!-- Subside (VS Code Explorer directory column) -->
-                        <div class="w-64 bg-[#111115] border-r border-[#1f1f29] flex flex-col h-[580px] flex-shrink-0 select-none">
+                        <!-- Subside (Explorer column - full height of parent) -->
+                        <div class="w-64 bg-[#111115] border-r border-[#1f1f29] flex flex-col h-full flex-shrink-0 select-none">
                             <!-- Explorer Header -->
                             <div class="px-4 py-3 border-b border-[#1f1f29] flex items-center justify-between">
                                 <span class="text-xs font-bold tracking-wider text-neutral-400 uppercase">Explorer</span>
@@ -253,7 +254,7 @@
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                                     </button>
                                     <button id="explorer-new-folder" title="New Folder" class="p-1 text-neutral-500 hover:text-white rounded transition-colors">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1H4a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2zM9 5H2v14a2 2 0 002 2h16a2 2 0 002-2V8a2 2 0 00-2-2h-8L9 5z"></path></svg>
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1H4a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2zM9 5H2v14a2 2 0 002-2h16a2 2 0 002-2V8a2 2 0 00-2-2h-8L9 5z"></path></svg>
                                     </button>
                                     <label title="Upload File" class="p-1 text-neutral-500 hover:text-white rounded transition-colors cursor-pointer">
                                         <input type="file" id="explorer-file-upload" class="hidden">
@@ -262,53 +263,55 @@
                                 </div>
                             </div>
                             
-                            <!-- File system directories list -->
+                            <!-- File tree structure -->
                             <div id="explorer-file-tree" class="flex-1 overflow-y-auto py-2 text-sm text-neutral-400">
-                                <!-- Dynamically populated by assets/js/script.js -->
+                                <!-- Dynamically populated by JS -->
                             </div>
                         </div>
 
-                        <!-- Editor / Media Display Body Section -->
-                        <div class="flex-1 flex flex-col h-[580px] bg-[#09090c] overflow-hidden relative">
+                        <!-- Editor / Media Area wrapper (full height of parent) -->
+                        <div class="flex-1 flex flex-col h-full bg-[#09090c] overflow-hidden relative">
                             
-                            <!-- Tab Bar Header -->
+                            <!-- Tab Bar Header with Maximize & Minimize Button -->
                             <div class="h-10 bg-[#111115] border-b border-[#1f1f29] px-4 flex items-center justify-between flex-shrink-0 select-none">
                                 <div class="flex items-center gap-2">
                                     <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
                                     <span id="editor-active-filename" class="text-xs font-mono text-neutral-300">index.html</span>
                                 </div>
-                                <span class="text-[10px] text-neutral-500 font-semibold tracking-wider uppercase">T1ERA Code Studio</span>
+                                <div class="flex items-center gap-4">
+                                    <span class="text-[10px] text-neutral-500 font-semibold tracking-wider uppercase hidden sm:inline">T1ERA Code Studio</span>
+                                    
+                                    <!-- Maximize/Minimize Action Button -->
+                                    <button id="studio-maximize-btn" class="p-1 text-neutral-500 hover:text-white hover:bg-[#1a1a22] rounded transition-all focus:outline-none" title="Maximize Workspace">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4m12 4V4h-4M4 16v4h4m12-4v4h-4"></path>
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
 
-                            <!-- Editor Area Content (Code view vs Media view) -->
+                            <!-- Editor Area Content Viewports -->
                             <div class="flex-1 relative overflow-hidden" id="editor-viewport">
-                                
                                 <!-- CODE FORMAT VIEW -->
                                 <div id="code-editor-pane" class="w-full h-full flex">
-                                    <!-- Sync Line Numbers Column -->
                                     <div id="editor-line-numbers" class="w-12 bg-[#09090c] text-neutral-600 font-mono text-xs select-none text-right pr-3 pt-4 border-r border-[#1f1f29]">
                                         <div>1</div>
                                     </div>
-                                    
-                                    <!-- Synergized Code Layer Layout -->
                                     <div class="flex-1 relative h-full">
-                                        <!-- Real Interactive Input Layer (transparent text overlay) -->
                                         <textarea id="editor-textarea" spellcheck="false" class="absolute inset-0 bg-transparent text-transparent caret-white outline-none font-mono text-xs p-4 resize-none overflow-auto z-10 whitespace-pre leading-relaxed"></textarea>
-                                        <!-- Syntactically highlighted visualization backdrop layer -->
                                         <pre class="absolute inset-0 m-0 p-4 font-mono text-xs pointer-events-none overflow-hidden leading-relaxed"><code id="editor-highlight-target" class="language-html"></code></pre>
                                     </div>
                                 </div>
 
-                                <!-- MEDIA VIEW LAYOUT (Renders image files or video/audio clips) -->
+                                <!-- MEDIA VIEW LAYOUT -->
                                 <div id="media-viewer-pane" class="w-full h-full flex items-center justify-center bg-[#07070a] hidden">
                                     <div id="media-content-wrapper" class="max-w-md max-h-[400px] rounded-lg overflow-hidden border border-[#1f1f29] shadow-lg flex items-center justify-center p-4">
-                                        <!-- Rendered dynamically by script.js -->
+                                        <!-- Rendered dynamically -->
                                     </div>
                                 </div>
-
                             </div>
-                        </div>
 
+                        </div>
                     </div>
                 </section>
 
