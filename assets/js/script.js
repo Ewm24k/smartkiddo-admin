@@ -358,7 +358,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 // If search query is present, re-apply highlights
                 if (searchInput && searchInput.value.trim() !== '') {
-                    performSearch(searchInput.value.trim());
+                    performSearch(searchInput.value);
                 }
 
                 // Log edit changes on first interaction
@@ -372,9 +372,13 @@ document.addEventListener("DOMContentLoaded", function () {
         // Link horizontal and vertical scroll values between layers
         editorTextarea.addEventListener('scroll', function() {
             const preElement = document.getElementById('editor-pre');
+            const linesLayer = document.getElementById('editor-highlight-lines-layer');
             if (preElement) {
                 preElement.scrollTop = this.scrollTop;
                 preElement.scrollLeft = this.scrollLeft;
+            }
+            if (linesLayer) {
+                linesLayer.scrollTop = this.scrollTop;
             }
             if (lineNumbersContainer) lineNumbersContainer.scrollTop = this.scrollTop;
         });
@@ -459,6 +463,8 @@ document.addEventListener("DOMContentLoaded", function () {
         // Clear active search context on file change
         if (searchInput) searchInput.value = '';
         if (searchCountEl) searchCountEl.innerText = '0 found';
+        const linesLayer = document.getElementById('editor-highlight-lines-layer');
+        if (linesLayer) linesLayer.innerHTML = '';
 
         logToTerminal(`Loading file path in viewport: ${file.name}`, 'info');
 
@@ -475,9 +481,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (mediaContentWrapper) {
                 if (file.format === 'image') {
-                    mediaContentWrapper.innerHTML = `<img src="${mediaUrl}" alt="${file.name}" class="object-contain max-h-[350px]">`;
+                    mediaContentWrapper.innerHTML = `<img src="${mediaUrl}" alt="${file.name}" class="object-contain max-h-[300px]">`;
                 } else if (file.format === 'video') {
-                    mediaContentWrapper.innerHTML = `<video controls src="${mediaUrl}" class="max-h-[350px] w-full"></video>`;
+                    mediaContentWrapper.innerHTML = `<video controls src="${mediaUrl}" class="max-h-[300px] w-full"></video>`;
                 }
             }
         } else {
@@ -891,53 +897,49 @@ document.addEventListener("DOMContentLoaded", function () {
     // -----------------------------------------------------------------
     // 10. ACTIVE DOCUMENT SEARCH MECHANISM [2]
     // -----------------------------------------------------------------
-    
-    // Safety regex character escaping helper [2]
-    function escapeRegExp(string) {
-        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    }
 
-    // Traverses highlighted HTML DOM and wraps matches in a <mark> tag [2]
-    function highlightSearchInDOM(element, query) {
-        if (!query) return 0;
-        let matchesCount = 0;
-        const escaped = escapeRegExp(query);
-        const regex = new RegExp(`(${escaped})`, 'gi');
-        
-        function traverse(node) {
-            if (node.nodeType === Node.TEXT_NODE) {
-                const text = node.nodeValue;
-                if (regex.test(text)) {
-                    const span = document.createElement('span');
-                    span.innerHTML = text.replace(regex, (match) => {
-                        matchesCount++;
-                        return `<mark>${match}</mark>`; // Exact sizing styled globally [2]
-                    });
-                    node.parentNode.replaceChild(span, node);
-                }
-            } else if (node.nodeType === Node.ELEMENT_NODE && node.nodeName !== 'MARK') {
-                const children = Array.from(node.childNodes);
-                children.forEach(traverse);
-            }
-        }
-        
-        traverse(element);
-        return matchesCount;
-    }
-
+    // Visualizes matches by highlighting the whole line on the background layout layer [2]
     function performSearch(query) {
-        // First re-draw normal code styling rules
-        updateHighlight();
-        
-        if (!query || !highlightTarget) {
+        const linesLayer = document.getElementById('editor-highlight-lines-layer');
+        if (!linesLayer) return;
+
+        // Clear previous query state
+        linesLayer.innerHTML = '';
+        const lineDivs = lineNumbersContainer ? lineNumbersContainer.querySelectorAll('div') : [];
+        lineDivs.forEach(div => {
+            div.className = ''; // Reset margin panel colors
+        });
+
+        if (!query || !editorTextarea || !currentSelectedFile) {
             if (searchCountEl) searchCountEl.innerText = '0 found';
             return;
         }
 
-        // Apply visual highlights over elements [2]
-        const totalMatches = highlightSearchInDOM(highlightTarget, query);
+        // Split text raw lines directly to search symbols, tags, spaces safely [2]
+        const textValue = editorTextarea.value;
+        const lines = textValue.split('\n');
+        let matchesCount = 0;
+        let htmlLinesContent = '';
+
+        lines.forEach((lineText, index) => {
+            const isMatch = lineText.toLowerCase().includes(query.toLowerCase());
+            if (isMatch) {
+                matchesCount++;
+                htmlLinesContent += '<div class="matching-line-bar"></div>';
+                
+                // Add highlight styles directly to matching line number block
+                if (lineDivs[index]) {
+                    lineDivs[index].className = 'bg-yellow-500/20 text-yellow-400 font-bold';
+                }
+            } else {
+                htmlLinesContent += '<div class="empty-line-bar"></div>';
+            }
+        });
+
+        // Set matching layouts [2]
+        linesLayer.innerHTML = htmlLinesContent;
         if (searchCountEl) {
-            searchCountEl.innerText = `${totalMatches} found`;
+            searchCountEl.innerText = `${matchesCount} found`;
         }
     }
 
@@ -948,19 +950,19 @@ document.addEventListener("DOMContentLoaded", function () {
             searchBar.classList.toggle('flex');
             if (!searchBar.classList.contains('hidden') && searchInput) {
                 searchInput.focus();
-                if (searchInput.value.trim() !== '') {
-                    performSearch(searchInput.value.trim());
+                if (searchInput.value !== '') {
+                    performSearch(searchInput.value);
                 }
             } else {
-                // If search closed, remove highlights
-                updateHighlight();
+                // Clear highlights when search pane closes
+                performSearch('');
             }
         });
     }
 
     if (searchInput) {
         searchInput.addEventListener('input', function () {
-            performSearch(this.value.trim());
+            performSearch(this.value);
         });
     }
 
