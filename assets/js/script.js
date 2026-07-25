@@ -366,6 +366,11 @@ document.addEventListener("DOMContentLoaded", function () {
                     window.logToTerminal(`Modifying file: ${currentSelectedFile.name} (In-memory)...`, 'warning');
                     activeFileEdited = true;
                 }
+                
+                // Dispatch event hook to register edited changes inside AI Session Memory [2]
+                if (typeof window.onFileOpened === 'function') {
+                    window.onFileOpened(currentSelectedFile);
+                }
             }
         });
 
@@ -481,9 +486,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (mediaContentWrapper) {
                 if (file.format === 'image') {
-                    mediaContentWrapper.innerHTML = `<img src="${mediaUrl}" alt="${file.name}" class="object-contain max-h-[350px]">`;
+                    mediaContentWrapper.innerHTML = `<img src="${mediaUrl}" alt="${file.name}" class="object-contain max-h-[300px]">`;
                 } else if (file.format === 'video') {
-                    mediaContentWrapper.innerHTML = `<video controls src="${mediaUrl}" class="max-h-[350px] w-full"></video>`;
+                    mediaContentWrapper.innerHTML = `<video controls src="${mediaUrl}" class="max-h-[300px] w-full"></video>`;
                 }
             }
         } else {
@@ -494,6 +499,11 @@ document.addEventListener("DOMContentLoaded", function () {
             if (editorTextarea) editorTextarea.value = file.content;
             updateHighlight();
             updateLineNumbers();
+
+            // Trigger global hook to register opened file into AI Session Cache [2]
+            if (typeof window.onFileOpened === 'function') {
+                window.onFileOpened(file);
+            }
         }
         
         renderTree();
