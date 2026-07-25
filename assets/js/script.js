@@ -275,7 +275,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const shrinkIcon = `
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h4v4m12-4h-4v4M4 20h4v-4m12 4h-4v-4"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h4v4m12-4h-4v-4M4 20h4v-4m12 4h-4v-4"></path>
         </svg>
     `;
 
@@ -351,12 +351,29 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Link horizontal and vertical scroll values between layers
         editorTextarea.addEventListener('scroll', function() {
-            const preElement = highlightTarget ? highlightTarget.parentElement : null;
+            const preElement = document.getElementById('editor-pre');
             if (preElement) {
                 preElement.scrollTop = this.scrollTop;
                 preElement.scrollLeft = this.scrollLeft;
             }
             if (lineNumbersContainer) lineNumbersContainer.scrollTop = this.scrollTop;
+        });
+
+        // Tab indentation interceptor
+        editorTextarea.addEventListener('keydown', function(e) {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+
+                // Set indent width to 4 space characters
+                this.value = this.value.substring(0, start) + "    " + this.value.substring(end);
+                this.selectionStart = this.selectionEnd = start + 4;
+                
+                // Dispatch input event to refresh highlighter overlays
+                const inputEvent = new Event('input');
+                this.dispatchEvent(inputEvent);
+            }
         });
     }
 
