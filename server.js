@@ -8,7 +8,7 @@ app.use(express.json({ limit: '50mb' }));
 const PORT = process.env.PORT || 3000;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN; // Set securely in Render dashboard
 const GITHUB_OWNER = process.env.GITHUB_OWNER || 'Ewm24k';
-const GITHUB_REPO = process.env.GITHUB_REPO || 'smartkiddo-admin';
+const GITHUB_REPO = process.env.GITHUB_REPO || 'smartkiddo-verse'; // Updated default fallback to smartkiddo-verse
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 
 // Helper for making requests to the GitHub REST API
