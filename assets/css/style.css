@@ -2,13 +2,11 @@
 .glow-card {
     background-color: #1a1a22;
     border: 1px solid #2d2d39;
-    /* Clean scale zoom parameters */
     transition: transform 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), 
                 box-shadow 0.3s ease, 
                 border-color 0.3s ease;
 }
 
-/* Hover Zoom & Purple/Indigo Glow border interaction */
 .glow-card:hover {
     transform: scale(1.03);
     border-color: #6366f1; /* Glowing indigo border */
@@ -21,14 +19,58 @@ aside {
     transition: margin-left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Hidden State applied dynamically via JavaScript */
 .sidebar-collapsed aside {
-    margin-left: -16rem; /* Entirely hides the w-64 panel off-screen left */
+    margin-left: -16rem; /* Hides sidebar completely off-screen left */
 }
 
-/* Standard custom layout scrollbar styling */
+/* -----------------------------------------------------------------
+   CODE EDITOR ALIGNMENT & LAYER OVERLAYS
+----------------------------------------------------------------- */
+
+/* Sync typography parameters of transparent textarea overlay with backdrop code */
+#editor-textarea, 
+#editor-highlight-target,
+#editor-line-numbers {
+    font-family: 'Fira Code', Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace !important;
+    font-size: 13px !important;
+    line-height: 1.6 !important;
+}
+
+#editor-textarea {
+    color: transparent !important;
+    caret-color: #ffffff !important;
+    white-space: pre !important;
+    word-wrap: normal !important;
+}
+
+/* Align underlying highlighted wrapper padding to match textarea padding */
+#code-editor-pane pre {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+}
+
+/* Code layout background configuration */
+#code-editor-pane {
+    background-color: #09090c;
+}
+
+/* File Explorer styling */
+.explorer-item {
+    transition: background-color 0.15s ease;
+}
+.explorer-item:hover {
+    background-color: #1a1a22;
+}
+.explorer-item.active {
+    background-color: #1a1a22;
+    color: #e5e7eb;
+}
+
+/* Layout Scrollbars */
 ::-webkit-scrollbar {
     width: 6px;
+    height: 6px;
 }
 
 ::-webkit-scrollbar-track {
