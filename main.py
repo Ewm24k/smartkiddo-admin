@@ -1,325 +1,480 @@
-import os
-import httpx
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Optional
-from openai import OpenAI
+document.addEventListener("DOMContentLoaded", function () {
+    
+    // -----------------------------------------------------------------
+    // 0. Configuration Setup
+    // -----------------------------------------------------------------
+    const RENDER_BACKEND_URL = "https://smartkiddo-admin.onrender.com";
 
-app = FastAPI()
-
-# Enable CORS for frontend clients
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Load Secure Environment Variables
-GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
-GITHUB_OWNER = os.getenv("GITHUB_OWNER", "Ewm24k")
-GITHUB_REPO = os.getenv("GITHUB_REPO", "smartkiddo-verse")
-GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "main")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
-# Initialize OpenAI client securely
-openai_client = None
-if OPENAI_API_KEY:
-    openai_client = OpenAI(api_key=OPENAI_API_KEY)
-
-# -----------------------------------------------------------------
-# Models for API validation
-# -----------------------------------------------------------------
-class ChatMessage(BaseModel):
-    role: str
-    content: str
-
-class ChatRequest(BaseModel):
-    messages: List[ChatMessage]
-    workspace_context: Optional[str] = ""
-
-# Helper to request GitHub REST API
-async def github_request(endpoint: str, method: str = "GET", json_data: dict = None):
-    url = f"https://api.github.com{endpoint}"
-    headers = {
-        "Authorization": f"Bearer {GITHUB_TOKEN}",
-        "Accept": "application/vnd.github+json",
-        "User-Agent": "SmartKiddo-Sync-API-Python"
+    // Fallback logToTerminal wrapper in case window is not loaded yet [2]
+    function logToTerminal(message, type = 'info') {
+        if (typeof window.logToTerminal === 'function') {
+            window.logToTerminal(message, type);
+        } else {
+            console.log(`[${type}] ${message}`);
+        }
     }
-    async with httpx.AsyncClient() as client:
-        if method == "GET":
-            response = await client.get(url, headers=headers)
-        elif method == "POST":
-            response = await client.post(url, headers=headers, json=json_data)
-        elif method == "PATCH":
-            response = await client.patch(url, headers=headers, json=json_data)
-        
-        if response.status_code >= 400:
-            raise HTTPException(status_code=response.status_code, detail=response.text)
-        return response.json()
 
-# -----------------------------------------------------------------
-# Endpoint 1: Sync (GET) - Pull repository structure
-# -----------------------------------------------------------------
-@app.get("/api/sync")
-async def sync_github():
-    if not GITHUB_TOKEN:
-        raise HTTPException(status_code=500, detail="Missing GITHUB_TOKEN on backend.")
-    try:
-        # Fetch the flat recursive Git tree from GitHub
-        tree_data = await github_request(f"/repos/{GITHUB_OWNER}/{GITHUB_REPO}/git/trees/{GITHUB_BRANCH}?recursive=1")
-        
-        # Filter system and ignored items
-        filtered_tree = [
-            item for item in tree_data.get("tree", [])
-            if not item["path"].startswith(".") and 
-               "node_modules/" not in item["path"] and 
-               item["path"] not in ["package.json", "server.js", "requirements.txt", "main.py"]
-        ]
+    // -----------------------------------------------------------------
+    // 1. DOM Element Declarations
+    // -----------------------------------------------------------------
+    const aiChatSidebar = document.getElementById('ai-chat-sidebar');
+    const tabAiToggleBtn = document.getElementById('tab-ai-toggle-btn');
+    
+    const aiChatOutputContainer = document.getElementById('ai-chat-output-container');
+    const aiChatInput = document.getElementById('ai-chat-input');
+    const aiSendBtn = document.getElementById('ai-send-btn');
+    const aiVoiceBtn = document.getElementById('ai-voice-btn');
+    const aiVoiceActiveIndicator = document.getElementById('ai-voice-active-indicator');
+    
+    const aiTokenCount = document.getElementById('ai-token-count');
+    const aiTokenInput = document.getElementById('ai-token-input');
+    const aiTokenOutput = document.getElementById('ai-token-output');
 
-        root_nodes = []
-        folders_map = {}
+    const aiContextAttachBtn = document.getElementById('ai-context-attach-btn');
+    const aiContextMenu = document.getElementById('ai-context-menu');
+    const aiContextItemsList = document.getElementById('ai-context-items-list');
 
-        # Sort so folders are processed first to ensure parents are ready
-        sorted_tree = sorted(filtered_tree, key=lambda x: x["path"])
+    const aiAttachmentBadge = document.getElementById('ai-attachment-badge');
+    const aiAttachmentName = document.getElementById('ai-attachment-name');
+    const aiAttachmentRemove = document.getElementById('ai-attachment-remove');
 
-        for item in sorted_tree:
-            parts = item["path"].split("/")
-            name = parts[-1]
-            is_folder = item["type"] == "tree"
+    // Chat History Array
+    let conversationHistory = [];
+    let attachedFile = null; // Stores currently attached file metadata
 
-            node = {
-                "id": f"gh_{item['sha']}",
-                "name": name,
-                "type": "folder" if is_folder else "file",
-                "path": item["path"]
+    // -----------------------------------------------------------------
+    // 2. TOGGLE PANEL VISIBILITY (Open / Close Hide / Unhide) [2]
+    // -----------------------------------------------------------------
+    if (tabAiToggleBtn && aiChatSidebar) {
+        tabAiToggleBtn.addEventListener('click', function () {
+            aiChatSidebar.classList.toggle('closed');
+            
+            // Adjust layouts when sidebar updates width
+            if (aiChatSidebar.classList.contains('closed')) {
+                tabAiToggleBtn.classList.remove('text-indigo-400');
+                tabAiToggleBtn.classList.add('text-neutral-500');
+            } else {
+                tabAiToggleBtn.classList.add('text-indigo-400');
+                tabAiToggleBtn.classList.remove('text-neutral-500');
+            }
+        });
+    }
+
+    // -----------------------------------------------------------------
+    // 3. TEXT INPUT LONG TEXT HANDLE (Auto Expanding Box) [2]
+    // -----------------------------------------------------------------
+    if (aiChatInput) {
+        aiChatInput.addEventListener('input', function () {
+            this.style.height = 'auto';
+            const scrollHeight = this.scrollHeight;
+            this.style.height = (scrollHeight > 120 ? 120 : scrollHeight) + 'px'; // Limit max height, enable internal scroll
+        });
+    }
+
+    // -----------------------------------------------------------------
+    // 4. SPEECH-TO-TEXT SPEECH RECOGNITION (English & Malay Support) [2]
+    // -----------------------------------------------------------------
+    let speechRecognizer = null;
+    let isRecordingSpeech = false;
+
+    // Check browser compatibility and initialize speech API
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognitionAPI) {
+        speechRecognizer = new SpeechRecognitionAPI();
+        speechRecognizer.continuous = true;
+        speechRecognizer.interimResults = false;
+        // Language: default to Malay ('ms-MY') with English ('en-US') triggers
+        speechRecognizer.lang = 'ms-MY'; 
+
+        speechRecognizer.onstart = function () {
+            isRecordingSpeech = true;
+            if (aiVoiceActiveIndicator) aiVoiceActiveIndicator.classList.remove('hidden');
+            if (aiVoiceBtn) aiVoiceBtn.classList.add('recording-pulse');
+        };
+
+        speechRecognizer.onresult = function (event) {
+            const resultIndex = event.resultIndex;
+            const transcript = event.results[resultIndex][0].transcript;
+            
+            if (aiChatInput) {
+                // Insert speech results directly into current cursor position
+                const startPos = aiChatInput.selectionStart;
+                const endPos = aiChatInput.selectionEnd;
+                const originalVal = aiChatInput.value;
+                
+                aiChatInput.value = originalVal.substring(0, startPos) + transcript + originalVal.substring(endPos);
+                aiChatInput.dispatchEvent(new Event('input')); // Expand textarea if needed
+            }
+        };
+
+        speechRecognizer.onerror = function (e) {
+            console.error("Speech Recognition Error:", e);
+            stopRecording();
+        };
+
+        speechRecognizer.onend = function () {
+            stopRecording();
+        };
+    } else {
+        if (aiVoiceBtn) {
+            aiVoiceBtn.style.display = 'none'; // Hide if browser doesn't support Web Speech API [2]
+        }
+    }
+
+    function startRecording() {
+        if (speechRecognizer) {
+            speechRecognizer.lang = confirm("Speak in Malay? (Click Cancel for English)") ? 'ms-MY' : 'en-US';
+            speechRecognizer.start();
+        }
+    }
+
+    function stopRecording() {
+        isRecordingSpeech = false;
+        if (speechRecognizer) {
+            try { speechRecognizer.stop(); } catch(e) {}
+        }
+        if (aiVoiceActiveIndicator) aiVoiceActiveIndicator.classList.add('hidden');
+        if (aiVoiceBtn) aiVoiceBtn.classList.remove('recording-pulse');
+    }
+
+    if (aiVoiceBtn) {
+        aiVoiceBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (isRecordingSpeech) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        });
+    }
+
+    // -----------------------------------------------------------------
+    // 5. ATTACH WORKSPACE FILE AS CONTEXT (`+` Icon Button) [2]
+    // -----------------------------------------------------------------
+    
+    // Scans tree structure recursively and returns a flat list of text files
+    function flattenFilesList(nodes, pathPrefix = '') {
+        let files = [];
+        nodes.forEach(node => {
+            const absolutePath = pathPrefix ? `${pathPrefix}/${node.name}` : node.name;
+            if (node.type === 'file') {
+                files.push({
+                    id: node.id,
+                    name: node.name,
+                    path: absolutePath,
+                    content: node.content,
+                    isMedia: node.isMedia
+                });
+            } else if (node.type === 'folder' && Array.isArray(node.children)) {
+                files = files.concat(flattenFilesList(node.children, absolutePath));
+            }
+        });
+        return files;
+    }
+
+    if (aiContextAttachBtn && aiContextMenu && aiContextItemsList) {
+        aiContextAttachBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            
+            // Toggle menu visibility
+            if (!aiContextMenu.classList.contains('hidden')) {
+                aiContextMenu.classList.add('hidden');
+                return;
             }
 
-            if is_folder:
-                node["isOpen"] = True
-                node["children"] = []
-                folders_map[item["path"]] = node
-            else:
-                ext = name.split(".")[-1].lower() if "." in name else ""
-                is_media = ext in ["png", "jpg", "jpeg", "gif", "svg", "webp", "mp4", "webm", "ogg"]
-                node["isMedia"] = is_media
-                if is_media:
-                    node["format"] = "video" if ext in ["mp4", "webm", "ogg"] else "image"
-                    node["url"] = f"/api/media?path={item['path']}"
-                    node["content"] = ""
-                else:
-                    node["content"] = ""
-
-            if len(parts) == 1:
-                root_nodes.append(node)
-            else:
-                parent_path = "/".join(parts[:-1])
-                if parent_path in folders_map:
-                    folders_map[parent_path]["children"].append(node)
-                else:
-                    root_nodes.append(node)
-
-        # Hydrate file content text via Raw GitHub links
-        async def fetch_contents(nodes):
-            async with httpx.AsyncClient() as client:
-                headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
-                for node in nodes:
-                    if node["type"] == "file" and not node.get("isMedia"):
-                        raw_url = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{GITHUB_REPO}/{GITHUB_BRANCH}/{node['path']}"
-                        raw_res = await client.get(raw_url, headers=headers)
-                        if raw_res.status_code == 200:
-                            node["content"] = raw_res.text
-                        else:
-                            node["content"] = "/* Error loading content from GitHub */"
-                    elif node["type"] == "folder" and "children" in node:
-                        await fetch_contents(node["children"])
-
-        await fetch_contents(root_nodes)
-
-        # Strip temporary path parameter before responding
-        def strip_paths(nodes):
-            for node in nodes:
-                if "path" in node:
-                    del node["path"]
-                if "children" in node:
-                    strip_paths(node["children"])
-        strip_paths(root_nodes)
-
-        return root_nodes
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# -----------------------------------------------------------------
-# Endpoint 2: Send & Sync (POST) - Push workspace back to GitHub
-# -----------------------------------------------------------------
-@app.post("/api/send-sync")
-async def send_sync_github(request: Request):
-    try:
-        file_system = await request.json()
-        if not isinstance(file_system, list):
-            raise HTTPException(status_code=400, detail="Invalid payload. Array expected.")
-
-        # Flatten nested structure to path mappings
-        def flatten(nodes, current_path=""):
-            flat_list = []
-            for node in nodes:
-                absolute_path = f"{current_path}/{node['name']}" if current_path else node['name']
-                if node["type"] == "file":
-                    flat_list.append({
-                        "path": absolute_path,
-                        "content": node.get("content", ""),
-                        "isMedia": node.get("isMedia", False)
-                    })
-                elif node["type"] == "folder" and "children" in node:
-                    flat_list.extend(flatten(node["children"], absolute_path))
-            return flat_list
-
-        flattened_files = flatten(file_system)
-
-        # Fetch HEAD commit context
-        ref_data = await github_request(f"/repos/{GITHUB_OWNER}/{GITHUB_REPO}/git/refs/heads/{GITHUB_BRANCH}")
-        base_commit_sha = ref_data["object"]["sha"]
-
-        # Retrieve tree SHA
-        commit_data = await github_request(f"/repos/{GITHUB_OWNER}/{GITHUB_REPO}/git/commits/{base_commit_sha}")
-        base_tree_sha = commit_data["tree"]["sha"]
-
-        # Build git Tree payload (skip binary media uploads)
-        tree_items = [
-            {
-                "path": file["path"],
-                "mode": "100644",
-                "type": "blob",
-                "content": file["content"]
+            // Fetch current state of fileSystem from parent script
+            if (typeof window.getWorkspaceFileSystem !== 'function') {
+                aiContextItemsList.innerHTML = `<p class="p-2 text-[11px] text-neutral-600">No workspace connected.</p>`;
+                aiContextMenu.classList.remove('hidden');
+                return;
             }
-            for file in flattened_files if not file["isMedia"]
-        ]
 
-        new_tree_data = await github_request(f"/repos/{GITHUB_OWNER}/{GITHUB_REPO}/git/trees", "POST", {
-            "base_tree": base_tree_sha,
-            "tree": tree_items
-        })
+            const currentFileSystem = window.getWorkspaceFileSystem();
+            const textFiles = flattenFilesList(currentFileSystem).filter(f => !f.isMedia);
 
-        # Create new Commit
-        new_commit_data = await github_request(f"/repos/{GITHUB_OWNER}/{GITHUB_REPO}/git/commits", "POST", {
-            "message": "Backup update from SmartKiddo Studio Workspace",
-            "tree": new_tree_data["sha"],
-            "parents": [base_commit_sha]
-        })
+            if (textFiles.length === 0) {
+                aiContextItemsList.innerHTML = `<p class="p-2 text-[11px] text-neutral-600">No text files in tree.</p>`;
+            } else {
+                let html = '';
+                textFiles.forEach(file => {
+                    html += `
+                        <div class="px-2 py-1.5 hover:bg-[#21212c] rounded cursor-pointer truncate transition-colors flex items-center gap-2" data-file-id="${file.id}">
+                            <svg class="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                            <span class="truncate" title="${file.path}">${file.path}</span>
+                        </div>
+                    `;
+                });
+                aiContextItemsList.innerHTML = html;
 
-        # Update branch head reference
-        await github_request(f"/repos/{GITHUB_OWNER}/{GITHUB_REPO}/git/refs/heads/{GITHUB_BRANCH}", "PATCH", {
-            "sha": new_commit_data["sha"],
-            "force": True
-        })
+                // Attach click listeners to file list items
+                aiContextItemsList.querySelectorAll('[data-file-id]').forEach(item => {
+                    item.addEventListener('click', function () {
+                        const targetId = this.getAttribute('data-file-id');
+                        const matchedFile = textFiles.find(f => f.id === targetId);
+                        if (matchedFile) {
+                            attachFileContext(matchedFile);
+                        }
+                    });
+                });
+            }
 
-        return {"success": True, "sha": new_commit_data["sha"]}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+            aiContextMenu.classList.remove('hidden');
+        });
+    }
 
-# -----------------------------------------------------------------
-# Endpoint 3: Secure Media Stream Proxy
-# -----------------------------------------------------------------
-@app.get("/api/media")
-async def stream_media(path: str):
-    if not path:
-        raise HTTPException(status_code=400, detail="Missing path parameter")
-    try:
-        raw_url = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{GITHUB_REPO}/{GITHUB_BRANCH}/{path}"
-        headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
-        async with httpx.AsyncClient() as client:
-            response = await client.get(raw_url, headers=headers)
-            if response.status_code != 200:
-                raise HTTPException(status_code=response.status_code, detail="Failed to fetch asset")
-            
-            from fastapi.responses import Response
-            return Response(content=response.content, media_type=response.headers.get("content-type"))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    // Hides dropdown if clicking anywhere else
+    document.addEventListener('click', function () {
+        if (aiContextMenu) aiContextMenu.classList.add('hidden');
+    });
 
-# -----------------------------------------------------------------
-# Endpoint 4: AI Agent Chat Integration with OpenAI saved prompt
-# -----------------------------------------------------------------
-@app.post("/api/chat")
-async def ai_chat_completion(chat_req: ChatRequest):
-    if not openai_client:
-        raise HTTPException(status_code=500, detail="OpenAI Client is not initialized on backend.")
-    try:
-        # Construct messages array matching expected input context
-        openai_input = []
+    function attachFileContext(file) {
+        attachedFile = file;
+        if (aiAttachmentName) aiAttachmentName.innerText = file.path;
+        if (aiAttachmentBadge) aiAttachmentBadge.classList.remove('hidden');
+        if (aiContextMenu) aiContextMenu.classList.add('hidden');
+        logToTerminal(`Injected workspace file context: ${file.path}`, 'info');
+    }
+
+    if (aiAttachmentRemove) {
+        aiAttachmentRemove.addEventListener('click', function (e) {
+            e.stopPropagation();
+            attachedFile = null;
+            if (aiAttachmentBadge) aiAttachmentBadge.classList.add('hidden');
+            logToTerminal("Workspace file context removed.", "warning");
+        });
+    }
+
+    // -----------------------------------------------------------------
+    // 6. RICH TEXT FORMATTING AND MARKDOWN PARSING UTILITY [2]
+    // -----------------------------------------------------------------
+    function parseMarkdownToHTML(text) {
+        let html = text;
+
+        // Escape raw HTML entities to avoid broken DOM elements
+        html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        // Highlight marker tags <mark>
+        html = html.replace(/==([^==\n]+)==/g, '<mark class="bg-yellow-500/40 text-inherit rounded px-0.5">$1</mark>');
+
+        // Synced Code blocks formatting (e.g. ```javascript ... ```) [2]
+        html = html.replace(/```([a-zA-Z0-9]*)\n([\s\S]*?)\n```/g, function (match, lang, code) {
+            return `<pre><code class="language-${lang}">${code}</code></pre>`;
+        });
+
+        // Inline Code segments formatting
+        html = html.replace(/`([^`\n]+)`/g, '<code class="bg-[#0b0b0f] border border-[#1f1f29] px-1 rounded text-[11px] text-pink-400 font-mono">$1</code>');
+
+        // Quote block formatting
+        html = html.replace(/^&gt;\s+(.*)$/gm, '<blockquote>$1</blockquote>');
+
+        // Headings / Subtitles [2]
+        html = html.replace(/^###\s+(.*)$/gm, '<h4 class="text-sm font-bold text-white mt-3 mb-1.5">$1</h4>');
+        html = html.replace(/^##\s+(.*)$/gm, '<h3 class="text-base font-extrabold text-white mt-4 mb-2">$1</h3>');
+        html = html.replace(/^#\s+(.*)$/gm, '<h2 class="text-lg font-black text-indigo-400 mt-5 mb-3 border-b border-[#1f1f29] pb-1">$1</h2>');
+
+        // Bold formatting
+        html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-white font-bold">$1</strong>');
+
+        // Underline simulated markup formatting [2]
+        html = html.replace(/__([^_]+)__/g, '<span class="underline decoration-indigo-500/50">$1</span>');
+
+        // Unordered lists [2]
+        html = html.replace(/^\*\s+(.*)$/gm, '<ul><li>$1</li></ul>');
+        html = html.replace(/^\-\s+(.*)$/gm, '<ul><li>$1</li></ul>');
+
+        // Clean redundant list tag closures
+        html = html.replace(/<\/ul>\s*<ul>/g, '');
+
+        // Paragraph conversions
+        html = html.replace(/\n\n/g, '</p><p class="mt-2">');
+
+        return `<p>${html}</p>`;
+    }
+
+    // -----------------------------------------------------------------
+    // 7. OPENAI API PROXY PIPELINE (Syncs Workspace & Prompts) [2]
+    // -----------------------------------------------------------------
+    async function submitChat() {
+        if (!aiChatInput) return;
+        const query = aiChatInput.value.trim();
+        if (!query) return;
+
+        // Clear input box
+        aiChatInput.value = '';
+        aiChatInput.style.height = 'auto'; // Reset text box size bounds
+
+        // Print User Message in Chat Box
+        const userMsgDiv = document.createElement('div');
+        userMsgDiv.className = "flex items-start gap-3 justify-end";
+        userMsgDiv.innerHTML = `
+            <div class="bg-indigo-600/10 p-3 rounded-lg text-xs text-indigo-300 leading-relaxed max-w-[85%] border border-indigo-500/20 select-text font-sans">
+                ${query.replace(/\n/g, '<br>')}
+                ${attachedFile ? `
+                    <div class="mt-2 flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-[10px] text-indigo-400 font-mono select-none">
+                        <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                        <span>${attachedFile.path}</span>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+        if (aiChatOutputContainer) {
+            aiChatOutputContainer.appendChild(userMsgDiv);
+            aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
+        }
+
+        // Push to local memory log
+        conversationHistory.push({ role: "user", content: query });
+
+        // Build workspace context indexes to optimize tokens [2]
+        let contextPayloadString = "";
         
-        # Inject workspace folder structure and active context files
-        if chat_req.workspace_context:
-            openai_input.append({
-                "role": "user",
-                "content": f"=== ACTIVE WORKSPACE MANIFEST && FILE CONTEXT ===\n{chat_req.workspace_context}"
-            })
+        // Compute project directory path map (Manifest index)
+        if (typeof window.getWorkspaceFileSystem === 'function') {
+            const currentFileSystem = window.getWorkspaceFileSystem();
+            const allFilesList = flattenFilesList(currentFileSystem);
             
-        for msg in chat_req.messages:
-            openai_input.append({
-                "role": msg.role,
-                "content": msg.content
-            })
+            // Build lightweight directory manifest map
+            let manifest = "=== DIRECTORY STRUCTURAL MANIFEST ===\n";
+            allFilesList.forEach(file => {
+                const lineCount = file.isMedia ? 0 : (file.content.split('\n').length || 0);
+                manifest += `Path: ${file.path} | Type: ${file.isMedia ? 'Media' : 'Code'} | Line count: ${lineCount}\n`;
+            });
+            contextPayloadString += manifest + "\n";
+        }
 
-        # Trigger Saved Prompt Template
-        response = openai_client.responses.create(
-            prompt={
-                "id": "pmpt_6a64c46b5e5c8190bdb0b6f7aacbb7450b1160d1c16e4e6e",
-                "version": "1"
-            },
-            input=openai_input,
-            reasoning={
-                "mode": "standard",
-                "summary": "auto"
-            },
-            tools=[
-                {
-                    "type": "web_search",
-                    "user_location": {
-                        "type": "approximate"
-                    },
-                    "search_context_size": "high"
+        // Inject currently attached selected context file
+        if (attachedFile) {
+            contextPayloadString += `=== REFERENCE ATTACHED FILE: ${attachedFile.path} ===\n${attachedFile.content}\n`;
+        }
+
+        // Generate Assistant Message Placeholder loader
+        const assistantPlaceholder = document.createElement('div');
+        assistantPlaceholder.className = "flex items-start gap-3";
+        assistantPlaceholder.innerHTML = `
+            <div class="w-6 h-6 rounded bg-indigo-600/20 flex items-center justify-center text-xs text-indigo-400 font-bold flex-shrink-0 select-none">AI</div>
+            <div class="bg-[#1a1a24] p-3 rounded-lg text-xs text-neutral-400 leading-relaxed max-w-[85%] border border-[#1f1f29] flex items-center gap-2 select-none font-mono">
+                <div class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-ping"></div>
+                Thinking...
+            </div>
+        `;
+        if (aiChatOutputContainer) {
+            aiChatOutputContainer.appendChild(assistantPlaceholder);
+            aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
+        }
+
+        // Dispatch call to Python proxy service on Render [2]
+        try {
+            logToTerminal("Dispatching chat packet to SmartKiddo AI proxy...", "system");
+            
+            const response = await fetch(`${RENDER_BACKEND_URL}/api/chat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    messages: conversationHistory,
+                    workspace_context: contextPayloadString
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP Error Status: ${response.status}`);
+            }
+
+            const chatResponse = await response.json();
+            
+            // Remove Assistant thinking placeholder
+            if (aiChatOutputContainer) aiChatOutputContainer.removeChild(assistantPlaceholder);
+
+            // Safety interceptor: if server caught an API exception and returned an error [2]
+            if (chatResponse.success === false || chatResponse.error) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = "flex items-start gap-3";
+                errorDiv.innerHTML = `
+                    <div class="w-6 h-6 rounded bg-red-600/20 flex items-center justify-center text-xs text-red-400 font-bold flex-shrink-0 select-none">Err</div>
+                    <div class="bg-red-500/10 p-3 rounded-lg text-xs text-red-400 leading-relaxed max-w-[85%] border border-red-500/20 select-text font-mono">
+                        ${chatResponse.error || "An unexpected error occurred during API completion."}
+                    </div>
+                `;
+                if (aiChatOutputContainer) {
+                    aiChatOutputContainer.appendChild(errorDiv);
+                    aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
                 }
-            ],
-            store=True,
-            include=[
-                "reasoning.encrypted_content",
-                "web_search_call.action.sources"
-            ]
-        )
+                logToTerminal(`API Error: ${chatResponse.error}`, "error");
+                
+                // Clear the corrupted turn from local history so context doesn't keep failing
+                conversationHistory.pop();
+                return;
+            }
 
-        # Access assistant response
-        assistant_content = ""
-        input_tokens = 0
-        output_tokens = 0
-        
-        if hasattr(response, "choices") and len(response.choices) > 0:
-            assistant_content = response.choices[0].message.content
-        elif hasattr(response, "output") and hasattr(response.output, "content"):
-            assistant_content = response.output.content
+            // Print AI agent rich text result
+            const aiMsgDiv = document.createElement('div');
+            aiMsgDiv.className = "flex items-start gap-3";
+            aiMsgDiv.innerHTML = `
+                <div class="w-6 h-6 rounded bg-indigo-600/20 flex items-center justify-center text-xs text-indigo-400 font-bold flex-shrink-0 select-none">AI</div>
+                <div class="ai-message bg-[#1a1a24] p-3 rounded-lg text-xs text-neutral-300 leading-relaxed max-w-[85%] border border-[#1f1f29] select-text font-sans">
+                    ${parseMarkdownToHTML(chatResponse.content)}
+                </div>
+            `;
+            if (aiChatOutputContainer) {
+                aiChatOutputContainer.appendChild(aiMsgDiv);
+                aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
+            }
 
-        # Capture Token Usage metrics
-        if hasattr(response, "usage") and response.usage:
-            input_tokens = response.usage.prompt_tokens
-            output_tokens = response.usage.completion_tokens
-        else:
-            # Fallback estimation values
-            input_tokens = len(str(openai_input)) // 4
-            output_tokens = len(assistant_content) // 4
+            // Trigger Prism highlighting on any nested output blocks [2]
+            if (window.Prism) {
+                aiMsgDiv.querySelectorAll('pre code').forEach(block => {
+                    window.Prism.highlightElement(block);
+                });
+            }
 
-        return {
-            "content": assistant_content,
-            "usage": {
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-                "total_tokens": input_tokens + output_tokens
+            // Save Response inside local log history
+            conversationHistory.push({ role: "assistant", content: chatResponse.content });
+
+            // Update Token Trackers [2]
+            if (chatResponse.usage) {
+                if (aiTokenCount) aiTokenCount.innerText = chatResponse.usage.total_tokens;
+                if (aiTokenInput) aiTokenInput.innerText = chatResponse.usage.input_tokens;
+                if (aiTokenOutput) aiTokenOutput.innerText = chatResponse.usage.output_tokens;
+            }
+
+            // Remove badge after successful upload context session
+            attachedFile = null;
+            if (aiAttachmentBadge) aiAttachmentBadge.classList.add('hidden');
+
+            logToTerminal("AI response packets received successfully.", "success");
+
+        } catch (err) {
+            console.error(err);
+            logToTerminal(`AI request pipeline crashed: ${err.message}`, "error");
+            
+            if (aiChatOutputContainer) aiChatOutputContainer.removeChild(assistantPlaceholder);
+            
+            const errorDiv = document.createElement('div');
+            errorDiv.className = "flex items-start gap-3";
+            errorDiv.innerHTML = `
+                <div class="w-6 h-6 rounded bg-red-600/20 flex items-center justify-center text-xs text-red-400 font-bold flex-shrink-0 select-none">Err</div>
+                <div class="bg-red-500/10 p-3 rounded-lg text-xs text-red-400 leading-relaxed max-w-[85%] border border-red-500/20 select-text font-mono">
+                    System error calling Render proxy. ${err.message}
+                </div>
+            `;
+            if (aiChatOutputContainer) {
+                aiChatOutputContainer.appendChild(errorDiv);
+                aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
             }
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    }
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=PORT)
+    if (aiSendBtn) {
+        aiSendBtn.addEventListener('click', submitChat);
+    }
+
+    if (aiChatInput) {
+        aiChatInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                submitChat();
+            }
+        });
+    }
+});
