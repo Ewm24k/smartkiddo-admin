@@ -43,7 +43,40 @@ document.addEventListener("DOMContentLoaded", function () {
     let attachedFile = null; // Stores currently attached file metadata
 
     // -----------------------------------------------------------------
-    // 2. TOGGLE PANEL VISIBILITY (Open / Close Hide / Unhide) [2]
+    // 2. SESSION FILE MEMORY LRU CACHE (Remembers recently read files) [2]
+    // -----------------------------------------------------------------
+    let sessionFileCache = {}; // Key: fileName, Value: fileContent
+    let cacheAccessOrder = []; // Array tracking order of accessed files for eviction [2]
+
+    function updateSessionFileCache(fileName, fileContent) {
+        if (!fileName || !fileContent) return;
+
+        // Strip index order if already cached to push it to the "Most Recently Used" back index
+        cacheAccessOrder = cacheAccessOrder.filter(name => name !== fileName);
+        
+        // Add to cache structure
+        sessionFileCache[fileName] = fileContent;
+        cacheAccessOrder.push(fileName);
+
+        // LRU Eviction: Limit cached files context to 3 files to save token cost [2]
+        if (cacheAccessOrder.length > 3) {
+            const evictedFileName = cacheAccessOrder.shift();
+            delete sessionFileCache[evictedFileName];
+            logToTerminal(`Evicted older file context from AI session memory: ${evictedFileName}`, 'system');
+        }
+
+        logToTerminal(`AI session memory cached file content: ${fileName}`, 'system');
+    }
+
+    // Expose global hook to receive events from parent script.js [2]
+    window.onFileOpened = function (file) {
+        if (file && !file.isMedia && file.content) {
+            updateSessionFileCache(file.name, file.content);
+        }
+    };
+
+    // -----------------------------------------------------------------
+    // 3. TOGGLE PANEL VISIBILITY (Open / Close Hide / Unhide) [2]
     // -----------------------------------------------------------------
     if (tabAiToggleBtn && aiChatSidebar) {
         tabAiToggleBtn.addEventListener('click', function () {
@@ -61,7 +94,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 3. TEXT INPUT LONG TEXT HANDLE (Auto Expanding Box) [2]
+    // 4. TEXT INPUT LONG TEXT HANDLE (Auto Expanding Box) [2]
     // -----------------------------------------------------------------
     if (aiChatInput) {
         aiChatInput.addEventListener('input', function () {
@@ -72,7 +105,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 4. SPEECH-TO-TEXT SPEECH RECOGNITION (English & Malay Support) [2]
+    // 5. SPEECH-TO-TEXT SPEECH RECOGNITION (English & Malay Support) [2]
     // -----------------------------------------------------------------
     let speechRecognizer = null;
     let isRecordingSpeech = false;
@@ -149,7 +182,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 5. ATTACH WORKSPACE FILE AS CONTEXT (`+` Icon Button) [2]
+    // 6. ATTACH WORKSPACE FILE AS CONTEXT (`+` Icon Button) [2]
     // -----------------------------------------------------------------
     
     // Scans tree structure recursively and returns a flat list of text files
@@ -233,6 +266,9 @@ document.addEventListener("DOMContentLoaded", function () {
         if (aiAttachmentBadge) aiAttachmentBadge.classList.remove('hidden');
         if (aiContextMenu) aiContextMenu.classList.add('hidden');
         logToTerminal(`Injected workspace file context: ${file.path}`, 'info');
+
+        // Also push attached files directly into our active LRU cache [2]
+        updateSessionFileCache(file.name, file.content);
     }
 
     if (aiAttachmentRemove) {
@@ -245,7 +281,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 6. RICH TEXT FORMATTING AND MARKDOWN PARSING UTILITY [2]
+    // 7. RICH TEXT FORMATTING AND MARKDOWN PARSING UTILITY [2]
     // -----------------------------------------------------------------
     function parseMarkdownToHTML(text) {
         let html = text;
@@ -292,7 +328,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 7. OPENAI API PROXY PIPELINE (Syncs Workspace & Prompts) [2]
+    // 8. OPENAI API PROXY PIPELINE (Syncs Workspace & Prompts) [2]
     // -----------------------------------------------------------------
     async function submitChat() {
         if (!aiChatInput) return;
@@ -325,10 +361,10 @@ document.addEventListener("DOMContentLoaded", function () {
         // Push to local memory log
         conversationHistory.push({ role: "user", content: query });
 
-        // Build workspace context indexes to optimize tokens [2]
+        // Build workspace context indexes and Session file cache to optimize tokens [2]
         let contextPayloadString = "";
         
-        // Compute project directory path map (Manifest index)
+        // 1. Compute project directory path map (Manifest index)
         if (typeof window.getWorkspaceFileSystem === 'function') {
             const currentFileSystem = window.getWorkspaceFileSystem();
             const allFilesList = flattenFilesList(currentFileSystem);
@@ -342,9 +378,18 @@ document.addEventListener("DOMContentLoaded", function () {
             contextPayloadString += manifest + "\n";
         }
 
-        // Inject currently attached selected context file
+        // 2. Hydrate workspace context payload with active LRU file cache memory [2]
+        let fileCacheString = "=== SESSION LRU CACHE (ACTIVE MEMORY FOR CURRENT USER SESSION) ===\n";
+        fileCacheString += "The user has loaded or analyzed these files during this session. Use their code blocks to answer contextually:\n\n";
+        
+        for (const [path, content] of Object.entries(sessionFileCache)) {
+            fileCacheString += `File: ${path}\n\`\`\`\n${content}\n\`\`\`\n\n`;
+        }
+        contextPayloadString += fileCacheString + "\n";
+
+        // 3. Inject currently attached selected context file
         if (attachedFile) {
-            contextPayloadString += `=== REFERENCE ATTACHED FILE: ${attachedFile.path} ===\n${attachedFile.content}\n`;
+            contextPayloadString += `=== EXPLICIT ATTACHED REFERENCE FILE: ${attachedFile.path} ===\n${attachedFile.content}\n`;
         }
 
         // Generate Assistant Message Placeholder loader
