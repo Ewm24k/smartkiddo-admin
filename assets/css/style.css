@@ -103,6 +103,15 @@ aside {
     user-select: none !important;
 }
 
+/* Strip spacing variables from search query highlighting nodes [2] */
+mark {
+    background-color: rgba(234, 179, 8, 0.45) !important; /* Uniform highlight hue [2] */
+    color: inherit !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+}
+
 /* -----------------------------------------------------------------
    STUDIO MAXIMIZE & MINIMIZE OVERRIDE LAYOUTS
 ----------------------------------------------------------------- */
