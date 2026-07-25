@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // -----------------------------------------------------------------
     // 0. Configuration Setup (Set your Render app link here)
     // -----------------------------------------------------------------
-    const RENDER_BACKEND_URL = "https://your-render-app-name.onrender.com"; // Change to your actual Render app URL
+    const RENDER_BACKEND_URL = "https://smartkiddo-admin.onrender.com"; // Change to your actual Render app URL
 
     // Helper functions to manage screen loader
     function showLoader(message) {
