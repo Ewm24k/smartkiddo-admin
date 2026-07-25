@@ -386,6 +386,27 @@ document.addEventListener("DOMContentLoaded", function () {
             // Remove Assistant thinking placeholder
             if (aiChatOutputContainer) aiChatOutputContainer.removeChild(assistantPlaceholder);
 
+            // Safety interceptor: if server caught an API exception and returned an error [2]
+            if (chatResponse.success === false || chatResponse.error) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = "flex items-start gap-3";
+                errorDiv.innerHTML = `
+                    <div class="w-6 h-6 rounded bg-red-600/20 flex items-center justify-center text-xs text-red-400 font-bold flex-shrink-0 select-none">Err</div>
+                    <div class="bg-red-500/10 p-3 rounded-lg text-xs text-red-400 leading-relaxed max-w-[85%] border border-red-500/20 select-text font-mono">
+                        ${chatResponse.error || "An unexpected error occurred during API completion."}
+                    </div>
+                `;
+                if (aiChatOutputContainer) {
+                    aiChatOutputContainer.appendChild(errorDiv);
+                    aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
+                }
+                logToTerminal(`API Error: ${chatResponse.error}`, "error");
+                
+                // Clear the corrupted turn from local history so context doesn't keep failing
+                conversationHistory.pop();
+                return;
+            }
+
             // Print AI agent rich text result
             const aiMsgDiv = document.createElement('div');
             aiMsgDiv.className = "flex items-start gap-3";
