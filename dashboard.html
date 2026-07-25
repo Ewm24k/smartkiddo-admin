@@ -247,7 +247,7 @@
                             <p id="studio-loader-text" class="text-sm font-mono text-neutral-400">Connecting to Render Server...</p>
                         </div>
 
-                        <!-- Subside (Explorer column - full height of parent) -->
+                        <!-- Subside (Explorer column) -->
                         <div class="w-64 bg-[#111115] border-r border-[#1f1f29] flex flex-col h-full flex-shrink-0 select-none">
                             <!-- Explorer Header -->
                             <div class="px-4 py-3 border-b border-[#1f1f29] flex items-center justify-between">
@@ -284,7 +284,7 @@
                             </div>
                         </div>
 
-                        <!-- Editor / Media Area wrapper (full height of parent) -->
+                        <!-- Editor / Media Area wrapper -->
                         <div class="flex-1 flex flex-col h-full bg-[#09090c] overflow-hidden relative">
                             
                             <!-- Tab Bar Header -->
@@ -293,7 +293,20 @@
                                     <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
                                     <span id="editor-active-filename" class="text-xs font-mono text-neutral-300">index.html</span>
                                 </div>
+                                
                                 <div class="flex items-center gap-4">
+                                    <!-- EXPANDABLE SEARCH COMPONENT -->
+                                    <div class="flex items-center gap-2">
+                                        <div id="editor-search-bar" class="flex items-center bg-[#17171e] border border-[#1f1f29] rounded px-2 py-1 hidden transition-all duration-200">
+                                            <svg class="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                            <input type="text" id="editor-search-input" placeholder="Search in file..." class="bg-transparent text-xs text-white outline-none ml-1.5 w-32 sm:w-48 font-mono">
+                                            <span id="editor-search-count" class="text-[10px] font-mono text-neutral-500 ml-2 select-none">0 found</span>
+                                        </div>
+                                        <button id="editor-search-toggle" class="p-1 text-neutral-500 hover:text-white hover:bg-[#1a1a22] rounded transition-all focus:outline-none animate-pulse" title="Search Code">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                        </button>
+                                    </div>
+
                                     <span class="text-[10px] text-neutral-500 font-semibold tracking-wider uppercase hidden sm:inline">T1ERA Code Studio</span>
                                     
                                     <!-- TERMINAL SHOW/HIDE TOGGLE BUTTON -->
@@ -319,12 +332,12 @@
                                 <div class="flex-1 relative overflow-hidden" id="editor-viewport">
                                     <!-- CODE FORMAT VIEW -->
                                     <div id="code-editor-pane" class="w-full h-full flex">
-                                        <!-- Line Numbers Container (Clean of spacing styles) -->
+                                        <!-- Line Numbers Container -->
                                         <div id="editor-line-numbers" class="w-12 bg-[#09090c] text-neutral-600 select-none text-right pr-3 border-r border-[#1f1f29]">
                                             <div>1</div>
                                         </div>
                                         
-                                        <!-- Unified Editor Container Layer (Explicitly managed by style.css) -->
+                                        <!-- Unified Editor Container Layer -->
                                         <div class="flex-1 relative h-full" id="editor-container">
                                             <textarea id="editor-textarea" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"></textarea>
                                             <pre id="editor-pre" class="pointer-events-none"><code id="editor-highlight-target"></code></pre>
