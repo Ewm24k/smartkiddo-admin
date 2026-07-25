@@ -1,3 +1,9 @@
+/* Color Palette & General Base Settings */
+body {
+    background-color: #0f0f12;
+    color: #e5e7eb;
+}
+
 /* Custom Interactive Glowing Cards */
 .glow-card {
     background-color: #1a1a22;
@@ -9,7 +15,7 @@
 
 .glow-card:hover {
     transform: scale(1.03);
-    border-color: #6366f1; /* Glowing indigo border */
+    border-color: #6366f1; /* Glowing indigo border line */
     box-shadow: 0 0 20px rgba(99, 102, 241, 0.35), 
                 0 0 40px rgba(99, 102, 241, 0.1);
 }
@@ -20,14 +26,14 @@ aside {
 }
 
 .sidebar-collapsed aside {
-    margin-left: -16rem; /* Hides sidebar completely off-screen left */
+    margin-left: -16rem; /* Hides sidebar completely off-screen left (w-64) */
 }
 
 /* -----------------------------------------------------------------
    CODE EDITOR ALIGNMENT & LAYER OVERLAYS
 ----------------------------------------------------------------- */
 
-/* Sync typography parameters of transparent textarea overlay with backdrop code */
+/* Sync typography parameter of transparent textarea input with highlighted syntax text overlay */
 #editor-textarea, 
 #editor-highlight-target,
 #editor-line-numbers {
@@ -43,31 +49,53 @@ aside {
     word-wrap: normal !important;
 }
 
-/* Align underlying highlighted wrapper padding to match textarea padding */
+/* Align underlying pre element padding precisely to match the interactive input element overlay */
 #code-editor-pane pre {
     background: transparent !important;
     border: none !important;
     border-radius: 0 !important;
 }
 
-/* Code layout background configuration */
 #code-editor-pane {
     background-color: #09090c;
 }
 
-/* File Explorer styling */
+/* File Explorer list item interactions */
 .explorer-item {
-    transition: background-color 0.15s ease;
+    transition: background-color 0.15s ease, color 0.15s ease;
 }
 .explorer-item:hover {
     background-color: #1a1a22;
 }
 .explorer-item.active {
     background-color: #1a1a22;
-    color: #e5e7eb;
+    color: #818cf8; /* Light Indigo highlighted color */
 }
 
-/* Layout Scrollbars */
+/* -----------------------------------------------------------------
+   STUDIO MAXIMIZE & MINIMIZE OVERRIDE LAYOUTS
+----------------------------------------------------------------- */
+
+/* Dynamic height expansion scales relative to screen minus header size */
+.studio-maximized {
+    height: calc(100vh - 4rem) !important;
+    border-radius: 0px !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    border-top: 1px solid #1f1f29 !important;
+}
+
+/* Eliminates wrapper bounding constraints to align edge-to-edge underneath header */
+.container-maximized {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    height: calc(100vh - 4rem) !important;
+}
+
+/* Layout Custom Scrollbars */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
