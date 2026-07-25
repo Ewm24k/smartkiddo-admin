@@ -1,6 +1,30 @@
 document.addEventListener("DOMContentLoaded", function () {
     
     // -----------------------------------------------------------------
+    // 0. Configuration Setup (Set your Render app link here)
+    // -----------------------------------------------------------------
+    const RENDER_BACKEND_URL = "https://your-render-app-name.onrender.com"; // Change to your actual Render app URL
+
+    // Helper functions to manage screen loader
+    function showLoader(message) {
+        const overlay = document.getElementById('studio-loader-overlay');
+        const text = document.getElementById('studio-loader-text');
+        if (overlay && text) {
+            text.innerText = message;
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+        }
+    }
+
+    function hideLoader() {
+        const overlay = document.getElementById('studio-loader-overlay');
+        if (overlay) {
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+        }
+    }
+
+    // -----------------------------------------------------------------
     // 1. Sidebar Collapse Control (Slide & Icon Toggle)
     // -----------------------------------------------------------------
     const sidebarToggle = document.getElementById('sidebar-toggle');
@@ -275,10 +299,16 @@ document.addEventListener("DOMContentLoaded", function () {
             codeEditorPane.classList.add('hidden');
             mediaViewerPane.classList.remove('hidden');
             
+            // Build absolute streaming path via proxy structure
+            let mediaUrl = file.url;
+            if (mediaUrl.startsWith('/api/')) {
+                mediaUrl = `${RENDER_BACKEND_URL}${file.url}`;
+            }
+
             if (file.format === 'image') {
-                mediaContentWrapper.innerHTML = `<img src="${file.url}" alt="${file.name}" class="object-contain max-h-[350px]">`;
+                mediaContentWrapper.innerHTML = `<img src="${mediaUrl}" alt="${file.name}" class="object-contain max-h-[350px]">`;
             } else if (file.format === 'video') {
-                mediaContentWrapper.innerHTML = `<video controls src="${file.url}" class="max-h-[350px] w-full"></video>`;
+                mediaContentWrapper.innerHTML = `<video controls src="${mediaUrl}" class="max-h-[350px] w-full"></video>`;
             }
         } else {
             // Display normal code editor
@@ -577,6 +607,79 @@ document.addEventListener("DOMContentLoaded", function () {
                 reader.readAsDataURL(file);
             } else {
                 reader.readAsText(file);
+            }
+        });
+    }
+
+    // -----------------------------------------------------------------
+    // 7. Render-GitHub Synchronization Integration Actions
+    // -----------------------------------------------------------------
+    const syncPullBtn = document.getElementById('explorer-sync-pull');
+    const syncPushBtn = document.getElementById('explorer-sync-push');
+
+    if (syncPullBtn) {
+        syncPullBtn.addEventListener('click', async function () {
+            const confirmPull = confirm("Are you sure you want to sync? This will remove all local files in the workspace and load files directly from GitHub.");
+            if (!confirmPull) return;
+
+            showLoader("Syncing from GitHub repo...");
+            try {
+                const response = await fetch(`${RENDER_BACKEND_URL}/api/sync`);
+                if (!response.ok) {
+                    throw new Error(`Server returned error status: ${response.status}`);
+                }
+                const newFileSystem = await response.json();
+                
+                if (Array.isArray(newFileSystem) && newFileSystem.length > 0) {
+                    fileSystem = newFileSystem;
+                    renderTree();
+                    
+                    // Automatically open the first available file
+                    const firstFile = findFirstFile(fileSystem);
+                    if (firstFile) {
+                        openFile(firstFile);
+                    }
+                } else {
+                    alert("Repository loaded, but it appears to be empty.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert(`Sync failed: ${err.message}. Ensure your Render backend is running and configured correctly.`);
+            } finally {
+                hideLoader();
+            }
+        });
+    }
+
+    if (syncPushBtn) {
+        syncPushBtn.addEventListener('click', async function () {
+            const confirmPush = confirm("Would you like to send changes and sync? This commits your current directory files back to your GitHub main branch.");
+            if (!confirmPush) return;
+
+            showLoader("Pushing code revisions to GitHub...");
+            try {
+                const response = await fetch(`${RENDER_BACKEND_URL}/api/send-sync`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(fileSystem)
+                });
+
+                if (!response.ok) {
+                    const errorDetail = await response.json();
+                    throw new Error(errorDetail.error || `Server status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                if (result.success) {
+                    alert(`Successfully committed changes to GitHub! Revision SHA: ${result.sha.substring(0, 7)}`);
+                }
+            } catch (err) {
+                console.error(err);
+                alert(`Send & Sync failed: ${err.message}. Ensure your Render backend is running and configured correctly.`);
+            } finally {
+                hideLoader();
             }
         });
     }
