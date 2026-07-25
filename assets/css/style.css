@@ -131,6 +131,15 @@ aside {
     box-sizing: border-box !important;
 }
 
+/* Strip spacing variables from search query highlighting nodes [2] */
+mark {
+    background-color: rgba(234, 179, 8, 0.45) !important; /* Uniform highlight hue [2] */
+    color: inherit !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+}
+
 /* -----------------------------------------------------------------
    STUDIO MAXIMIZE & MINIMIZE OVERRIDE LAYOUTS
 ----------------------------------------------------------------- */
@@ -190,6 +199,75 @@ aside {
 .explorer-item.active {
     background-color: #1a1a22;
     color: #818cf8; /* Light Indigo highlighted color */
+}
+
+/* -----------------------------------------------------------------
+   AI AGENT CHAT PANEL STYLES [2]
+----------------------------------------------------------------- */
+#ai-chat-sidebar {
+    transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), margin-left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Closed state slides AI agent out of screen left seamlessly [2] */
+#ai-chat-sidebar.closed {
+    width: 0px !important;
+    margin-left: 0px !important;
+    border-right-width: 0px !important;
+    overflow: hidden !important;
+}
+
+/* Micro-animations and indicator glows for voice-to-text recording [2] */
+@keyframes voice-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.recording-pulse {
+    animation: voice-pulse 1.6s infinite;
+    color: #ef4444 !important;
+}
+
+/* Styled rendering markers for formatting AI chat message bubbles [2] */
+.ai-message p {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.ai-message p:last-child {
+    margin-bottom: 0;
+}
+
+.ai-message pre {
+    background-color: #0b0b0f !important;
+    border: 1px solid #1f1f29 !important;
+    border-radius: 6px !important;
+    padding: 10px !important;
+    margin-top: 6px !important;
+    margin-bottom: 10px !important;
+    overflow-x: auto;
+}
+
+.ai-message code {
+    font-family: 'Fira Code', Consolas, monospace !important;
+    font-size: 11px !important;
+}
+
+.ai-message blockquote {
+    border-left: 3px solid #818cf8;
+    padding-left: 10px;
+    margin-top: 6px;
+    margin-bottom: 6px;
+    color: #a3a3a3;
+    font-style: italic;
+}
+
+.ai-message ul {
+    list-style-type: disc;
+    padding-left: 20px;
+    margin-top: 6px;
+    margin-bottom: 6px;
+    space-y: 4px;
 }
 
 /* Layout Custom Scrollbars */
