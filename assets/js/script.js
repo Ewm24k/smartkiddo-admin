@@ -107,6 +107,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    // Swaps height and overflow visibility rules cleanly to avoid parent collapse bugs [2]
     function hideLoader() {
         const overlay = document.getElementById('studio-loader-overlay');
         if (overlay) {
@@ -162,16 +163,25 @@ document.addEventListener("DOMContentLoaded", function () {
                 bodyElement.classList.add('sidebar-collapsed');
                 updateSidebarToggleIcon();
             }
-            if (mainContentScroll) mainContentScroll.classList.add('overflow-hidden');
+            if (mainContentScroll) {
+                // Swaps the scrolling classes cleanly to avoid flexbox height collapse issues [2]
+                mainContentScroll.classList.remove('overflow-y-auto');
+                mainContentScroll.classList.add('overflow-hidden');
+            }
             if (mainContentInner) {
                 mainContentInner.classList.remove('p-8');
                 mainContentInner.classList.add('p-4');
+                mainContentInner.classList.add('h-full');
             }
         } else {
-            if (mainContentScroll) mainContentScroll.classList.remove('overflow-hidden');
+            if (mainContentScroll) {
+                mainContentScroll.classList.add('overflow-y-auto');
+                mainContentScroll.classList.remove('overflow-hidden');
+            }
             if (mainContentInner) {
                 mainContentInner.classList.add('p-8');
                 mainContentInner.classList.remove('p-4');
+                mainContentInner.classList.remove('h-full');
             }
             
             // Cleanly restore workspace from Maximized state if navigating away
@@ -227,7 +237,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const terminalIconArrowUp = `
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7-7"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
         </svg>
     `;
 
@@ -272,9 +282,6 @@ document.addEventListener("DOMContentLoaded", function () {
     // -----------------------------------------------------------------
     // 5. VS Code Studio Maximize Workspace Logic
     // -----------------------------------------------------------------
-    const studioWorkspace = document.getElementById('studio-workspace');
-    const studioMaximizeBtn = document.getElementById('studio-maximize-btn');
-
     const expandIcon = `
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4m12 4V4h-4M4 16v4h4m12-4v4h-4"></path>
@@ -468,9 +475,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (mediaContentWrapper) {
                 if (file.format === 'image') {
-                    mediaContentWrapper.innerHTML = `<img src="${mediaUrl}" alt="${file.name}" class="object-contain max-h-[300px]">`;
+                    mediaContentWrapper.innerHTML = `<img src="${mediaUrl}" alt="${file.name}" class="object-contain max-h-[350px]">`;
                 } else if (file.format === 'video') {
-                    mediaContentWrapper.innerHTML = `<video controls src="${mediaUrl}" class="max-h-[300px] w-full"></video>`;
+                    mediaContentWrapper.innerHTML = `<video controls src="${mediaUrl}" class="max-h-[350px] w-full"></video>`;
                 }
             }
         } else {
@@ -501,7 +508,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         nodes.forEach(node => {
-            if (node.type === 'folder' && node.children) {
+            if (node.type === 'folder' && Array.isArray(node.children)) {
                 sortFileSystem(node.children);
             }
         });
