@@ -259,7 +259,7 @@ async def stream_media(path: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 # -----------------------------------------------------------------
-# Endpoint 4: AI Agent Chat Integration (With string schema validation) [2]
+# Endpoint 4: AI Agent Chat Integration (With advanced memory parsing) [2]
 # -----------------------------------------------------------------
 @app.post("/api/chat")
 async def ai_chat_completion(chat_req: ChatRequest):
@@ -270,13 +270,29 @@ async def ai_chat_completion(chat_req: ChatRequest):
         # expects a single string input (passing an array of messages causes a 400 error) [2]
         openai_input_str = ""
         
+        # Inject Active Workspace Manifest & LRU Session File Cache [2]
         if chat_req.workspace_context:
-            openai_input_str += f"=== ACTIVE WORKSPACE MANIFEST && FILE CONTEXT ===\n{chat_req.workspace_context}\n\n"
+            openai_input_str += f"=== ACTIVE WORKSPACE MANIFEST && SESSION FILE CACHE ===\n{chat_req.workspace_context}\n\n"
             
         openai_input_str += "=== CONVERSATION HISTORY ===\n"
-        for msg in chat_req.messages:
+        
+        # Iterate over all messages except the latest one [2]
+        for msg in chat_req.messages[:-1]:
             speaker = "User" if msg.role == "user" else "Assistant"
             openai_input_str += f"{speaker}: {msg.content}\n"
+
+        # Inject the Context Tracker Instruction Layer right before the latest user message [2]
+        openai_input_str += "\n=== CONTEXT TRACKER INSTRUCTIONS ===\n"
+        openai_input_str += "Please analyze the entire conversation history above to follow references correctly:\n"
+        openai_input_str += "- Track shifting topics or multiple topics within a single query.\n"
+        openai_input_str += "- Resolve pronouns ('it', 'this', 'them') based on previously mentioned files/code.\n"
+        openai_input_str += "- Parse numerical options (e.g. if you gave options 1, 2, 3, 4 and the user says '4', immediately understand they mean option 4).\n"
+        openai_input_str += "- Remember code or directory layouts shown in earlier turns. Synthesize your answer contextually.\n\n"
+
+        # Append the latest user message context
+        if len(chat_req.messages) > 0:
+            latest_msg = chat_req.messages[-1]
+            openai_input_str += f"=== LATEST USER MESSAGE ===\nUser: {latest_msg.content}\n"
 
         # Trigger Saved Prompt Template [2]
         response = openai_client.responses.create(
