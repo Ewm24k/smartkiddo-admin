@@ -3,7 +3,45 @@ document.addEventListener("DOMContentLoaded", function () {
     // -----------------------------------------------------------------
     // 0. Configuration Setup (Set your Render app link here)
     // -----------------------------------------------------------------
-    const RENDER_BACKEND_URL = "https://smartkiddo-admin.onrender.com"; // Change to your actual Render app URL
+    const RENDER_BACKEND_URL = "https://smartkiddo-admin.onrender.com"; // Updated with your active live Render URL
+
+    // -----------------------------------------------------------------
+    // TERMINAL LOG UTILITY (Prints structured and timestamped outputs)
+    // -----------------------------------------------------------------
+    function logToTerminal(message, type = 'info') {
+        const output = document.getElementById('terminal-log-output');
+        if (!output) return;
+
+        const timestamp = new Date().toLocaleTimeString();
+        let colorClass = 'text-neutral-400';
+        let prefix = '[info]';
+
+        if (type === 'success') {
+            colorClass = 'text-emerald-400';
+            prefix = '[success]';
+        } else if (type === 'error') {
+            colorClass = 'text-red-400';
+            prefix = '[error]';
+        } else if (type === 'system') {
+            colorClass = 'text-neutral-500';
+            prefix = '[system]';
+        } else if (type === 'warning') {
+            colorClass = 'text-amber-400';
+            prefix = '[warning]';
+        }
+
+        const logRow = document.createElement('div');
+        logRow.className = `${colorClass} leading-relaxed font-mono select-text`;
+        logRow.innerHTML = `<span class="text-neutral-600 select-none">[${timestamp}]</span> <span class="font-bold select-none">${prefix}</span> ${message}`;
+        
+        output.appendChild(logRow);
+        // Autoscroll to the latest log item
+        output.scrollTop = output.scrollHeight;
+    }
+
+    // Initialize System Status on Terminal
+    logToTerminal("Terminal console logs initialized.", "system");
+    logToTerminal(`Endpoint connected: ${RENDER_BACKEND_URL}`, "system");
 
     // Helper functions to manage screen loader
     function showLoader(message) {
@@ -25,11 +63,69 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
+    // TERMINAL PANEL VISIBILITY CONTROLS
+    // -----------------------------------------------------------------
+    const terminalPanel = document.getElementById('studio-terminal');
+    const terminalToggleBtn = document.getElementById('terminal-toggle-btn');
+    const terminalToggleIcon = document.getElementById('terminal-toggle-icon');
+    const terminalCloseBtn = document.getElementById('terminal-close-btn');
+    const tabTerminalToggleBtn = document.getElementById('tab-terminal-toggle-btn');
+
+    const terminalIconArrowDown = `
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+        </svg>
+    `;
+
+    const terminalIconArrowUp = `
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+        </svg>
+    `;
+
+    // Toggle: Minimize or Restore (normal height)
+    if (terminalToggleBtn && terminalPanel) {
+        terminalToggleBtn.addEventListener('click', function () {
+            if (terminalPanel.classList.contains('minimized')) {
+                terminalPanel.classList.remove('minimized');
+                terminalToggleIcon.innerHTML = terminalIconArrowDown;
+                logToTerminal("Terminal panel size restored.", "system");
+            } else {
+                terminalPanel.classList.add('minimized');
+                terminalToggleIcon.innerHTML = terminalIconArrowUp;
+                logToTerminal("Terminal panel minimized.", "system");
+            }
+        });
+    }
+
+    // Close: Completely hide terminal panel
+    if (terminalCloseBtn && terminalPanel) {
+        terminalCloseBtn.addEventListener('click', function () {
+            terminalPanel.classList.add('closed');
+            logToTerminal("Terminal panel closed.", "system");
+        });
+    }
+
+    // Header Tab Bar Toggle (Restore / Toggle visibility of terminal)
+    if (tabTerminalToggleBtn && terminalPanel) {
+        tabTerminalToggleBtn.addEventListener('click', function () {
+            if (terminalPanel.classList.contains('closed')) {
+                terminalPanel.classList.remove('closed');
+                terminalPanel.classList.remove('minimized');
+                if (terminalToggleIcon) terminalToggleIcon.innerHTML = terminalIconArrowDown;
+                logToTerminal("Terminal panel restored via Workspace Toolbar.", "system");
+            } else {
+                terminalPanel.classList.add('closed');
+                logToTerminal("Terminal panel closed via Workspace Toolbar.", "system");
+            }
+        });
+    }
+
+    // -----------------------------------------------------------------
     // 1. Sidebar Collapse Control (Slide & Icon Toggle)
     // -----------------------------------------------------------------
     const sidebarToggle = document.getElementById('sidebar-toggle');
     const sidebarToggleIcon = document.getElementById('sidebar-toggle-icon');
-    const bodyElement = document.body;
 
     const hamburgerIcon = `
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -144,7 +240,6 @@ document.addEventListener("DOMContentLoaded", function () {
     // 3. VS Code Studio Maximize Workspace Logic
     // -----------------------------------------------------------------
     const studioWorkspace = document.getElementById('studio-workspace');
-    const mainContentInner = document.getElementById('main-content-inner');
     const studioMaximizeBtn = document.getElementById('studio-maximize-btn');
 
     const expandIcon = `
@@ -169,9 +264,11 @@ document.addEventListener("DOMContentLoaded", function () {
         if (studioWorkspace.classList.contains('studio-maximized')) {
             studioMaximizeBtn.innerHTML = shrinkIcon;
             studioMaximizeBtn.setAttribute('title', 'Minimize Workspace');
+            logToTerminal("Workspace maximized to full screen height.", "system");
         } else {
             studioMaximizeBtn.innerHTML = expandIcon;
             studioMaximizeBtn.setAttribute('title', 'Maximize Workspace');
+            logToTerminal("Workspace restored to default limits.", "system");
         }
     }
 
@@ -205,6 +302,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let currentSelectedFile = fileSystem[0].children[0]; // Set index.html as selected by default
     let selectedFolderId = null; // Track current highlighted active directory node
+    let activeFileEdited = false; // Prevents logging edits repeatedly per editing session
     
     const explorerTree = document.getElementById('explorer-file-tree');
     const activeFileNameEl = document.getElementById('editor-active-filename');
@@ -223,6 +321,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 currentSelectedFile.content = this.value;
                 updateHighlight();
                 updateLineNumbers();
+
+                // Log edit changes on first interaction
+                if (!activeFileEdited) {
+                    logToTerminal(`Modifying file: ${currentSelectedFile.name} (In-memory)...`, 'warning');
+                    activeFileEdited = true;
+                }
             }
         });
 
@@ -293,7 +397,10 @@ document.addEventListener("DOMContentLoaded", function () {
     function openFile(file) {
         currentSelectedFile = file;
         activeFileNameEl.innerText = file.name;
+        activeFileEdited = false; // Reset modifications log state for newly opened files
         
+        logToTerminal(`Loading file path in viewport: ${file.name}`, 'info');
+
         if (file.isMedia) {
             // Display media panels
             codeEditorPane.classList.add('hidden');
@@ -306,9 +413,9 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             if (file.format === 'image') {
-                mediaContentWrapper.innerHTML = `<img src="${mediaUrl}" alt="${file.name}" class="object-contain max-h-[350px]">`;
+                mediaContentWrapper.innerHTML = `<img src="${mediaUrl}" alt="${file.name}" class="object-contain max-h-[300px]">`;
             } else if (file.format === 'video') {
-                mediaContentWrapper.innerHTML = `<video controls src="${mediaUrl}" class="max-h-[350px] w-full"></video>`;
+                mediaContentWrapper.innerHTML = `<video controls src="${mediaUrl}" class="max-h-[300px] w-full"></video>`;
             }
         } else {
             // Display normal code editor
@@ -466,6 +573,11 @@ document.addEventListener("DOMContentLoaded", function () {
             return false;
         }
 
+        const deletedNode = findNodeById(fileSystem, id);
+        if (deletedNode) {
+            logToTerminal(`Deleted item from local memory: ${deletedNode.name}`, 'warning');
+        }
+
         removeRecursive(fileSystem);
         
         if (currentSelectedFile && currentSelectedFile.id === id) {
@@ -525,6 +637,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 fileSystem.push(newFile);
             }
             
+            logToTerminal(`Created file in memory: ${filename}`, 'info');
             renderTree();
             openFile(newFile);
         });
@@ -554,6 +667,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 fileSystem.push(newFolder);
             }
 
+            logToTerminal(`Created folder in memory: ${foldername}`, 'info');
             selectedFolderId = newFolder.id;
             renderTree();
         });
@@ -564,6 +678,8 @@ document.addEventListener("DOMContentLoaded", function () {
         fileUploadInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
+
+            logToTerminal(`Reading uploaded local asset: ${file.name}...`, 'info');
 
             const reader = new FileReader();
             const mediaCheck = assessMediaFormat(file.name);
@@ -599,6 +715,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     fileSystem.push(uploadedFile);
                 }
 
+                logToTerminal(`Imported local file: ${file.name}`, 'success');
                 renderTree();
                 openFile(uploadedFile);
             };
@@ -622,7 +739,9 @@ document.addEventListener("DOMContentLoaded", function () {
             const confirmPull = confirm("Are you sure you want to sync? This will remove all local files in the workspace and load files directly from GitHub.");
             if (!confirmPull) return;
 
+            logToTerminal("Initiating repository synchronization pull from remote source...", "system");
             showLoader("Syncing from GitHub repo...");
+            
             try {
                 const response = await fetch(`${RENDER_BACKEND_URL}/api/sync`);
                 if (!response.ok) {
@@ -634,17 +753,21 @@ document.addEventListener("DOMContentLoaded", function () {
                     fileSystem = newFileSystem;
                     renderTree();
                     
+                    logToTerminal("Sync pull complete! Directory structure successfully retrieved.", "success");
+
                     // Automatically open the first available file
                     const firstFile = findFirstFile(fileSystem);
                     if (firstFile) {
                         openFile(firstFile);
                     }
                 } else {
+                    logToTerminal("Repository loaded, but no directory files were found.", "warning");
                     alert("Repository loaded, but it appears to be empty.");
                 }
             } catch (err) {
                 console.error(err);
-                alert(`Sync failed: ${err.message}. Ensure your Render backend is running and configured correctly.`);
+                logToTerminal(`Sync failed: ${err.message}`, "error");
+                alert(`Sync failed: ${err.message}. Check your terminal logs for details.`);
             } finally {
                 hideLoader();
             }
@@ -656,7 +779,9 @@ document.addEventListener("DOMContentLoaded", function () {
             const confirmPush = confirm("Would you like to send changes and sync? This commits your current directory files back to your GitHub main branch.");
             if (!confirmPush) return;
 
+            logToTerminal("Initiating backup sync transaction to GitHub branch 'main'...", "system");
             showLoader("Pushing code revisions to GitHub...");
+            
             try {
                 const response = await fetch(`${RENDER_BACKEND_URL}/api/send-sync`, {
                     method: 'POST',
@@ -673,11 +798,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 const result = await response.json();
                 if (result.success) {
-                    alert(`Successfully committed changes to GitHub! Revision SHA: ${result.sha.substring(0, 7)}`);
+                    const commitShaAbbr = result.sha.substring(0, 7);
+                    logToTerminal(`Commit successful! Branch HEAD updated. Revision SHA: ${commitShaAbbr}`, "success");
+                    alert(`Successfully committed changes to GitHub! Revision SHA: ${commitShaAbbr}`);
                 }
             } catch (err) {
                 console.error(err);
-                alert(`Send & Sync failed: ${err.message}. Ensure your Render backend is running and configured correctly.`);
+                logToTerminal(`Send & Sync failed: ${err.message}`, "error");
+                alert(`Send & Sync failed: ${err.message}. Check your terminal logs for details.`);
             } finally {
                 hideLoader();
             }
