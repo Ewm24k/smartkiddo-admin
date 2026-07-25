@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 2. View Tab Switching Controls
+    // 2. View Tab Switching Controls (with Maximize Resets)
     // -----------------------------------------------------------------
     const menuMapping = {
         'btn-t1era-studio': { viewId: 'view-t1era-studio', breadcrumb: 'T1ERA Studio', adjustLayout: false },
@@ -65,7 +65,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 bodyElement.classList.add('sidebar-collapsed');
                 updateSidebarToggleIcon();
             }
-            // Swap scrolling height limits on main window wrapper to focus editor viewport 
             document.getElementById('main-content-scroll').classList.add('overflow-hidden');
             document.getElementById('main-content-inner').classList.remove('p-8');
             document.getElementById('main-content-inner').classList.add('p-4');
@@ -73,6 +72,11 @@ document.addEventListener("DOMContentLoaded", function () {
             document.getElementById('main-content-scroll').classList.remove('overflow-hidden');
             document.getElementById('main-content-inner').classList.add('p-8');
             document.getElementById('main-content-inner').classList.remove('p-4');
+            
+            // Cleanly restore workspace from Maximized state if navigating away
+            if (studioWorkspace && studioWorkspace.classList.contains('studio-maximized')) {
+                toggleMaximize();
+            }
         }
 
         // Toggle visibility of panels
@@ -113,7 +117,46 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 3. VS Code Studio Mock File System Logic
+    // 3. VS Code Studio Maximize Workspace Logic
+    // -----------------------------------------------------------------
+    const studioWorkspace = document.getElementById('studio-workspace');
+    const mainContentInner = document.getElementById('main-content-inner');
+    const studioMaximizeBtn = document.getElementById('studio-maximize-btn');
+
+    const expandIcon = `
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4m12 4V4h-4M4 16v4h4m12-4v4h-4"></path>
+        </svg>
+    `;
+
+    const shrinkIcon = `
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h4v4m12-4h-4v4M4 20h4v-4m12 4h-4v-4"></path>
+        </svg>
+    `;
+
+    function toggleMaximize() {
+        if (!studioWorkspace || !mainContentInner || !studioMaximizeBtn) return;
+
+        studioWorkspace.classList.toggle('studio-maximized');
+        mainContentInner.classList.toggle('container-maximized');
+
+        // Swap icons and update accessibility attributes
+        if (studioWorkspace.classList.contains('studio-maximized')) {
+            studioMaximizeBtn.innerHTML = shrinkIcon;
+            studioMaximizeBtn.setAttribute('title', 'Minimize Workspace');
+        } else {
+            studioMaximizeBtn.innerHTML = expandIcon;
+            studioMaximizeBtn.setAttribute('title', 'Maximize Workspace');
+        }
+    }
+
+    if (studioMaximizeBtn) {
+        studioMaximizeBtn.addEventListener('click', toggleMaximize);
+    }
+
+    // -----------------------------------------------------------------
+    // 4. VS Code Studio Mock File System Logic
     // -----------------------------------------------------------------
     let fileSystem = [
         {
@@ -251,7 +294,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 4. File Tree UI Generation & Recursion
+    // 5. File Tree UI Generation & Recursion
     // -----------------------------------------------------------------
     function createTreeNodeHTML(node, depth = 0) {
         const paddingLeft = depth * 16 + 12;
@@ -269,7 +312,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         ${folderIcon}
                         <span class="font-medium">${node.name}</span>
                     </div>
-                    <!-- Action: Delete Folder button -->
                     <button class="delete-node-btn opacity-0 group-hover:opacity-100 p-0.5 text-neutral-500 hover:text-red-400 rounded transition-opacity" data-node-id="${node.id}" title="Delete Folder">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     </button>
@@ -283,7 +325,6 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             return html;
         } else {
-            // Assign specific file representation vectors
             let fileIcon = `<svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>`;
             if (node.isMedia) {
                 if (node.format === 'image') {
@@ -306,7 +347,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         ${fileIcon}
                         <span>${node.name}</span>
                     </div>
-                    <!-- Action: Delete File button -->
                     <button class="delete-node-btn opacity-0 group-hover:opacity-100 p-0.5 text-neutral-500 hover:text-red-400 rounded transition-opacity" data-node-id="${node.id}" title="Delete File">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     </button>
@@ -315,7 +355,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    // Main file tree rendering controller
     function renderTree() {
         if (!explorerTree) return;
         let html = '';
@@ -326,9 +365,7 @@ document.addEventListener("DOMContentLoaded", function () {
         bindTreeEvents();
     }
 
-    // Attach tree event handlers dynamically
     function bindTreeEvents() {
-        // Folder selection/expansion click
         document.querySelectorAll('.folder-toggle').forEach(el => {
             el.addEventListener('click', function(e) {
                 const parent = this.parentElement;
@@ -342,7 +379,6 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
-        // Folder highlight selection
         document.querySelectorAll('[data-folder-id]').forEach(el => {
             el.addEventListener('click', function(e) {
                 if (!e.target.closest('.folder-toggle')) return;
@@ -352,7 +388,6 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
-        // File selection click
         document.querySelectorAll('.file-select').forEach(el => {
             el.addEventListener('click', function() {
                 const parent = this.parentElement;
@@ -364,13 +399,10 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
-        // Item deletion
         document.querySelectorAll('.delete-node-btn').forEach(el => {
             el.addEventListener('click', function(e) {
                 e.stopPropagation();
                 const nodeId = this.getAttribute('data-node-id');
-                
-                // Prompt confirmation
                 if (confirm("Are you sure you want to delete this resource?")) {
                     deleteNode(nodeId);
                 }
@@ -378,7 +410,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Utility recursion methods for tree processing
     function findNodeById(nodes, id) {
         for (let node of nodes) {
             if (node.id === id) return node;
@@ -407,7 +438,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         removeRecursive(fileSystem);
         
-        // Ensure default file fallback selection if deleted file was open
         if (currentSelectedFile && currentSelectedFile.id === id) {
             const firstFile = findFirstFile(fileSystem);
             if (firstFile) {
@@ -435,10 +465,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 5. Creation and Directory Control Elements
+    // 6. Creation and Directory Control Elements
     // -----------------------------------------------------------------
-    
-    // Add New File Action
     const newFileBtn = document.getElementById('explorer-new-file');
     if (newFileBtn) {
         newFileBtn.addEventListener('click', function() {
@@ -464,7 +492,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     folder.isOpen = true;
                 }
             } else {
-                // Default fallback inserts directly into root
                 fileSystem.push(newFile);
             }
             
@@ -473,7 +500,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Add New Folder Action
     const newFolderBtn = document.getElementById('explorer-new-folder');
     if (newFolderBtn) {
         newFolderBtn.addEventListener('click', function() {
@@ -503,7 +529,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Local file system dynamic upload controls
     const fileUploadInput = document.getElementById('explorer-file-upload');
     if (fileUploadInput) {
         fileUploadInput.addEventListener('change', function(e) {
@@ -518,9 +543,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 let mediaUrl = '';
                 
                 if (mediaCheck.isMedia) {
-                    mediaUrl = evt.target.result; // Data URL for media sources
+                    mediaUrl = evt.target.result;
                 } else {
-                    content = evt.target.result; // Text format for codes
+                    content = evt.target.result;
                 }
 
                 const uploadedFile = {
@@ -548,7 +573,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 openFile(uploadedFile);
             };
 
-            // Read as data URL for media layers, read as normal text otherwise
             if (mediaCheck.isMedia) {
                 reader.readAsDataURL(file);
             } else {
