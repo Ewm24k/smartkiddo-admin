@@ -3,10 +3,58 @@ document.addEventListener("DOMContentLoaded", function () {
     // -----------------------------------------------------------------
     // 0. Configuration Setup (Set your Render app link here)
     // -----------------------------------------------------------------
-    const RENDER_BACKEND_URL = "https://smartkiddo-admin.onrender.com"; // Updated with your active live Render URL
+    const RENDER_BACKEND_URL = "https://smartkiddo-admin.onrender.com"; // Your live Render URL
 
     // -----------------------------------------------------------------
-    // TERMINAL LOG UTILITY (Prints structured and timestamped outputs)
+    // 1. DOM Element Declarations (Scoped to Top to prevent ReferenceErrors)
+    // -----------------------------------------------------------------
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const sidebarToggleIcon = document.getElementById('sidebar-toggle-icon');
+    const bodyElement = document.body;
+
+    const studioWorkspace = document.getElementById('studio-workspace');
+    const mainContentInner = document.getElementById('main-content-inner');
+    const mainContentScroll = document.getElementById('main-content-scroll');
+    const studioMaximizeBtn = document.getElementById('studio-maximize-btn');
+
+    const terminalPanel = document.getElementById('studio-terminal');
+    const terminalToggleBtn = document.getElementById('terminal-toggle-btn');
+    const terminalToggleIcon = document.getElementById('terminal-toggle-icon');
+    const terminalCloseBtn = document.getElementById('terminal-close-btn');
+    const tabTerminalToggleBtn = document.getElementById('tab-terminal-toggle-btn');
+
+    const explorerTree = document.getElementById('explorer-file-tree');
+    const activeFileNameEl = document.getElementById('editor-active-filename');
+    const editorTextarea = document.getElementById('editor-textarea');
+    const highlightTarget = document.getElementById('editor-highlight-target');
+    const lineNumbersContainer = document.getElementById('editor-line-numbers');
+    
+    const codeEditorPane = document.getElementById('code-editor-pane');
+    const mediaViewerPane = document.getElementById('media-viewer-pane');
+    const mediaContentWrapper = document.getElementById('media-content-wrapper');
+
+    const syncPullBtn = document.getElementById('explorer-sync-pull');
+    const syncPushBtn = document.getElementById('explorer-sync-push');
+    const newFileBtn = document.getElementById('explorer-new-file');
+    const newFolderBtn = document.getElementById('explorer-new-folder');
+    const fileUploadInput = document.getElementById('explorer-file-upload');
+    const breadcrumbTitle = document.getElementById('breadcrumb-title');
+
+    // SVGs for sidebar status toggling
+    const hamburgerIcon = `
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
+    `;
+
+    const arrowLeftIcon = `
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
+        </svg>
+    `;
+
+    // -----------------------------------------------------------------
+    // 2. TERMINAL LOG UTILITY (Prints structured and timestamped outputs)
     // -----------------------------------------------------------------
     function logToTerminal(message, type = 'info') {
         const output = document.getElementById('terminal-log-output');
@@ -63,14 +111,109 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // TERMINAL PANEL VISIBILITY CONTROLS
+    // 3. SIDEBAR AND TAB VIEW NAVIGATION LOGIC
     // -----------------------------------------------------------------
-    const terminalPanel = document.getElementById('studio-terminal');
-    const terminalToggleBtn = document.getElementById('terminal-toggle-btn');
-    const terminalToggleIcon = document.getElementById('terminal-toggle-icon');
-    const terminalCloseBtn = document.getElementById('terminal-close-btn');
-    const tabTerminalToggleBtn = document.getElementById('tab-terminal-toggle-btn');
+    function updateSidebarToggleIcon() {
+        if (sidebarToggleIcon && bodyElement) {
+            if (bodyElement.classList.contains('sidebar-collapsed')) {
+                sidebarToggleIcon.innerHTML = hamburgerIcon;
+            } else {
+                sidebarToggleIcon.innerHTML = arrowLeftIcon;
+            }
+        }
+    }
 
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', function () {
+            if (bodyElement) bodyElement.classList.toggle('sidebar-collapsed');
+            updateSidebarToggleIcon();
+        });
+    }
+
+    const menuMapping = {
+        'btn-t1era-studio': { viewId: 'view-t1era-studio', breadcrumb: 'T1ERA Studio', adjustLayout: false },
+        'btn-list-user': { viewId: 'view-list-user', breadcrumb: 'List User', adjustLayout: false },
+        'btn-statistic': { viewId: 'view-statistic', breadcrumb: 'Statistic', adjustLayout: false },
+        'btn-websources-code': { viewId: 'view-websources-code', breadcrumb: 'websources code', adjustLayout: true }
+    };
+
+    Object.keys(menuMapping).forEach(btnId => {
+        const button = document.getElementById(btnId);
+        if (button) {
+            button.addEventListener('click', function (e) {
+                e.preventDefault();
+                switchTab(btnId);
+            });
+        }
+    });
+
+    function switchTab(clickedId) {
+        const layoutConfig = menuMapping[clickedId];
+        if (!layoutConfig) return;
+        
+        // Auto-Collapse sidebar if "websources code" is selected
+        if (layoutConfig.adjustLayout) {
+            if (bodyElement && !bodyElement.classList.contains('sidebar-collapsed')) {
+                bodyElement.classList.add('sidebar-collapsed');
+                updateSidebarToggleIcon();
+            }
+            if (mainContentScroll) mainContentScroll.classList.add('overflow-hidden');
+            if (mainContentInner) {
+                mainContentInner.classList.remove('p-8');
+                mainContentInner.classList.add('p-4');
+            }
+        } else {
+            if (mainContentScroll) mainContentScroll.classList.remove('overflow-hidden');
+            if (mainContentInner) {
+                mainContentInner.classList.add('p-8');
+                mainContentInner.classList.remove('p-4');
+            }
+            
+            // Cleanly restore workspace from Maximized state if navigating away
+            if (studioWorkspace && studioWorkspace.classList.contains('studio-maximized')) {
+                toggleMaximize();
+            }
+        }
+
+        // Toggle visibility of panels
+        Object.keys(menuMapping).forEach(btnId => {
+            const viewId = menuMapping[btnId].viewId;
+            const viewElement = document.getElementById(viewId);
+            if (viewElement) {
+                if (btnId === clickedId) {
+                    viewElement.classList.remove('hidden');
+                    viewElement.classList.add('block');
+                } else {
+                    viewElement.classList.remove('block');
+                    viewElement.classList.add('hidden');
+                }
+            }
+        });
+
+        // Set navbar breadcrumb text
+        if (breadcrumbTitle) {
+            breadcrumbTitle.innerText = layoutConfig.breadcrumb;
+        }
+
+        // Apply active styling states to navigation elements
+        Object.keys(menuMapping).forEach(btnId => {
+            const element = document.getElementById(btnId);
+            const svgIcon = element ? element.querySelector('svg') : null;
+            if (element) {
+                if (btnId === clickedId) {
+                    element.className = "flex items-center gap-3 px-4 py-3 rounded-lg text-white bg-indigo-600/10 border border-indigo-500/20 transition-colors group";
+                    if (svgIcon) svgIcon.className = "w-5 h-5 text-indigo-400";
+                } else {
+                    element.className = "flex items-center gap-3 px-4 py-3 rounded-lg text-neutral-400 hover:text-white hover:bg-[#1a1a22] transition-colors group";
+                    if (svgIcon) svgIcon.className = "w-5 h-5 text-neutral-500 group-hover:text-indigo-400";
+                }
+            }
+        });
+    }
+
+    // -----------------------------------------------------------------
+    // 4. TERMINAL PANEL VISIBILITY CONTROLS
+    // -----------------------------------------------------------------
     const terminalIconArrowDown = `
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -88,11 +231,11 @@ document.addEventListener("DOMContentLoaded", function () {
         terminalToggleBtn.addEventListener('click', function () {
             if (terminalPanel.classList.contains('minimized')) {
                 terminalPanel.classList.remove('minimized');
-                terminalToggleIcon.innerHTML = terminalIconArrowDown;
+                if (terminalToggleIcon) terminalToggleIcon.innerHTML = terminalIconArrowDown;
                 logToTerminal("Terminal panel size restored.", "system");
             } else {
                 terminalPanel.classList.add('minimized');
-                terminalToggleIcon.innerHTML = terminalIconArrowUp;
+                if (terminalToggleIcon) terminalToggleIcon.innerHTML = terminalIconArrowUp;
                 logToTerminal("Terminal panel minimized.", "system");
             }
         });
@@ -122,126 +265,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 1. Sidebar Collapse Control (Slide & Icon Toggle)
+    // 5. VS Code Studio Maximize Workspace Logic
     // -----------------------------------------------------------------
-    const sidebarToggle = document.getElementById('sidebar-toggle');
-    const sidebarToggleIcon = document.getElementById('sidebar-toggle-icon');
-
-    const hamburgerIcon = `
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-        </svg>
-    `;
-
-    const arrowLeftIcon = `
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
-        </svg>
-    `;
-
-    function updateSidebarToggleIcon() {
-        if (sidebarToggleIcon) {
-            if (bodyElement.classList.contains('sidebar-collapsed')) {
-                sidebarToggleIcon.innerHTML = hamburgerIcon;
-            } else {
-                sidebarToggleIcon.innerHTML = arrowLeftIcon;
-            }
-        }
-    }
-
-    if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', function () {
-            bodyElement.classList.toggle('sidebar-collapsed');
-            updateSidebarToggleIcon();
-        });
-    }
-
-    // -----------------------------------------------------------------
-    // 2. View Tab Switching Controls (With auto-reset for maximize)
-    // -----------------------------------------------------------------
-    const menuMapping = {
-        'btn-t1era-studio': { viewId: 'view-t1era-studio', breadcrumb: 'T1ERA Studio', adjustLayout: false },
-        'btn-list-user': { viewId: 'view-list-user', breadcrumb: 'List User', adjustLayout: false },
-        'btn-statistic': { viewId: 'view-statistic', breadcrumb: 'Statistic', adjustLayout: false },
-        'btn-websources-code': { viewId: 'view-websources-code', breadcrumb: 'websources code', adjustLayout: true }
-    };
-
-    Object.keys(menuMapping).forEach(btnId => {
-        const button = document.getElementById(btnId);
-        if (button) {
-            button.addEventListener('click', function (e) {
-                e.preventDefault();
-                switchTab(btnId);
-            });
-        }
-    });
-
-    function switchTab(clickedId) {
-        const layoutConfig = menuMapping[clickedId];
-        
-        // Auto-Collapse sidebar if "websources code" is selected
-        if (layoutConfig.adjustLayout) {
-            if (!bodyElement.classList.contains('sidebar-collapsed')) {
-                bodyElement.classList.add('sidebar-collapsed');
-                updateSidebarToggleIcon();
-            }
-            document.getElementById('main-content-scroll').classList.add('overflow-hidden');
-            document.getElementById('main-content-inner').classList.remove('p-8');
-            document.getElementById('main-content-inner').classList.add('p-4');
-        } else {
-            document.getElementById('main-content-scroll').classList.remove('overflow-hidden');
-            document.getElementById('main-content-inner').classList.add('p-8');
-            document.getElementById('main-content-inner').classList.remove('p-4');
-            
-            // Cleanly restore workspace from Maximized state if navigating away
-            if (studioWorkspace && studioWorkspace.classList.contains('studio-maximized')) {
-                toggleMaximize();
-            }
-        }
-
-        // Toggle visibility of panels
-        Object.keys(menuMapping).forEach(btnId => {
-            const viewId = menuMapping[btnId].viewId;
-            const viewElement = document.getElementById(viewId);
-            if (viewElement) {
-                if (btnId === clickedId) {
-                    viewElement.classList.remove('hidden');
-                    viewElement.classList.add('block');
-                } else {
-                    viewElement.classList.remove('block');
-                    viewElement.classList.add('hidden');
-                }
-            }
-        });
-
-        // Set navbar breadcrumb text
-        const breadcrumbTitle = document.getElementById('breadcrumb-title');
-        if (breadcrumbTitle) {
-            breadcrumbTitle.innerText = layoutConfig.breadcrumb;
-        }
-
-        // Apply active styling states to navigation elements
-        Object.keys(menuMapping).forEach(btnId => {
-            const element = document.getElementById(btnId);
-            const svgIcon = element ? element.querySelector('svg') : null;
-            if (element) {
-                if (btnId === clickedId) {
-                    element.className = "flex items-center gap-3 px-4 py-3 rounded-lg text-white bg-indigo-600/10 border border-indigo-500/20 transition-colors group";
-                    if (svgIcon) svgIcon.className = "w-5 h-5 text-indigo-400";
-                } else {
-                    element.className = "flex items-center gap-3 px-4 py-3 rounded-lg text-neutral-400 hover:text-white hover:bg-[#1a1a22] transition-colors group";
-                    if (svgIcon) svgIcon.className = "w-5 h-5 text-neutral-500 group-hover:text-indigo-400";
-                }
-            }
-        });
-    }
-
-    // -----------------------------------------------------------------
-    // 3. VS Code Studio Maximize Workspace Logic
-    // -----------------------------------------------------------------
-    const studioWorkspace = document.getElementById('studio-workspace');
-    const studioMaximizeBtn = document.getElementById('studio-maximize-btn');
-
     const expandIcon = `
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4m12 4V4h-4M4 16v4h4m12-4v4h-4"></path>
@@ -277,7 +302,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 4. VS Code Studio Mock File System Logic
+    // 6. VS Code Studio Mock File System Logic
     // -----------------------------------------------------------------
     let fileSystem = [
         {
@@ -300,19 +325,13 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     ];
 
-    let currentSelectedFile = fileSystem[0].children[0]; // Set index.html as selected by default
+    let currentSelectedFile = null;
+    if (fileSystem && fileSystem[0] && fileSystem[0].children) {
+        currentSelectedFile = fileSystem[0].children[0];
+    }
+    
     let selectedFolderId = null; // Track current highlighted active directory node
     let activeFileEdited = false; // Prevents logging edits repeatedly per editing session
-    
-    const explorerTree = document.getElementById('explorer-file-tree');
-    const activeFileNameEl = document.getElementById('editor-active-filename');
-    const editorTextarea = document.getElementById('editor-textarea');
-    const highlightTarget = document.getElementById('editor-highlight-target');
-    const lineNumbersContainer = document.getElementById('editor-line-numbers');
-    
-    const codeEditorPane = document.getElementById('code-editor-pane');
-    const mediaViewerPane = document.getElementById('media-viewer-pane');
-    const mediaContentWrapper = document.getElementById('media-content-wrapper');
 
     // Sync input events to syntax highlight renderer
     if (editorTextarea) {
@@ -332,12 +351,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Link horizontal and vertical scroll values between layers
         editorTextarea.addEventListener('scroll', function() {
-            const preElement = highlightTarget.parentElement;
+            const preElement = highlightTarget ? highlightTarget.parentElement : null;
             if (preElement) {
                 preElement.scrollTop = this.scrollTop;
                 preElement.scrollLeft = this.scrollLeft;
             }
-            lineNumbersContainer.scrollTop = this.scrollTop;
+            if (lineNumbersContainer) lineNumbersContainer.scrollTop = this.scrollTop;
         });
     }
 
@@ -395,34 +414,37 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Renders either code editor or media viewers depending on format
     function openFile(file) {
+        if (!file) return;
         currentSelectedFile = file;
-        activeFileNameEl.innerText = file.name;
+        if (activeFileNameEl) activeFileNameEl.innerText = file.name;
         activeFileEdited = false; // Reset modifications log state for newly opened files
         
         logToTerminal(`Loading file path in viewport: ${file.name}`, 'info');
 
         if (file.isMedia) {
             // Display media panels
-            codeEditorPane.classList.add('hidden');
-            mediaViewerPane.classList.remove('hidden');
+            if (codeEditorPane) codeEditorPane.classList.add('hidden');
+            if (mediaViewerPane) mediaViewerPane.classList.remove('hidden');
             
             // Build absolute streaming path via proxy structure
             let mediaUrl = file.url;
-            if (mediaUrl.startsWith('/api/')) {
+            if (mediaUrl && mediaUrl.startsWith('/api/')) {
                 mediaUrl = `${RENDER_BACKEND_URL}${file.url}`;
             }
 
-            if (file.format === 'image') {
-                mediaContentWrapper.innerHTML = `<img src="${mediaUrl}" alt="${file.name}" class="object-contain max-h-[300px]">`;
-            } else if (file.format === 'video') {
-                mediaContentWrapper.innerHTML = `<video controls src="${mediaUrl}" class="max-h-[300px] w-full"></video>`;
+            if (mediaContentWrapper) {
+                if (file.format === 'image') {
+                    mediaContentWrapper.innerHTML = `<img src="${mediaUrl}" alt="${file.name}" class="object-contain max-h-[300px]">`;
+                } else if (file.format === 'video') {
+                    mediaContentWrapper.innerHTML = `<video controls src="${mediaUrl}" class="max-h-[300px] w-full"></video>`;
+                }
             }
         } else {
             // Display normal code editor
-            mediaViewerPane.classList.add('hidden');
-            codeEditorPane.classList.remove('hidden');
+            if (mediaViewerPane) mediaViewerPane.classList.add('hidden');
+            if (codeEditorPane) codeEditorPane.classList.remove('hidden');
             
-            editorTextarea.value = file.content;
+            if (editorTextarea) editorTextarea.value = file.content;
             updateHighlight();
             updateLineNumbers();
         }
@@ -431,7 +453,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 5. File Tree UI Generation & Recursion
+    // 7. File Tree UI Generation & Recursion
     // -----------------------------------------------------------------
     function createTreeNodeHTML(node, depth = 0) {
         const paddingLeft = depth * 16 + 12;
@@ -586,9 +608,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 openFile(firstFile);
             } else {
                 currentSelectedFile = null;
-                activeFileNameEl.innerText = 'No file open';
-                editorTextarea.value = '';
-                highlightTarget.innerHTML = '';
+                if (activeFileNameEl) activeFileNameEl.innerText = 'No file open';
+                if (editorTextarea) editorTextarea.value = '';
+                if (highlightTarget) highlightTarget.innerHTML = '';
                 updateLineNumbers();
             }
         }
@@ -607,9 +629,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 6. Creation and Directory Control Elements
+    // 8. Creation and Directory Control Elements
     // -----------------------------------------------------------------
-    const newFileBtn = document.getElementById('explorer-new-file');
     if (newFileBtn) {
         newFileBtn.addEventListener('click', function() {
             const filename = prompt("Enter file name (e.g. script.js, index.html):");
@@ -643,7 +664,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    const newFolderBtn = document.getElementById('explorer-new-folder');
     if (newFolderBtn) {
         newFolderBtn.addEventListener('click', function() {
             const foldername = prompt("Enter folder name:");
@@ -673,7 +693,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    const fileUploadInput = document.getElementById('explorer-file-upload');
     if (fileUploadInput) {
         fileUploadInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -729,11 +748,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 7. Render-GitHub Synchronization Integration Actions
+    // 9. Render-GitHub Synchronization Integration Actions
     // -----------------------------------------------------------------
-    const syncPullBtn = document.getElementById('explorer-sync-pull');
-    const syncPushBtn = document.getElementById('explorer-sync-push');
-
     if (syncPullBtn) {
         syncPullBtn.addEventListener('click', async function () {
             const confirmPull = confirm("Are you sure you want to sync? This will remove all local files in the workspace and load files directly from GitHub.");
@@ -812,7 +828,13 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Initial systems rendering
-    renderTree();
-    openFile(currentSelectedFile);
+    // -----------------------------------------------------------------
+    // 10. Initial Page Load Workspace Hydration
+    // -----------------------------------------------------------------
+    if (explorerTree) {
+        renderTree();
+    }
+    if (currentSelectedFile) {
+        openFile(currentSelectedFile);
+    }
 });
