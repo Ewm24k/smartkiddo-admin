@@ -975,4 +975,9 @@ document.addEventListener("DOMContentLoaded", function () {
     if (currentSelectedFile) {
         openFile(currentSelectedFile);
     }
+
+    // Expose file tree getter API for contextual AI binding
+    window.getWorkspaceFileSystem = function () {
+        return fileSystem;
+    };
 });
