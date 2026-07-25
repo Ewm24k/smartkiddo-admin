@@ -296,16 +296,28 @@ async def ai_chat_completion(chat_req: ChatRequest):
         elif hasattr(response, "output") and hasattr(response.output, "content"):
             assistant_content = response.output.content
 
-        # Capture Token Usage metrics
+        # Error-Proof Token Usage extraction utilizing safe attribute checks [2]
         input_tokens = 0
         output_tokens = 0
+        total_tokens = 0
+        
         if hasattr(response, "usage") and response.usage:
-            input_tokens = response.usage.prompt_tokens
-            output_tokens = response.usage.completion_tokens
+            # Check modern Responses API attributes first [2]
+            input_tokens = getattr(response.usage, "input_tokens", None)
+            if input_tokens is None:
+                # Fallback to standard chat completion metrics [2]
+                input_tokens = getattr(response.usage, "prompt_tokens", 0) or 0
+                
+            output_tokens = getattr(response.usage, "output_tokens", None)
+            if output_tokens is None:
+                output_tokens = getattr(response.usage, "completion_tokens", 0) or 0
+                
+            total_tokens = getattr(response.usage, "total_tokens", input_tokens + output_tokens) or (input_tokens + output_tokens)
         else:
-            # Fallback estimation values
+            # Fallback algorithm for estimation [2]
             input_tokens = len(openai_input_str) // 4
             output_tokens = len(assistant_content) // 4
+            total_tokens = input_tokens + output_tokens
 
         return {
             "content": assistant_content,
@@ -313,7 +325,7 @@ async def ai_chat_completion(chat_req: ChatRequest):
             "usage": {
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,
-                "total_tokens": input_tokens + output_tokens
+                "total_tokens": total_tokens
             }
         }
     except Exception as e:
