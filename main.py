@@ -1,5 +1,6 @@
 import os
 import httpx
+import asyncio
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -59,6 +60,28 @@ async def github_request(endpoint: str, method: str = "GET", json_data: dict = N
         if response.status_code >= 400:
             raise HTTPException(status_code=response.status_code, detail=response.text)
         return response.json()
+
+# Helper to recursively gather all files needing text hydration [2]
+def collect_code_files(nodes):
+    files = []
+    for node in nodes:
+        if node["type"] == "file" and not node.get("isMedia"):
+            files.append(node)
+        elif node["type"] == "folder" and "children" in node:
+            files.extend(collect_code_files(node["children"]))
+    return files
+
+# Helper to asynchronously fetch a single file content from raw GitHub link [2]
+async def fetch_single_file(client, node, headers):
+    raw_url = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{GITHUB_REPO}/{GITHUB_BRANCH}/{node['path']}"
+    try:
+        response = await client.get(raw_url, headers=headers, timeout=10.0)
+        if response.status_code == 200:
+            node["content"] = response.text
+        else:
+            node["content"] = f"/* Error loading content: {response.status_code} */"
+    except Exception as e:
+        node["content"] = f"/* Exception loading content: {str(e)} */"
 
 # -----------------------------------------------------------------
 # Endpoint 1: Sync (GET) - Pull repository structure
@@ -121,22 +144,14 @@ async def sync_github():
                 else:
                     root_nodes.append(node)
 
-        # Hydrate file content text via Raw GitHub links
-        async def fetch_contents(nodes):
+        # Retrieve and hydrate all file content concurrently using asyncio.gather [2]
+        code_files = collect_code_files(root_nodes)
+        if code_files:
             async with httpx.AsyncClient() as client:
                 headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
-                for node in nodes:
-                    if node["type"] == "file" and not node.get("isMedia"):
-                        raw_url = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{GITHUB_REPO}/{GITHUB_BRANCH}/{node['path']}"
-                        raw_res = await client.get(raw_url, headers=headers)
-                        if raw_res.status_code == 200:
-                            node["content"] = raw_res.text
-                        else:
-                            node["content"] = "/* Error loading content from GitHub */"
-                    elif node["type"] == "folder" and "children" in node:
-                        await fetch_contents(node["children"])
-
-        await fetch_contents(root_nodes)
+                # Create and schedule concurrent tasks
+                tasks = [fetch_single_file(client, node, headers) for node in code_files]
+                await asyncio.gather(*tasks)
 
         # Strip temporary path parameter before responding
         def strip_paths(nodes):
@@ -148,6 +163,8 @@ async def sync_github():
         strip_paths(root_nodes)
 
         return root_nodes
+    except HTTPException as he:
+        raise he
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -216,6 +233,8 @@ async def send_sync_github(request: Request):
         })
 
         return {"success": True, "sha": new_commit_data["sha"]}
+    except HTTPException as he:
+        raise he
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
