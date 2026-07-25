@@ -30,46 +30,77 @@ aside {
 }
 
 /* -----------------------------------------------------------------
-   CODE EDITOR ALIGNMENT & LAYER OVERLAYS
+   UNIFIED CHARACTER-ALIGNMENT AND LAYER OVERLAYS
 ----------------------------------------------------------------- */
+#editor-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: #09090c;
+}
 
-/* Sync typography parameter of transparent textarea input with highlighted syntax text overlay */
+/* Forces identical font families, line-heights, letter spacing, and sizing [2] */
 #editor-textarea, 
+#editor-pre,
 #editor-highlight-target,
 #editor-line-numbers {
     font-family: 'Fira Code', Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace !important;
     font-size: 13px !important;
-    line-height: 1.6 !important;
+    line-height: 20px !important; /* Fixed pixel height ensures character precision [2] */
+    tab-size: 4 !important;
+    -moz-tab-size: 4 !important;
+    letter-spacing: normal !important;
+    word-spacing: normal !important;
+    font-variant-ligatures: none !important;
+}
+
+/* Strips default visual margins and overrides container dimensions [2] */
+#editor-textarea,
+#editor-pre {
+    position: absolute !important;
+    inset: 0 !important;
+    margin: 0 !important;
+    padding: 16px !important; /* Perfect uniform padding boundaries [2] */
+    border: 0 !important;
+    outline: none !important;
+    background: transparent !important;
+    white-space: pre !important;
+    overflow-wrap: normal !important;
+    word-wrap: normal !important;
+    box-sizing: border-box !important;
 }
 
 #editor-textarea {
-    color: transparent !important;
-    caret-color: #ffffff !important;
-    white-space: pre !important;
-    word-wrap: normal !important;
+    color: transparent !important; /* Hides raw text to let syntax highlight peek through [2] */
+    caret-color: #ffffff !important; /* Preserves visible text insertion cursor */
+    z-index: 2;
+    resize: none !important;
+    overflow: auto !important;
 }
 
-/* Align underlying pre element padding precisely to match the interactive input element overlay */
-#code-editor-pane pre {
+#editor-pre {
+    z-index: 1;
+    overflow: hidden !important; /* Scrollbars are driven exclusively by the textarea layer [2] */
+    pointer-events: none !important;
+}
+
+/* Ensure Prism does not inject extra boundaries on the render target [2] */
+#editor-highlight-target {
+    display: block !important;
     background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
     border: none !important;
-    border-radius: 0 !important;
+    white-space: pre !important;
 }
 
-#code-editor-pane {
-    background-color: #09090c;
-}
-
-/* File Explorer list item interactions */
-.explorer-item {
-    transition: background-color 0.15s ease, color 0.15s ease;
-}
-.explorer-item:hover {
-    background-color: #1a1a22;
-}
-.explorer-item.active {
-    background-color: #1a1a22;
-    color: #818cf8; /* Light Indigo highlighted color */
+/* Align Line Numbers precisely to match editor margins */
+#editor-line-numbers {
+    padding-top: 16px !important; /* Matches editor padding-top [2] */
+    line-height: 20px !important; /* Matches editor line-height [2] */
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    user-select: none !important;
 }
 
 /* -----------------------------------------------------------------
@@ -119,6 +150,18 @@ aside {
 
 #studio-terminal.closed * {
     display: none !important;
+}
+
+/* File Explorer list item interactions */
+.explorer-item {
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+.explorer-item:hover {
+    background-color: #1a1a22;
+}
+.explorer-item.active {
+    background-color: #1a1a22;
+    color: #818cf8; /* Light Indigo highlighted color */
 }
 
 /* Layout Custom Scrollbars */
