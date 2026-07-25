@@ -40,6 +40,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const fileUploadInput = document.getElementById('explorer-file-upload');
     const breadcrumbTitle = document.getElementById('breadcrumb-title');
 
+    const searchToggleBtn = document.getElementById('editor-search-toggle');
+    const searchBar = document.getElementById('editor-search-bar');
+    const searchInput = document.getElementById('editor-search-input');
+    const searchCountEl = document.getElementById('editor-search-count');
+
     // SVGs for sidebar status toggling
     const hamburgerIcon = `
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -222,7 +227,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const terminalIconArrowUp = `
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7-7"></path>
         </svg>
     `;
 
@@ -267,6 +272,9 @@ document.addEventListener("DOMContentLoaded", function () {
     // -----------------------------------------------------------------
     // 5. VS Code Studio Maximize Workspace Logic
     // -----------------------------------------------------------------
+    const studioWorkspace = document.getElementById('studio-workspace');
+    const studioMaximizeBtn = document.getElementById('studio-maximize-btn');
+
     const expandIcon = `
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4m12 4V4h-4M4 16v4h4m12-4v4h-4"></path>
@@ -340,6 +348,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 currentSelectedFile.content = this.value;
                 updateHighlight();
                 updateLineNumbers();
+
+                // If search query is present, re-apply highlights
+                if (searchInput && searchInput.value.trim() !== '') {
+                    performSearch(searchInput.value.trim());
+                }
 
                 // Log edit changes on first interaction
                 if (!activeFileEdited) {
@@ -436,6 +449,10 @@ document.addEventListener("DOMContentLoaded", function () {
         if (activeFileNameEl) activeFileNameEl.innerText = file.name;
         activeFileEdited = false; // Reset modifications log state for newly opened files
         
+        // Clear active search context on file change
+        if (searchInput) searchInput.value = '';
+        if (searchCountEl) searchCountEl.innerText = '0 found';
+
         logToTerminal(`Loading file path in viewport: ${file.name}`, 'info');
 
         if (file.isMedia) {
@@ -470,8 +487,26 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 7. File Tree UI Generation & Recursion
+    // 7. File Tree UI Generation, Sorting, Recursion
     // -----------------------------------------------------------------
+
+    // Sort folders to the top and files to the bottom of the tree recursively [2]
+    function sortFileSystem(nodes) {
+        if (!Array.isArray(nodes)) return;
+        
+        nodes.sort((a, b) => {
+            if (a.type === 'folder' && b.type === 'file') return -1; // Folder goes up [2]
+            if (a.type === 'file' && b.type === 'folder') return 1;  // File goes down [2]
+            return a.name.localeCompare(b.name); // Sort alphabetically if same type [2]
+        });
+
+        nodes.forEach(node => {
+            if (node.type === 'folder' && node.children) {
+                sortFileSystem(node.children);
+            }
+        });
+    }
+
     function createTreeNodeHTML(node, depth = 0) {
         const paddingLeft = depth * 16 + 12;
         const isActive = currentSelectedFile && currentSelectedFile.id === node.id;
@@ -533,6 +568,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function renderTree() {
         if (!explorerTree) return;
+        sortFileSystem(fileSystem); // Force sort folders to top, files to bottom [2]
         let html = '';
         fileSystem.forEach(node => {
             html += createTreeNodeHTML(node, 0);
@@ -846,7 +882,83 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 10. Initial Page Load Workspace Hydration
+    // 10. ACTIVE DOCUMENT SEARCH MECHANISM [2]
+    // -----------------------------------------------------------------
+    
+    // Safety regex character escaping helper [2]
+    function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    // Traverses highlighted HTML DOM and wraps matches in a <mark> tag [2]
+    function highlightSearchInDOM(element, query) {
+        if (!query) return 0;
+        let matchesCount = 0;
+        const escaped = escapeRegExp(query);
+        const regex = new RegExp(`(${escaped})`, 'gi');
+        
+        function traverse(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                const text = node.nodeValue;
+                if (regex.test(text)) {
+                    const span = document.createElement('span');
+                    span.innerHTML = text.replace(regex, (match) => {
+                        matchesCount++;
+                        return `<mark>${match}</mark>`; // Exact sizing styled globally [2]
+                    });
+                    node.parentNode.replaceChild(span, node);
+                }
+            } else if (node.nodeType === Node.ELEMENT_NODE && node.nodeName !== 'MARK') {
+                const children = Array.from(node.childNodes);
+                children.forEach(traverse);
+            }
+        }
+        
+        traverse(element);
+        return matchesCount;
+    }
+
+    function performSearch(query) {
+        // First re-draw normal code styling rules
+        updateHighlight();
+        
+        if (!query || !highlightTarget) {
+            if (searchCountEl) searchCountEl.innerText = '0 found';
+            return;
+        }
+
+        // Apply visual highlights over elements [2]
+        const totalMatches = highlightSearchInDOM(highlightTarget, query);
+        if (searchCountEl) {
+            searchCountEl.innerText = `${totalMatches} found`;
+        }
+    }
+
+    // Listeners for active search controls
+    if (searchToggleBtn && searchBar) {
+        searchToggleBtn.addEventListener('click', function () {
+            searchBar.classList.toggle('hidden');
+            searchBar.classList.toggle('flex');
+            if (!searchBar.classList.contains('hidden') && searchInput) {
+                searchInput.focus();
+                if (searchInput.value.trim() !== '') {
+                    performSearch(searchInput.value.trim());
+                }
+            } else {
+                // If search closed, remove highlights
+                updateHighlight();
+            }
+        });
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function () {
+            performSearch(this.value.trim());
+        });
+    }
+
+    // -----------------------------------------------------------------
+    // 11. Initial Page Load Workspace Hydration
     // -----------------------------------------------------------------
     if (explorerTree) {
         renderTree();
