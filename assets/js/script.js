@@ -59,9 +59,9 @@ document.addEventListener("DOMContentLoaded", function () {
     `;
 
     // -----------------------------------------------------------------
-    // 2. TERMINAL LOG UTILITY (Prints structured and timestamped outputs)
+    // 2. TERMINAL LOG UTILITY (Registered on window to expose globally) [2]
     // -----------------------------------------------------------------
-    function logToTerminal(message, type = 'info') {
+    window.logToTerminal = function (message, type = 'info') {
         const output = document.getElementById('terminal-log-output');
         if (!output) return;
 
@@ -90,11 +90,11 @@ document.addEventListener("DOMContentLoaded", function () {
         output.appendChild(logRow);
         // Autoscroll to the latest log item
         output.scrollTop = output.scrollHeight;
-    }
+    };
 
     // Initialize System Status on Terminal
-    logToTerminal("Terminal console logs initialized.", "system");
-    logToTerminal(`Endpoint connected: ${RENDER_BACKEND_URL}`, "system");
+    window.logToTerminal("Terminal console logs initialized.", "system");
+    window.logToTerminal(`Endpoint connected: ${RENDER_BACKEND_URL}`, "system");
 
     // Helper functions to manage screen loader
     function showLoader(message) {
@@ -247,11 +247,11 @@ document.addEventListener("DOMContentLoaded", function () {
             if (terminalPanel.classList.contains('minimized')) {
                 terminalPanel.classList.remove('minimized');
                 if (terminalToggleIcon) terminalToggleIcon.innerHTML = terminalIconArrowDown;
-                logToTerminal("Terminal panel size restored.", "system");
+                window.logToTerminal("Terminal panel size restored.", "system");
             } else {
                 terminalPanel.classList.add('minimized');
                 if (terminalToggleIcon) terminalToggleIcon.innerHTML = terminalIconArrowUp;
-                logToTerminal("Terminal panel minimized.", "system");
+                window.logToTerminal("Terminal panel minimized.", "system");
             }
         });
     }
@@ -260,7 +260,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (terminalCloseBtn && terminalPanel) {
         terminalCloseBtn.addEventListener('click', function () {
             terminalPanel.classList.add('closed');
-            logToTerminal("Terminal panel closed.", "system");
+            window.logToTerminal("Terminal panel closed.", "system");
         });
     }
 
@@ -271,10 +271,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 terminalPanel.classList.remove('closed');
                 terminalPanel.classList.remove('minimized');
                 if (terminalToggleIcon) terminalToggleIcon.innerHTML = terminalIconArrowDown;
-                logToTerminal("Terminal panel restored via Workspace Toolbar.", "system");
+                window.logToTerminal("Terminal panel restored via Workspace Toolbar.", "system");
             } else {
                 terminalPanel.classList.add('closed');
-                logToTerminal("Terminal panel closed via Workspace Toolbar.", "system");
+                window.logToTerminal("Terminal panel closed via Workspace Toolbar.", "system");
             }
         });
     }
@@ -304,11 +304,11 @@ document.addEventListener("DOMContentLoaded", function () {
         if (studioWorkspace.classList.contains('studio-maximized')) {
             studioMaximizeBtn.innerHTML = shrinkIcon;
             studioMaximizeBtn.setAttribute('title', 'Minimize Workspace');
-            logToTerminal("Workspace maximized to full screen height.", "system");
+            window.logToTerminal("Workspace maximized to full screen height.", "system");
         } else {
             studioMaximizeBtn.innerHTML = expandIcon;
             studioMaximizeBtn.setAttribute('title', 'Maximize Workspace');
-            logToTerminal("Workspace restored to default limits.", "system");
+            window.logToTerminal("Workspace restored to default limits.", "system");
         }
     }
 
@@ -363,7 +363,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 // Log edit changes on first interaction
                 if (!activeFileEdited) {
-                    logToTerminal(`Modifying file: ${currentSelectedFile.name} (In-memory)...`, 'warning');
+                    window.logToTerminal(`Modifying file: ${currentSelectedFile.name} (In-memory)...`, 'warning');
                     activeFileEdited = true;
                 }
             }
@@ -466,7 +466,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const linesLayer = document.getElementById('editor-highlight-lines-layer');
         if (linesLayer) linesLayer.innerHTML = '';
 
-        logToTerminal(`Loading file path in viewport: ${file.name}`, 'info');
+        window.logToTerminal(`Loading file path in viewport: ${file.name}`, 'info');
 
         if (file.isMedia) {
             // Display media panels
@@ -481,9 +481,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (mediaContentWrapper) {
                 if (file.format === 'image') {
-                    mediaContentWrapper.innerHTML = `<img src="${mediaUrl}" alt="${file.name}" class="object-contain max-h-[300px]">`;
+                    mediaContentWrapper.innerHTML = `<img src="${mediaUrl}" alt="${file.name}" class="object-contain max-h-[350px]">`;
                 } else if (file.format === 'video') {
-                    mediaContentWrapper.innerHTML = `<video controls src="${mediaUrl}" class="max-h-[300px] w-full"></video>`;
+                    mediaContentWrapper.innerHTML = `<video controls src="${mediaUrl}" class="max-h-[350px] w-full"></video>`;
                 }
             }
         } else {
@@ -663,7 +663,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const deletedNode = findNodeById(fileSystem, id);
         if (deletedNode) {
-            logToTerminal(`Deleted item from local memory: ${deletedNode.name}`, 'warning');
+            window.logToTerminal(`Deleted item from local memory: ${deletedNode.name}`, 'warning');
         }
 
         removeRecursive(fileSystem);
@@ -724,7 +724,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 fileSystem.push(newFile);
             }
             
-            logToTerminal(`Created file in memory: ${filename}`, 'info');
+            window.logToTerminal(`Created file in memory: ${filename}`, 'info');
             renderTree();
             openFile(newFile);
         });
@@ -753,7 +753,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 fileSystem.push(newFolder);
             }
 
-            logToTerminal(`Created folder in memory: ${foldername}`, 'info');
+            window.logToTerminal(`Created folder in memory: ${foldername}`, 'info');
             selectedFolderId = newFolder.id;
             renderTree();
         });
@@ -764,7 +764,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const file = e.target.files[0];
             if (!file) return;
 
-            logToTerminal(`Reading uploaded local asset: ${file.name}...`, 'info');
+            window.logToTerminal(`Reading uploaded local asset: ${file.name}...`, 'info');
 
             const reader = new FileReader();
             const mediaCheck = assessMediaFormat(file.name);
@@ -800,7 +800,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     fileSystem.push(uploadedFile);
                 }
 
-                logToTerminal(`Imported local file: ${file.name}`, 'success');
+                window.logToTerminal(`Imported local file: ${file.name}`, 'success');
                 renderTree();
                 openFile(uploadedFile);
             };
@@ -821,7 +821,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const confirmPull = confirm("Are you sure you want to sync? This will remove all local files in the workspace and load files directly from GitHub.");
             if (!confirmPull) return;
 
-            logToTerminal("Initiating repository synchronization pull from remote source...", "system");
+            window.logToTerminal("Initiating repository synchronization pull from remote source...", "system");
             showLoader("Syncing from GitHub repo...");
             
             try {
@@ -835,7 +835,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     fileSystem = newFileSystem;
                     renderTree();
                     
-                    logToTerminal("Sync pull complete! Directory structure successfully retrieved.", "success");
+                    window.logToTerminal("Sync pull complete! Directory structure successfully retrieved.", "success");
 
                     // Automatically open the first available file
                     const firstFile = findFirstFile(fileSystem);
@@ -843,12 +843,12 @@ document.addEventListener("DOMContentLoaded", function () {
                         openFile(firstFile);
                     }
                 } else {
-                    logToTerminal("Repository loaded, but no directory files were found.", "warning");
+                    window.logToTerminal("Repository loaded, but no directory files were found.", "warning");
                     alert("Repository loaded, but it appears to be empty.");
                 }
             } catch (err) {
                 console.error(err);
-                logToTerminal(`Sync failed: ${err.message}`, "error");
+                window.logToTerminal(`Sync failed: ${err.message}`, "error");
                 alert(`Sync failed: ${err.message}. Check your terminal logs for details.`);
             } finally {
                 hideLoader();
@@ -861,7 +861,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const confirmPush = confirm("Would you like to send changes and sync? This commits your current directory files back to your GitHub main branch.");
             if (!confirmPush) return;
 
-            logToTerminal("Initiating backup sync transaction to GitHub branch 'main'...", "system");
+            window.logToTerminal("Initiating backup sync transaction to GitHub branch 'main'...", "system");
             showLoader("Pushing code revisions to GitHub...");
             
             try {
@@ -881,12 +881,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 const result = await response.json();
                 if (result.success) {
                     const commitShaAbbr = result.sha.substring(0, 7);
-                    logToTerminal(`Commit successful! Branch HEAD updated. Revision SHA: ${commitShaAbbr}`, "success");
+                    window.logToTerminal(`Commit successful! Branch HEAD updated. Revision SHA: ${commitShaAbbr}`, "success");
                     alert(`Successfully committed changes to GitHub! Revision SHA: ${commitShaAbbr}`);
                 }
             } catch (err) {
                 console.error(err);
-                logToTerminal(`Send & Sync failed: ${err.message}`, "error");
+                window.logToTerminal(`Send & Sync failed: ${err.message}`, "error");
                 alert(`Send & Sync failed: ${err.message}. Check your terminal logs for details.`);
             } finally {
                 hideLoader();
