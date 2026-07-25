@@ -103,13 +103,32 @@ aside {
     user-select: none !important;
 }
 
-/* Strip spacing variables from search query highlighting nodes [2] */
-mark {
-    background-color: rgba(234, 179, 8, 0.45) !important; /* Uniform highlight hue [2] */
-    color: inherit !important;
-    padding: 0 !important;
+/* -----------------------------------------------------------------
+   SYNCHRONIZED BACKGROUND LINE HIGHLIGHTS LAYER [2]
+----------------------------------------------------------------- */
+#editor-highlight-lines-layer {
+    position: absolute !important;
+    inset: 0 !important;
     margin: 0 !important;
-    border-radius: 0 !important;
+    padding-top: 16px !important; /* Matches editor-pre and textarea */
+    box-sizing: border-box !important;
+    z-index: 0 !important; /* Behind pre (1) and textarea (2) */
+    overflow: hidden !important;
+}
+
+/* Highlighted Line bar style mirroring VS Code [2] */
+.matching-line-bar {
+    height: 20px !important; /* Matches line-height precisely */
+    width: 100% !important;
+    background-color: rgba(234, 179, 8, 0.12) !important; /* Soft gold background highlight */
+    border-left: 3px solid #eab308 !important; /* Vivid left-accent indicator line */
+    box-sizing: border-box !important;
+}
+
+.empty-line-bar {
+    height: 20px !important; /* Matches line-height precisely */
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 /* -----------------------------------------------------------------
