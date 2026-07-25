@@ -14,7 +14,7 @@
 <body class="font-sans antialiased h-screen flex overflow-hidden bg-[#0f0f12] text-[#e5e7eb]">
 
     <!-- SIDE MENU / SIDEBAR -->
-    <aside class="w-64 bg-[#111115] border-r border-[#1f1f29] flex flex-col justify-between flex-shrink-0">
+    <aside id="sidebar-menu" class="w-64 bg-[#111115] border-r border-[#1f1f29] flex flex-col justify-between flex-shrink-0">
         <div>
             <!-- Header: Brand Name -->
             <div class="px-6 py-5 flex items-center gap-3">
@@ -68,11 +68,22 @@
     <main class="flex-1 flex flex-col h-screen overflow-y-auto bg-[#0f0f12]">
         
         <!-- HEADER / NAVIGATION STATUS BAR -->
-        <header class="h-16 border-b border-[#1f1f29] px-8 flex items-center justify-between flex-shrink-0">
-            <div class="flex items-center gap-2">
-                <span class="text-xs text-neutral-500 uppercase tracking-wider">Owner Portal</span>
-                <span class="text-neutral-600">/</span>
-                <span class="text-xs text-neutral-300 font-semibold uppercase tracking-wider" id="breadcrumb-title">T1ERA Studio</span>
+        <header class="h-16 border-b border-[#1f1f29] px-6 flex items-center justify-between flex-shrink-0">
+            <div class="flex items-center gap-4">
+                <!-- Sidebar toggle control (with sliding visual updates) -->
+                <button id="sidebar-toggle" class="p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-[#1a1a22] transition-colors focus:outline-none" aria-label="Toggle Sidebar">
+                    <span id="sidebar-toggle-icon">
+                        <!-- Default icon pointing left, indicating menu can collapse -->
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
+                        </svg>
+                    </span>
+                </button>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-neutral-500 uppercase tracking-wider">Owner Portal</span>
+                    <span class="text-neutral-600">/</span>
+                    <span class="text-xs text-neutral-300 font-semibold uppercase tracking-wider" id="breadcrumb-title">T1ERA Studio</span>
+                </div>
             </div>
             <div class="flex items-center gap-3">
                 <div class="text-right">
@@ -180,34 +191,79 @@
                 </div>
             </section>
 
-            <!-- PLACEHOLDER SECTIONS FOR OTHER VIEWS -->
+            <!-- VIEW: LIST USER -->
             <section id="view-list-user" class="space-y-8 hidden">
                 <div>
                     <h1 class="text-3xl font-extrabold text-white tracking-tight">List User</h1>
                     <p class="text-neutral-400 mt-2 text-sm">Manage user accounts, check subscription tiers, and review child progress metrics.</p>
                 </div>
                 <div class="p-8 border border-neutral-800 rounded-xl bg-[#111115] text-center text-neutral-500 text-sm">
-                    This section is a functional placeholder. Select "T1ERA Studio" in the sidebar to review the primary dashboard environment.
+                    This section is a functional placeholder. Select "T1ERA Studio" or "Statistic" in the sidebar to review active dashboard environments.
                 </div>
             </section>
 
+            <!-- VIEW: STATISTIC (Updated 2-Card Layout) -->
             <section id="view-statistic" class="space-y-8 hidden">
+                <!-- Subheader -->
                 <div>
                     <h1 class="text-3xl font-extrabold text-white tracking-tight">Statistics</h1>
-                    <p class="text-neutral-400 mt-2 text-sm">Track key performance indicators, active screen-time, and popular reading categories.</p>
+                    <p class="text-neutral-400 mt-2 max-w-2xl text-sm leading-relaxed">
+                        Assess product reach, user engagement parameters, database records, and marketing traffic conversions.
+                    </p>
                 </div>
-                <div class="p-8 border border-neutral-800 rounded-xl bg-[#111115] text-center text-neutral-500 text-sm">
-                    This section is a functional placeholder. Select "T1ERA Studio" in the sidebar to review the primary dashboard environment.
+
+                <!-- 2 Card Section (Grid layout) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    <!-- Card 1: Statistic Direct SmartKiddo -->
+                    <div class="glow-card p-6 rounded-xl flex flex-col justify-between h-48 cursor-pointer">
+                        <!-- 1st Row: 2 Columns (Icon & Title) -->
+                        <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
+                            <!-- Column 1: Icon -->
+                            <div class="w-12 h-12 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                            </div>
+                            <!-- Column 2: Title -->
+                            <h3 class="text-lg font-bold text-white tracking-wide">Statistic Direct SmartKiddo</h3>
+                        </div>
+                        <!-- 2nd Row: 1 Column (Description) -->
+                        <div>
+                            <p class="text-sm text-neutral-400 leading-relaxed">
+                                Review first-party platform data including real-time active daily logs, cloud storage parameters, in-app actions, and system uptime diagnostics.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Card 2: statistic Google analytics -->
+                    <div class="glow-card p-6 rounded-xl flex flex-col justify-between h-48 cursor-pointer">
+                        <!-- 1st Row: 2 Columns (Icon & Title) -->
+                        <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
+                            <!-- Column 1: Icon -->
+                            <div class="w-12 h-12 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            </div>
+                            <!-- Column 2: Title -->
+                            <h3 class="text-lg font-bold text-white tracking-wide">statistic Google analytics</h3>
+                        </div>
+                        <!-- 2nd Row: 1 Column (Description) -->
+                        <div>
+                            <p class="text-sm text-neutral-400 leading-relaxed">
+                                Analyze external landing page performance, audience acquisition sources, regional demographics, retention percentages, and conversion funnels.
+                            </p>
+                        </div>
+                    </div>
+
                 </div>
             </section>
 
+            <!-- VIEW: WEBSOURCES CODE -->
             <section id="view-websources-code" class="space-y-8 hidden">
                 <div>
                     <h1 class="text-3xl font-extrabold text-white tracking-tight">websources code</h1>
                     <p class="text-neutral-400 mt-2 text-sm">Inspect background source APIs and raw code integrations.</p>
                 </div>
                 <div class="p-8 border border-neutral-800 rounded-xl bg-[#111115] text-center text-neutral-500 text-sm">
-                    This section is a functional placeholder. Select "T1ERA Studio" in the sidebar to review the primary dashboard environment.
+                    This section is a functional placeholder. Select "T1ERA Studio" or "Statistic" in the sidebar to review active dashboard environments.
                 </div>
             </section>
 
