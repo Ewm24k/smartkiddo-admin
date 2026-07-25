@@ -5,6 +5,15 @@ document.addEventListener("DOMContentLoaded", function () {
     // -----------------------------------------------------------------
     const RENDER_BACKEND_URL = "https://smartkiddo-admin.onrender.com";
 
+    // Fallback logToTerminal wrapper in case window is not loaded yet [2]
+    function logToTerminal(message, type = 'info') {
+        if (typeof window.logToTerminal === 'function') {
+            window.logToTerminal(message, type);
+        } else {
+            console.log(`[${type}] ${message}`);
+        }
+    }
+
     // -----------------------------------------------------------------
     // 1. DOM Element Declarations
     // -----------------------------------------------------------------
@@ -74,7 +83,7 @@ document.addEventListener("DOMContentLoaded", function () {
         speechRecognizer = new SpeechRecognitionAPI();
         speechRecognizer.continuous = true;
         speechRecognizer.interimResults = false;
-        // Language: multi-fallback. We default to Malay ('ms-MY') with English ('en-US') triggers
+        // Language: default to Malay ('ms-MY') with English ('en-US') triggers
         speechRecognizer.lang = 'ms-MY'; 
 
         speechRecognizer.onstart = function () {
@@ -114,8 +123,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function startRecording() {
         if (speechRecognizer) {
-            // Check language mode (Malay vs English) by letting user toggle or auto-detect
-            // To ensure best accuracy we can alternate or select default. Malay MS-MY as priority
             speechRecognizer.lang = confirm("Speak in Malay? (Click Cancel for English)") ? 'ms-MY' : 'en-US';
             speechRecognizer.start();
         }
@@ -159,7 +166,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     isMedia: node.isMedia
                 });
             } else if (node.type === 'folder' && Array.isArray(node.children)) {
-                files = list = files.concat(flattenFilesList(node.children, absolutePath));
+                files = files.concat(flattenFilesList(node.children, absolutePath));
             }
         });
         return files;
