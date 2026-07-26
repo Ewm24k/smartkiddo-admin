@@ -844,7 +844,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    // Hides popup overlay
+    // Hides popup overlay and resets action state
     function closeGithubPopup() {
         if (githubDatabasePopup) {
             githubDatabasePopup.classList.add('hidden');
@@ -872,17 +872,19 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
+            // Store current action before resetting inside closeGithubPopup()
+            const actionToExecute = pendingSyncAction;
             closeGithubPopup();
 
-            if (pendingSyncAction === 'pull') {
+            if (actionToExecute === 'pull') {
                 await executePullSync(finalRepo);
-            } else if (pendingSyncAction === 'push') {
+            } else if (actionToExecute === 'push') {
                 await executePushSync(finalRepo);
             }
         });
     }
 
-    // Execution routine: Sync Pull Action
+    // Execution routine: Sync Pull Action [1]
     async function executePullSync(repoName) {
         window.logToTerminal(`Initiating repository synchronization pull from remote source (${repoName})...`, "system");
         showLoader(`Syncing from GitHub repo: ${repoName}...`);
@@ -918,7 +920,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    // Execution routine: Sync Push Action
+    // Execution routine: Sync Push Action [1]
     async function executePushSync(repoName) {
         window.logToTerminal(`Initiating backup sync transaction to GitHub branch 'main' of repository '${repoName}'...`, "system");
         showLoader(`Pushing code revisions to GitHub repository: ${repoName}...`);
