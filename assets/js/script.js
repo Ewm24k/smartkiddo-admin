@@ -206,6 +206,25 @@ document.addEventListener("DOMContentLoaded", function () {
             bedtimeStoryView.classList.add('hidden');
         }
 
+        // Cleanly restore bedtime story workspace layout class from maximized state when navigating away
+        const storyStudioWorkspace = document.getElementById('story-studio-workspace');
+        if (storyStudioWorkspace && storyStudioWorkspace.classList.contains('studio-maximized')) {
+            storyStudioWorkspace.classList.remove('studio-maximized');
+            if (mainContentInner) {
+                mainContentInner.classList.remove('container-maximized');
+            }
+            const storyStudioMaximizeBtn = document.getElementById('story-studio-maximize-btn');
+            if (storyStudioMaximizeBtn) {
+                const expandIconRaw = `
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4m12 4V4h-4M4 16v4h4m12-4v4h-4"></path>
+                    </svg>
+                `;
+                storyStudioMaximizeBtn.innerHTML = expandIconRaw;
+                storyStudioMaximizeBtn.setAttribute('title', 'Maximize Workspace');
+            }
+        }
+
         // Toggle visibility of panels
         Object.keys(menuMapping).forEach(btnId => {
             const viewId = menuMapping[btnId].viewId;
