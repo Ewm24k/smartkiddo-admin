@@ -45,6 +45,15 @@ document.addEventListener("DOMContentLoaded", function () {
     const searchInput = document.getElementById('editor-search-input');
     const searchCountEl = document.getElementById('editor-search-count');
 
+    // Github selection popup declarations
+    const githubDatabasePopup = document.getElementById('github-database-popup');
+    const githubPopupClose = document.getElementById('github-popup-close');
+    const githubPopupCancel = document.getElementById('github-popup-cancel');
+    const githubPopupConfirm = document.getElementById('github-popup-confirm');
+    const githubCustomRepoInput = document.getElementById('github-custom-repo-input');
+
+    let pendingSyncAction = null; // Tracks pull or push operation trigger
+
     // SVGs for sidebar status toggling
     const hamburgerIcon = `
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -824,82 +833,139 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 9. Render-GitHub Synchronization Integration Actions
+    // 9. Render-GitHub Synchronization Actions (Triggering selection popup)
     // -----------------------------------------------------------------
-    if (syncPullBtn) {
-        syncPullBtn.addEventListener('click', async function () {
-            const confirmPull = confirm("Are you sure you want to sync? This will remove all local files in the workspace and load files directly from GitHub.");
-            if (!confirmPull) return;
+    
+    // Shows popup overlay
+    function openGithubPopup(action) {
+        pendingSyncAction = action;
+        if (githubDatabasePopup) {
+            githubDatabasePopup.classList.remove('hidden');
+        }
+    }
 
-            window.logToTerminal("Initiating repository synchronization pull from remote source...", "system");
-            showLoader("Syncing from GitHub repo...");
+    // Hides popup overlay
+    function closeGithubPopup() {
+        if (githubDatabasePopup) {
+            githubDatabasePopup.classList.add('hidden');
+        }
+        pendingSyncAction = null;
+        if (githubCustomRepoInput) {
+            githubCustomRepoInput.value = '';
+        }
+    }
+
+    if (githubPopupClose) githubPopupClose.addEventListener('click', closeGithubPopup);
+    if (githubPopupCancel) githubPopupCancel.addEventListener('click', closeGithubPopup);
+
+    if (githubPopupConfirm) {
+        githubPopupConfirm.addEventListener('click', async function () {
+            // Find checked default preset radio selection
+            const activeRadio = document.querySelector('input[name="github-repo-select"]:checked');
+            const customValue = githubCustomRepoInput ? githubCustomRepoInput.value.trim() : '';
             
-            try {
-                const response = await fetch(`${RENDER_BACKEND_URL}/api/sync`);
-                if (!response.ok) {
-                    throw new Error(`Server returned error status: ${response.status}`);
-                }
-                const newFileSystem = await response.json();
-                
-                if (Array.isArray(newFileSystem) && newFileSystem.length > 0) {
-                    fileSystem = newFileSystem;
-                    renderTree();
-                    
-                    window.logToTerminal("Sync pull complete! Directory structure successfully retrieved.", "success");
+            // Custom text input takes precedence if filled out
+            const finalRepo = customValue !== '' ? customValue : (activeRadio ? activeRadio.value : '');
 
-                    // Automatically open the first available file
-                    const firstFile = findFirstFile(fileSystem);
-                    if (firstFile) {
-                        openFile(firstFile);
-                    }
-                } else {
-                    window.logToTerminal("Repository loaded, but no directory files were found.", "warning");
-                    alert("Repository loaded, but it appears to be empty.");
+            if (!finalRepo) {
+                alert("Please select or enter a repository target name.");
+                return;
+            }
+
+            closeGithubPopup();
+
+            if (pendingSyncAction === 'pull') {
+                await executePullSync(finalRepo);
+            } else if (pendingSyncAction === 'push') {
+                await executePushSync(finalRepo);
+            }
+        });
+    }
+
+    // Execution routine: Sync Pull Action
+    async function executePullSync(repoName) {
+        window.logToTerminal(`Initiating repository synchronization pull from remote source (${repoName})...`, "system");
+        showLoader(`Syncing from GitHub repo: ${repoName}...`);
+        
+        try {
+            const response = await fetch(`${RENDER_BACKEND_URL}/api/sync?repo=${encodeURIComponent(repoName)}`);
+            if (!response.ok) {
+                throw new Error(`Server returned error status: ${response.status}`);
+            }
+            const newFileSystem = await response.json();
+            
+            if (Array.isArray(newFileSystem) && newFileSystem.length > 0) {
+                fileSystem = newFileSystem;
+                renderTree();
+                
+                window.logToTerminal(`Sync pull complete! Directory structure successfully retrieved from '${repoName}'.`, "success");
+
+                // Automatically open the first available file
+                const firstFile = findFirstFile(fileSystem);
+                if (firstFile) {
+                    openFile(firstFile);
                 }
-            } catch (err) {
-                console.error(err);
-                window.logToTerminal(`Sync failed: ${err.message}`, "error");
-                alert(`Sync failed: ${err.message}. Check your terminal logs for details.`);
-            } finally {
-                hideLoader();
+            } else {
+                window.logToTerminal("Repository loaded, but no directory files were found.", "warning");
+                alert("Repository loaded, but it appears to be empty.");
+            }
+        } catch (err) {
+            console.error(err);
+            window.logToTerminal(`Sync failed: ${err.message}`, "error");
+            alert(`Sync failed: ${err.message}. Check your terminal logs for details.`);
+        } finally {
+            hideLoader();
+        }
+    }
+
+    // Execution routine: Sync Push Action
+    async function executePushSync(repoName) {
+        window.logToTerminal(`Initiating backup sync transaction to GitHub branch 'main' of repository '${repoName}'...`, "system");
+        showLoader(`Pushing code revisions to GitHub repository: ${repoName}...`);
+        
+        try {
+            const response = await fetch(`${RENDER_BACKEND_URL}/api/send-sync?repo=${encodeURIComponent(repoName)}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(fileSystem)
+            });
+
+            if (!response.ok) {
+                const errorDetail = await response.json();
+                throw new Error(errorDetail.error || `Server status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            if (result.success) {
+                const commitShaAbbr = result.sha.substring(0, 7);
+                window.logToTerminal(`Commit successful! Branch HEAD updated. Revision SHA: ${commitShaAbbr}`, "success");
+                alert(`Successfully committed changes to GitHub repository '${repoName}'! Revision SHA: ${commitShaAbbr}`);
+            }
+        } catch (err) {
+            console.error(err);
+            window.logToTerminal(`Send & Sync failed: ${err.message}`, "error");
+            alert(`Send & Sync failed: ${err.message}. Check your terminal logs for details.`);
+        } finally {
+            hideLoader();
+        }
+    }
+
+    if (syncPullBtn) {
+        syncPullBtn.addEventListener('click', function () {
+            const confirmPull = confirm("Are you sure you want to sync? This will remove all local files in the workspace and load files directly from GitHub.");
+            if (confirmPull) {
+                openGithubPopup('pull');
             }
         });
     }
 
     if (syncPushBtn) {
-        syncPushBtn.addEventListener('click', async function () {
+        syncPushBtn.addEventListener('click', function () {
             const confirmPush = confirm("Would you like to send changes and sync? This commits your current directory files back to your GitHub main branch.");
-            if (!confirmPush) return;
-
-            window.logToTerminal("Initiating backup sync transaction to GitHub branch 'main'...", "system");
-            showLoader("Pushing code revisions to GitHub...");
-            
-            try {
-                const response = await fetch(`${RENDER_BACKEND_URL}/api/send-sync`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(fileSystem)
-                });
-
-                if (!response.ok) {
-                    const errorDetail = await response.json();
-                    throw new Error(errorDetail.error || `Server status: ${response.status}`);
-                }
-
-                const result = await response.json();
-                if (result.success) {
-                    const commitShaAbbr = result.sha.substring(0, 7);
-                    window.logToTerminal(`Commit successful! Branch HEAD updated. Revision SHA: ${commitShaAbbr}`, "success");
-                    alert(`Successfully committed changes to GitHub! Revision SHA: ${commitShaAbbr}`);
-                }
-            } catch (err) {
-                console.error(err);
-                window.logToTerminal(`Send & Sync failed: ${err.message}`, "error");
-                alert(`Send & Sync failed: ${err.message}. Check your terminal logs for details.`);
-            } finally {
-                hideLoader();
+            if (confirmPush) {
+                openGithubPopup('push');
             }
         });
     }
