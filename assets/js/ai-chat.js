@@ -275,7 +275,7 @@ document.addEventListener("DOMContentLoaded", function () {
         aiAttachmentRemove.addEventListener('click', function (e) {
             e.stopPropagation();
             attachedFile = null;
-            if (aiAttachmentBadge) aiAttachmentBadge.classList.add('hidden');
+            if (aiAttachmentBadge) CustomEvent.classList.add('hidden');
             logToTerminal("Workspace file context removed.", "warning");
         });
     }
@@ -452,7 +452,25 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 10. OPENAI API PROXY PIPELINE (ReAct Asynchronous Tool Loop) [2]
+    // 10. TOKEN-SAVING HISTORY COMPACTION ENGINE
+    // -----------------------------------------------------------------
+    
+    // Scans historical chat turns and strips out redundant code payload dumps to preserve context limits
+    function compactConversationHistory() {
+        conversationHistory = conversationHistory.map(turn => {
+            if (turn.role === "user" && turn.content.includes("=== SYSTEM AGENT TOOL EXECUTION ===")) {
+                // Compile matching files but remove full text code dump to prevent context window overflow
+                const strippedContent = turn.content.replace(/<file_content path="([^"]+)">[\s\S]*?<\/file_content>/g, function(match, path) {
+                    return `<file_content path="${path}">\n/* Code block omitted to conserve active token limits. This file is preserved in your Session LRU Cache memory if you need to reference its code directly. */\n</file_content>`;
+                });
+                return { role: "user", content: strippedContent };
+            }
+            return turn;
+        });
+    }
+
+    // -----------------------------------------------------------------
+    // 11. OPENAI API PROXY PIPELINE (ReAct Asynchronous Tool Loop) [2]
     // -----------------------------------------------------------------
     async function runConversationLoop(depth = 0, activeBubble = null) {
         if (depth >= 5) {
@@ -469,9 +487,11 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!activeBubble) {
             activeBubble = createUnifiedAssistantBubble();
         } else {
-            // Update thinking indicator text for subsequent loops
             activeBubble.thinkingTextEl.innerText = `Thinking (Resolving background tools turn ${depth})...`;
         }
+
+        // Compact history before sending to keep prompt packet inside limits window
+        compactConversationHistory();
 
         try {
             logToTerminal(`Dispatching prompt packet (Turn depth: ${depth}) to Render AI proxy...`, "system");
@@ -515,7 +535,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (aiTokenOutput) aiTokenOutput.innerText = chatResponse.usage.output_tokens;
             }
 
-            // Parse parallel tool tags invoked inside the stream [1.2.3, 1.2.4]
+            // Parse parallel tool tags invoked inside the stream
             const readMatches = [...aiContent.matchAll(/<read_file path="([^"]+)"(?:\s*\/)?>(?:<\/read_file>)?/g)];
             const grepMatches = [...aiContent.matchAll(/<grep_search query="([^"]+)"(?:\s*\/)?>(?:<\/grep_search>)?/g)];
 
@@ -537,10 +557,18 @@ document.addEventListener("DOMContentLoaded", function () {
                     logRow.className = "flex items-center gap-1.5 text-neutral-400 mt-1";
 
                     if (foundFile) {
-                        logToTerminal(`🤖 AI Agent: Successfully read content of '${targetPath}'`, "success");
-                        toolPayloads += `<file_content path="${targetPath}">\n${foundFile.content}\n</file_content>\n\n`;
+                        // Max File Read Size Guard: prevent loading massive text files over 80KB all at once
+                        if (foundFile.content && foundFile.content.length > 80000) {
+                            logToTerminal(`🤖 AI Agent: File '${targetPath}' is too large to sync directly. Truncating content to protect limits...`, "warning");
+                            const truncatedCode = foundFile.content.substring(0, 40000) + "\n\n/* ... Content Truncated due to size limits. Please grep for specific blocks or ask the user to show a specific line range ... */";
+                            toolPayloads += `<file_content path="${targetPath}">\n${truncatedCode}\n</file_content>\n\n`;
+                            logRow.innerHTML = `<span class="text-amber-400">✓</span> Opened (Truncated): <span class="text-indigo-300">${targetPath}</span>`;
+                        } else {
+                            logToTerminal(`🤖 AI Agent: Successfully read content of '${targetPath}'`, "success");
+                            toolPayloads += `<file_content path="${targetPath}">\n${foundFile.content}\n</file_content>\n\n`;
+                            logRow.innerHTML = `<span class="text-emerald-400">✓</span> Opened file: <span class="text-indigo-300">${targetPath}</span>`;
+                        }
                         
-                        logRow.innerHTML = `<span class="text-emerald-400">✓</span> Opened file: <span class="text-indigo-300">${targetPath}</span>`;
                         activeBubble.toolLogsEl.appendChild(logRow);
 
                         // Push into user active LRU cache [2]
@@ -566,16 +594,20 @@ document.addEventListener("DOMContentLoaded", function () {
                     
                     if (results.length > 0) {
                         let formattedResults = `Grep search results for keyword "${searchTerm}":\n`;
-                        results.forEach(res => {
+                        // Limit returned grep matches to 40 items to preserve context bounds
+                        const limitedResults = results.slice(0, 40);
+                        limitedResults.forEach(res => {
                             formattedResults += `- File: ${res.path} | Line ${res.lineNumber}: ${res.lineContent}\n`;
                         });
+                        if (results.length > 40) {
+                            formattedResults += `\n/* ... Omitted ${results.length - 40} additional matches to save token window space. Refine your query keyword ... */\n`;
+                        }
+
                         toolPayloads += `<grep_results query="${searchTerm}">\n${formattedResults}\n</grep_results>\n\n`;
-                        
                         logRow.innerHTML = `<span class="text-emerald-400">✓</span> Scanned codebase for: <span class="text-indigo-300">"${searchTerm}"</span> (${results.length} matches)`;
                         activeBubble.toolLogsEl.appendChild(logRow);
                     } else {
                         toolPayloads += `<grep_results query="${searchTerm}">\nNo matches found in codebase text.\n</grep_results>\n\n`;
-                        
                         logRow.innerHTML = `<span class="text-neutral-500">⚠</span> Scanned codebase for: <span class="text-indigo-300">"${searchTerm}"</span> (No matches found)`;
                         activeBubble.toolLogsEl.appendChild(logRow);
                     }
@@ -586,7 +618,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
                 }
 
-                // Append current turn and intermediate tool response to context history
+                // Append the current turn and intermediate tool response to context history
                 conversationHistory.push({ role: "assistant", content: aiContent });
                 conversationHistory.push({ 
                     role: "user", 
