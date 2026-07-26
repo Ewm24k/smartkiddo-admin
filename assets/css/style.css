@@ -270,6 +270,26 @@ mark {
     space-y: 4px;
 }
 
+/* -----------------------------------------------------------------
+   GITHUB DATABASE REPOSITORY POPUP MODAL STYLES
+----------------------------------------------------------------- */
+#github-database-popup {
+    transition: opacity 0.25s ease-in-out, visibility 0.25s ease-in-out;
+}
+
+#github-database-popup.hidden {
+    display: none !important;
+}
+
+.github-repo-card {
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.github-repo-card:hover {
+    border-color: rgba(99, 102, 241, 0.5) !important;
+    background-color: #171722 !important;
+}
+
 /* Layout Custom Scrollbars */
 ::-webkit-scrollbar {
     width: 6px;
