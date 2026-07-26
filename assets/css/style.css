@@ -216,6 +216,14 @@ mark {
     overflow: hidden !important;
 }
 
+/* Maximized screen overlay rule */
+#ai-chat-sidebar.ai-chat-maximized {
+    width: 100% !important;
+    position: absolute !important;
+    inset: 0 !important;
+    z-index: 40 !important;
+}
+
 /* Micro-animations and indicator glows for voice-to-text recording [2] */
 @keyframes voice-pulse {
     0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
