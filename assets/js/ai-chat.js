@@ -328,40 +328,50 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 8. OPENAI API PROXY PIPELINE (Syncs Workspace & Prompts) [2]
+    // 8. FILE TREE DYNAMIC TRAVERSAL & SEARCH UTILITIES
     // -----------------------------------------------------------------
-    async function submitChat() {
-        if (!aiChatInput) return;
-        const query = aiChatInput.value.trim();
-        if (!query) return;
 
-        // Clear input box
-        aiChatInput.value = '';
-        aiChatInput.style.height = 'auto'; // Reset text box size bounds
-
-        // Print User Message in Chat Box
-        const userMsgDiv = document.createElement('div');
-        userMsgDiv.className = "flex items-start gap-3 justify-end";
-        userMsgDiv.innerHTML = `
-            <div class="bg-indigo-600/10 p-3 rounded-lg text-xs text-indigo-300 leading-relaxed max-w-[85%] border border-indigo-500/20 select-text font-sans">
-                ${query.replace(/\n/g, '<br>')}
-                ${attachedFile ? `
-                    <div class="mt-2 flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-[10px] text-indigo-400 font-mono select-none">
-                        <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
-                        <span>${attachedFile.path}</span>
-                    </div>
-                ` : ''}
-            </div>
-        `;
-        if (aiChatOutputContainer) {
-            aiChatOutputContainer.appendChild(userMsgDiv);
-            aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
+    // Finds a file nodes tree recursively by computing its full nesting folder path name
+    function findFileByComputedPath(nodes, targetPath, currentPath = '') {
+        for (let node of nodes) {
+            const absolutePath = currentPath ? `${currentPath}/${node.name}` : node.name;
+            if (node.type === 'file') {
+                if (absolutePath === targetPath) {
+                    return node;
+                }
+            } else if (node.type === 'folder' && Array.isArray(node.children)) {
+                const found = findFileByComputedPath(node.children, targetPath, absolutePath);
+                if (found) return found;
+            }
         }
+        return null;
+    }
 
-        // Push to local memory log
-        conversationHistory.push({ role: "user", content: query });
+    // Line-by-line grep scanner to query expressions across the whole virtual workspace
+    function executeGrepSearch(nodes, query, currentPath = '') {
+        let results = [];
+        nodes.forEach(node => {
+            const absolutePath = currentPath ? `${currentPath}/${node.name}` : node.name;
+            if (node.type === 'file' && !node.isMedia && node.content) {
+                const lines = node.content.split('\n');
+                lines.forEach((line, index) => {
+                    if (line.toLowerCase().includes(query.toLowerCase())) {
+                        results.push({
+                            path: absolutePath,
+                            lineNumber: index + 1,
+                            lineContent: line.trim()
+                        });
+                    }
+                });
+            } else if (node.type === 'folder' && Array.isArray(node.children)) {
+                results = results.concat(executeGrepSearch(node.children, query, absolutePath));
+            }
+        });
+        return results;
+    }
 
-        // Build workspace context indexes and Session file cache to optimize tokens [2]
+    // Compiles active variables and metadata logs before shipping transactions
+    function buildContextPayloadString() {
         let contextPayloadString = "";
         
         // 1. Compute project directory path map (Manifest index)
@@ -381,7 +391,6 @@ document.addEventListener("DOMContentLoaded", function () {
         // 2. Hydrate workspace context payload with active LRU file cache memory [2]
         let fileCacheString = "=== SESSION LRU CACHE (ACTIVE MEMORY FOR CURRENT USER SESSION) ===\n";
         fileCacheString += "The user has loaded or analyzed these files during this session. Use their code blocks to answer contextually:\n\n";
-        
         for (const [path, content] of Object.entries(sessionFileCache)) {
             fileCacheString += `File: ${path}\n\`\`\`\n${content}\n\`\`\`\n\n`;
         }
@@ -392,6 +401,18 @@ document.addEventListener("DOMContentLoaded", function () {
             contextPayloadString += `=== EXPLICIT ATTACHED REFERENCE FILE: ${attachedFile.path} ===\n${attachedFile.content}\n`;
         }
 
+        return contextPayloadString;
+    }
+
+    // -----------------------------------------------------------------
+    // 9. OPENAI API PROXY PIPELINE (ReAct Asynchronous Tool Loop) [2]
+    // -----------------------------------------------------------------
+    async function runConversationLoop(depth = 0) {
+        if (depth >= 5) {
+            logToTerminal("AI recursive tool limits reached (depth buffer safe protection triggered).", "warning");
+            return;
+        }
+
         // Generate Assistant Message Placeholder loader
         const assistantPlaceholder = document.createElement('div');
         assistantPlaceholder.className = "flex items-start gap-3";
@@ -399,7 +420,7 @@ document.addEventListener("DOMContentLoaded", function () {
             <div class="w-6 h-6 rounded bg-indigo-600/20 flex items-center justify-center text-xs text-indigo-400 font-bold flex-shrink-0 select-none">AI</div>
             <div class="bg-[#1a1a24] p-3 rounded-lg text-xs text-neutral-400 leading-relaxed max-w-[85%] border border-[#1f1f29] flex items-center gap-2 select-none font-mono">
                 <div class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-ping"></div>
-                Thinking...
+                ${depth > 0 ? `Thinking (Tool Loop turn ${depth})...` : "Thinking..."}
             </div>
         `;
         if (aiChatOutputContainer) {
@@ -407,10 +428,10 @@ document.addEventListener("DOMContentLoaded", function () {
             aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
         }
 
-        // Dispatch call to Python proxy service on Render [2]
         try {
-            logToTerminal("Dispatching chat packet to SmartKiddo AI proxy...", "system");
-            
+            logToTerminal(`Dispatching prompt packet (Turn depth: ${depth}) to Render AI proxy...`, "system");
+            const contextPayloadString = buildContextPayloadString();
+
             const response = await fetch(`${RENDER_BACKEND_URL}/api/chat`, {
                 method: 'POST',
                 headers: {
@@ -452,29 +473,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            // Print AI agent rich text result
-            const aiMsgDiv = document.createElement('div');
-            aiMsgDiv.className = "flex items-start gap-3";
-            aiMsgDiv.innerHTML = `
-                <div class="w-6 h-6 rounded bg-indigo-600/20 flex items-center justify-center text-xs text-indigo-400 font-bold flex-shrink-0 select-none">AI</div>
-                <div class="ai-message bg-[#1a1a24] p-3 rounded-lg text-xs text-neutral-300 leading-relaxed max-w-[85%] border border-[#1f1f29] select-text font-sans">
-                    ${parseMarkdownToHTML(chatResponse.content)}
-                </div>
-            `;
-            if (aiChatOutputContainer) {
-                aiChatOutputContainer.appendChild(aiMsgDiv);
-                aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
-            }
-
-            // Trigger Prism highlighting on any nested output blocks [2]
-            if (window.Prism) {
-                aiMsgDiv.querySelectorAll('pre code').forEach(block => {
-                    window.Prism.highlightElement(block);
-                });
-            }
-
-            // Save Response inside local log history
-            conversationHistory.push({ role: "assistant", content: chatResponse.content });
+            const aiContent = chatResponse.content;
 
             // Update Token Trackers [2]
             if (chatResponse.usage) {
@@ -483,17 +482,117 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (aiTokenOutput) aiTokenOutput.innerText = chatResponse.usage.output_tokens;
             }
 
-            // Remove badge after successful upload context session
-            attachedFile = null;
-            if (aiAttachmentBadge) aiAttachmentBadge.classList.add('hidden');
+            // Parse any parallel tool tags invoked inside the stream [1.2.3, 1.2.4]
+            const readMatches = [...aiContent.matchAll(/<read_file path="([^"]+)"(?:\s*\/)?>(?:<\/read_file>)?/g)];
+            const grepMatches = [...aiContent.matchAll(/<grep_search query="([^"]+)"(?:\s*\/)?>(?:<\/grep_search>)?/g)];
 
-            logToTerminal("AI response packets received successfully.", "success");
+            const hasToolCalls = readMatches.length > 0 || grepMatches.length > 0;
+
+            if (hasToolCalls) {
+                // Render custom UI element to inform user of background actions
+                const toolIndicatorDiv = document.createElement('div');
+                toolIndicatorDiv.className = "flex items-start gap-3 mt-2 mb-2 animate-pulse";
+                toolIndicatorDiv.innerHTML = `
+                    <div class="w-6 h-6 rounded bg-indigo-600/20 flex items-center justify-center text-xs text-indigo-400 font-bold flex-shrink-0 select-none">AI</div>
+                    <div class="bg-[#15151e] p-3 rounded-lg text-[11px] text-indigo-300 leading-relaxed max-w-[85%] border border-indigo-500/25 font-mono select-none">
+                        <span class="font-bold text-indigo-400">🤖 AI Agent Executed Background Operations:</span>
+                        ${readMatches.map(m => `<div class="mt-1 pl-2 text-neutral-400">• Opened workspace file: <span class="text-indigo-400">${m[1]}</span></div>`).join('')}
+                        ${grepMatches.map(m => `<div class="mt-1 pl-2 text-neutral-400">• Codebase Grep Search: <span class="text-indigo-400">"${m[1]}"</span></div>`).join('')}
+                    </div>
+                `;
+                if (aiChatOutputContainer) {
+                    aiChatOutputContainer.appendChild(toolIndicatorDiv);
+                    aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
+                }
+
+                let toolPayloads = "";
+
+                // 1. Process Parallel File Reading
+                for (const match of readMatches) {
+                    const targetPath = match[1];
+                    const fileSystemNodes = window.getWorkspaceFileSystem ? window.getWorkspaceFileSystem() : [];
+                    const foundFile = findFileByComputedPath(fileSystemNodes, targetPath);
+
+                    if (foundFile) {
+                        logToTerminal(`🤖 AI Agent: Successfully read content of '${targetPath}'`, "success");
+                        toolPayloads += `<file_content path="${targetPath}">\n${foundFile.content}\n</file_content>\n\n`;
+                        
+                        // Push into user active LRU cache [2]
+                        updateSessionFileCache(foundFile.name, foundFile.content);
+                    } else {
+                        logToTerminal(`🤖 AI Agent: File path '${targetPath}' not found in workspace traversal`, "error");
+                        toolPayloads += `<file_content path="${targetPath}">\nError: File not found in workspace.\n</file_content>\n\n`;
+                    }
+                }
+
+                // 2. Process Parallel Grep Searching
+                for (const match of grepMatches) {
+                    const searchTerm = match[1];
+                    const fileSystemNodes = window.getWorkspaceFileSystem ? window.getWorkspaceFileSystem() : [];
+                    logToTerminal(`🤖 AI Agent: Executing codebase scan for pattern: "${searchTerm}"`, "system");
+
+                    const results = executeGrepSearch(fileSystemNodes, searchTerm);
+                    
+                    if (results.length > 0) {
+                        let formattedResults = `Grep search results for keyword "${searchTerm}":\n`;
+                        results.forEach(res => {
+                            formattedResults += `- File: ${res.path} | Line ${res.lineNumber}: ${res.lineContent}\n`;
+                        });
+                        toolPayloads += `<grep_results query="${searchTerm}">\n${formattedResults}\n</grep_results>\n\n`;
+                    } else {
+                        toolPayloads += `<grep_results query="${searchTerm}">\nNo matches found in codebase text.\n</grep_results>\n\n`;
+                    }
+                }
+
+                // Append the current turn and intermediate tool response to context history
+                conversationHistory.push({ role: "assistant", content: aiContent });
+                conversationHistory.push({ 
+                    role: "user", 
+                    content: `=== SYSTEM AGENT TOOL EXECUTION ===\nHere is the data compiled from your workspace queries:\n\n${toolPayloads}Proceed with completing your answer.` 
+                });
+
+                // Recursively call next run loop turn
+                await runConversationLoop(depth + 1);
+
+            } else {
+                // Print AI agent rich text result
+                const aiMsgDiv = document.createElement('div');
+                aiMsgDiv.className = "flex items-start gap-3";
+                aiMsgDiv.innerHTML = `
+                    <div class="w-6 h-6 rounded bg-indigo-600/20 flex items-center justify-center text-xs text-indigo-400 font-bold flex-shrink-0 select-none">AI</div>
+                    <div class="ai-message bg-[#1a1a24] p-3 rounded-lg text-xs text-neutral-300 leading-relaxed max-w-[85%] border border-[#1f1f29] select-text font-sans">
+                        ${parseMarkdownToHTML(aiContent)}
+                    </div>
+                `;
+                if (aiChatOutputContainer) {
+                    aiChatOutputContainer.appendChild(aiMsgDiv);
+                    aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
+                }
+
+                // Trigger Prism highlighting on any nested output blocks [2]
+                if (window.Prism) {
+                    aiMsgDiv.querySelectorAll('pre code').forEach(block => {
+                        window.Prism.highlightElement(block);
+                    });
+                }
+
+                // Save Response inside local log history
+                conversationHistory.push({ role: "assistant", content: aiContent });
+
+                // Remove badge after successful upload context session
+                attachedFile = null;
+                if (aiAttachmentBadge) aiAttachmentBadge.classList.add('hidden');
+
+                logToTerminal("AI response packets received successfully.", "success");
+            }
 
         } catch (err) {
             console.error(err);
             logToTerminal(`AI request pipeline crashed: ${err.message}`, "error");
             
-            if (aiChatOutputContainer) aiChatOutputContainer.removeChild(assistantPlaceholder);
+            if (aiChatOutputContainer && aiChatOutputContainer.contains(assistantPlaceholder)) {
+                aiChatOutputContainer.removeChild(assistantPlaceholder);
+            }
             
             const errorDiv = document.createElement('div');
             errorDiv.className = "flex items-start gap-3";
@@ -508,6 +607,41 @@ document.addEventListener("DOMContentLoaded", function () {
                 aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
             }
         }
+    }
+
+    async function submitChat() {
+        if (!aiChatInput) return;
+        const query = aiChatInput.value.trim();
+        if (!query) return;
+
+        // Clear input box
+        aiChatInput.value = '';
+        aiChatInput.style.height = 'auto'; // Reset text box size bounds
+
+        // Print User Message in Chat Box
+        const userMsgDiv = document.createElement('div');
+        userMsgDiv.className = "flex items-start gap-3 justify-end";
+        userMsgDiv.innerHTML = `
+            <div class="bg-indigo-600/10 p-3 rounded-lg text-xs text-indigo-300 leading-relaxed max-w-[85%] border border-indigo-500/20 select-text font-sans">
+                ${query.replace(/\n/g, '<br>')}
+                ${attachedFile ? `
+                    <div class="mt-2 flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-[10px] text-indigo-400 font-mono select-none">
+                        <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                        <span>${attachedFile.path}</span>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+        if (aiChatOutputContainer) {
+            aiChatOutputContainer.appendChild(userMsgDiv);
+            aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
+        }
+
+        // Push to local memory log
+        conversationHistory.push({ role: "user", content: query });
+
+        // Trigger dynamic conversation loop
+        await runConversationLoop(0);
     }
 
     if (aiSendBtn) {
