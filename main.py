@@ -72,8 +72,8 @@ def collect_code_files(nodes):
     return files
 
 # Helper to asynchronously fetch a single file content from raw GitHub link [2]
-async def fetch_single_file(client, node, headers):
-    raw_url = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{GITHUB_REPO}/{GITHUB_BRANCH}/{node['path']}"
+async def fetch_single_file(client, node, headers, repo_name: str):
+    raw_url = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{repo_name}/{GITHUB_BRANCH}/{node['path']}"
     try:
         response = await client.get(raw_url, headers=headers, timeout=10.0)
         if response.status_code == 200:
@@ -87,12 +87,15 @@ async def fetch_single_file(client, node, headers):
 # Endpoint 1: Sync (GET) - Pull repository structure
 # -----------------------------------------------------------------
 @app.get("/api/sync")
-async def sync_github():
+async def sync_github(repo: Optional[str] = None):
     if not GITHUB_TOKEN:
         raise HTTPException(status_code=500, detail="Missing GITHUB_TOKEN on backend.")
     try:
+        # Determine active target repository [1]
+        repo_name = repo if repo else GITHUB_REPO
+
         # Fetch the flat recursive Git tree from GitHub
-        tree_data = await github_request(f"/repos/{GITHUB_OWNER}/{GITHUB_REPO}/git/trees/{GITHUB_BRANCH}?recursive=1")
+        tree_data = await github_request(f"/repos/{GITHUB_OWNER}/{repo_name}/git/trees/{GITHUB_BRANCH}?recursive=1")
         
         # Filter system and ignored items
         filtered_tree = [
@@ -130,7 +133,7 @@ async def sync_github():
                 node["isMedia"] = is_media
                 if is_media:
                     node["format"] = "video" if ext in ["mp4", "webm", "ogg"] else "image"
-                    node["url"] = f"/api/media?path={item['path']}"
+                    node["url"] = f"/api/media?path={item['path']}&repo={repo_name}"
                     node["content"] = ""
                 else:
                     node["content"] = ""
@@ -149,8 +152,8 @@ async def sync_github():
         if code_files:
             async with httpx.AsyncClient() as client:
                 headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
-                # Create and schedule concurrent tasks
-                tasks = [fetch_single_file(client, node, headers) for node in code_files]
+                # Create and schedule concurrent tasks, passing active repository target [1]
+                tasks = [fetch_single_file(client, node, headers, repo_name) for node in code_files]
                 await asyncio.gather(*tasks)
 
         # Strip temporary path parameter before responding
@@ -172,11 +175,14 @@ async def sync_github():
 # Endpoint 2: Send & Sync (POST) - Push workspace back to GitHub
 # -----------------------------------------------------------------
 @app.post("/api/send-sync")
-async def send_sync_github(request: Request):
+async def send_sync_github(request: Request, repo: Optional[str] = None):
     try:
         file_system = await request.json()
         if not isinstance(file_system, list):
             raise HTTPException(status_code=400, detail="Invalid payload. Array expected.")
+
+        # Determine active target repository [1]
+        repo_name = repo if repo else GITHUB_REPO
 
         # Flatten nested structure to path mappings
         def flatten(nodes, current_path=""):
@@ -196,11 +202,11 @@ async def send_sync_github(request: Request):
         flattened_files = flatten(file_system)
 
         # Fetch HEAD commit context
-        ref_data = await github_request(f"/repos/{GITHUB_OWNER}/{GITHUB_REPO}/git/refs/heads/{GITHUB_BRANCH}")
+        ref_data = await github_request(f"/repos/{GITHUB_OWNER}/{repo_name}/git/refs/heads/{GITHUB_BRANCH}")
         base_commit_sha = ref_data["object"]["sha"]
 
         # Retrieve tree SHA
-        commit_data = await github_request(f"/repos/{GITHUB_OWNER}/{GITHUB_REPO}/git/commits/{base_commit_sha}")
+        commit_data = await github_request(f"/repos/{GITHUB_OWNER}/{repo_name}/git/commits/{base_commit_sha}")
         base_tree_sha = commit_data["tree"]["sha"]
 
         # Build git Tree payload (skip binary media uploads)
@@ -214,20 +220,20 @@ async def send_sync_github(request: Request):
             for file in flattened_files if not file["isMedia"]
         ]
 
-        new_tree_data = await github_request(f"/repos/{GITHUB_OWNER}/{GITHUB_REPO}/git/trees", "POST", {
+        new_tree_data = await github_request(f"/repos/{GITHUB_OWNER}/{repo_name}/git/trees", "POST", {
             "base_tree": base_tree_sha,
             "tree": tree_items
         })
 
         # Create new Commit
-        new_commit_data = await github_request(f"/repos/{GITHUB_OWNER}/{GITHUB_REPO}/git/commits", "POST", {
+        new_commit_data = await github_request(f"/repos/{GITHUB_OWNER}/{repo_name}/git/commits", "POST", {
             "message": "Backup update from SmartKiddo Studio Workspace",
             "tree": new_tree_data["sha"],
             "parents": [base_commit_sha]
         })
 
         # Update branch head reference
-        await github_request(f"/repos/{GITHUB_OWNER}/{GITHUB_REPO}/git/refs/heads/{GITHUB_BRANCH}", "PATCH", {
+        await github_request(f"/repos/{GITHUB_OWNER}/{repo_name}/git/refs/heads/{GITHUB_BRANCH}", "PATCH", {
             "sha": new_commit_data["sha"],
             "force": True
         })
@@ -242,11 +248,14 @@ async def send_sync_github(request: Request):
 # Endpoint 3: Secure Media Stream Proxy
 # -----------------------------------------------------------------
 @app.get("/api/media")
-async def stream_media(path: str):
+async def stream_media(path: str, repo: Optional[str] = None):
     if not path:
         raise HTTPException(status_code=400, detail="Missing path parameter")
     try:
-        raw_url = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{GITHUB_REPO}/{GITHUB_BRANCH}/{path}"
+        # Determine active target repository [1]
+        repo_name = repo if repo else GITHUB_REPO
+
+        raw_url = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{repo_name}/{GITHUB_BRANCH}/{path}"
         headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
         async with httpx.AsyncClient() as client:
             response = await client.get(raw_url, headers=headers)
@@ -289,9 +298,7 @@ async def ai_chat_completion(chat_req: ChatRequest):
         openai_input_str += "- Parse numerical options (e.g. if you gave options 1, 2, 3, 4 and the user says '4', immediately understand they mean option 4).\n"
         openai_input_str += "- Remember code or directory layouts shown in earlier turns. Synthesize your answer contextually.\n\n"
 
-        # -----------------------------------------------------------------
         # AUTONOMOUS AGENT ACTIONS (INJECTED SYSTEM INSTRUCTIONS)
-        # -----------------------------------------------------------------
         openai_input_str += "=== AGENT TOOL EMISSION RULES ===\n"
         openai_input_str += "You are an autonomous administrative software agent with full permissions over the developer workspace [1.2.3, 1.2.4].\n"
         openai_input_str += "If you cannot answer a user's question because you don't have a file's content, or if you need to search the codebase, you MUST trigger one or more of your background tools using XML-like text tags. You can trigger multiple tags in a single message turn.\n\n"
