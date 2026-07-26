@@ -38,6 +38,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const publishDescTextarea = document.getElementById("res-publish-desc");
 
     // Action Trigger Buttons inside views
+    const btnStoryBack = document.getElementById("btn-story-back");
+    const storyStudioMaximizeBtn = document.getElementById("story-studio-maximize-btn");
+    const storyStudioWorkspace = document.getElementById("story-studio-workspace");
+    const mainContentInner = document.getElementById("main-content-inner");
+
     const btnCancelStudio = document.getElementById("btn-story-cancel");
     const btnSaveDraftStudio = document.getElementById("btn-story-save-draft");
     const btnPublishStudio = document.getElementById("btn-story-publish");
@@ -53,6 +58,19 @@ document.addEventListener("DOMContentLoaded", function () {
         compiledVideoUrl: "",
         isGenerated: false
     };
+
+    // Icons for Expand & Shrink States
+    const expandIcon = `
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4m12 4V4h-4M4 16v4h4m12-4v4h-4"></path>
+        </svg>
+    `;
+
+    const shrinkIcon = `
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h4v4m12-4h-4v-4M4 20h4v-4m12 4h-4v-4"></path>
+        </svg>
+    `;
 
     // -----------------------------------------------------------------
     // 2. Logging utility for pipeline console logs
@@ -105,6 +123,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function returnToT1eraStudio() {
         if (viewT1eraStudio && viewBedtimeStory) {
+            // Restore window bounds cleanly if left maximized when navigating back
+            if (storyStudioWorkspace && storyStudioWorkspace.classList.contains("studio-maximized")) {
+                toggleStoryMaximize();
+            }
+
             viewBedtimeStory.classList.add("hidden");
             viewBedtimeStory.classList.remove("block");
             viewT1eraStudio.classList.remove("hidden");
@@ -117,6 +140,12 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    if (btnStoryBack) {
+        btnStoryBack.addEventListener("click", function() {
+            returnToT1eraStudio();
+        });
+    }
+
     if (btnCancelStudio) {
         btnCancelStudio.addEventListener("click", function() {
             if (confirm("Are you sure you want to exit? Your unsaved generation progress will be lost.")) {
@@ -126,7 +155,31 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 4. Stepper Interaction logic
+    // 4. Maximize Workspace Toggle Controls
+    // -----------------------------------------------------------------
+    function toggleStoryMaximize() {
+        if (!storyStudioWorkspace || !mainContentInner || !storyStudioMaximizeBtn) return;
+
+        storyStudioWorkspace.classList.toggle("studio-maximized");
+        mainContentInner.classList.toggle("container-maximized");
+
+        if (storyStudioWorkspace.classList.contains("studio-maximized")) {
+            storyStudioMaximizeBtn.innerHTML = shrinkIcon;
+            storyStudioMaximizeBtn.setAttribute("title", "Minimize Workspace");
+            logToStudioConsole("Bedtime Story workspace expanded to full dimensions.", "info");
+        } else {
+            storyStudioMaximizeBtn.innerHTML = expandIcon;
+            storyStudioMaximizeBtn.setAttribute("title", "Maximize Workspace");
+            logToStudioConsole("Bedtime Story workspace dimensions restored to default grid limits.", "info");
+        }
+    }
+
+    if (storyStudioMaximizeBtn) {
+        storyStudioMaximizeBtn.addEventListener("click", toggleStoryMaximize);
+    }
+
+    // -----------------------------------------------------------------
+    // 5. Stepper Interaction logic
     // -----------------------------------------------------------------
     steps.forEach((step, index) => {
         step.addEventListener("click", function () {
@@ -159,7 +212,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 5. Automated Pipeline Simulation Workflow
+    // 6. Automated Pipeline Simulation Workflow
     // -----------------------------------------------------------------
     if (btnGenerateStory) {
         btnGenerateStory.addEventListener("click", function () {
