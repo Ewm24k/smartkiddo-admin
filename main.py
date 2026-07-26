@@ -107,46 +107,58 @@ async def sync_github(repo: Optional[str] = None):
         ]
 
         root_nodes = []
-        folders_map = {}
+        nodes_by_path = {}
 
-        # Sort so folders are processed first to ensure parents are ready
+        # Sort so parent directories are processed before their nested files [1]
         sorted_tree = sorted(filtered_tree, key=lambda x: x["path"])
 
+        # Dynamic Nesting Tree Builder
         for item in sorted_tree:
             parts = item["path"].split("/")
-            name = parts[-1]
             is_folder = item["type"] == "tree"
-
-            node = {
-                "id": f"gh_{item['sha']}",
-                "name": name,
-                "type": "folder" if is_folder else "file",
-                "path": item["path"]
-            }
-
-            if is_folder:
-                node["isOpen"] = True
-                node["children"] = []
-                folders_map[item["path"]] = node
-            else:
-                ext = name.split(".")[-1].lower() if "." in name else ""
-                is_media = ext in ["png", "jpg", "jpeg", "gif", "svg", "webp", "mp4", "webm", "ogg"]
-                node["isMedia"] = is_media
-                if is_media:
-                    node["format"] = "video" if ext in ["mp4", "webm", "ogg"] else "image"
-                    node["url"] = f"/api/media?path={item['path']}&repo={repo_name}"
-                    node["content"] = ""
-                else:
-                    node["content"] = ""
-
-            if len(parts) == 1:
-                root_nodes.append(node)
-            else:
-                parent_path = "/".join(parts[:-1])
-                if parent_path in folders_map:
-                    folders_map[parent_path]["children"].append(node)
-                else:
-                    root_nodes.append(node)
+            
+            current_path = ""
+            parent_node = None
+            
+            for i, part in enumerate(parts):
+                current_path = f"{current_path}/{part}" if current_path else part
+                is_last = (i == len(parts) - 1)
+                
+                if current_path not in nodes_by_path:
+                    # Create the node dynamically to preserve 100% accurate file positions [1]
+                    node_id = f"gh_{item['sha']}" if is_last else f"gen_{current_path}"
+                    node_type = "folder" if (not is_last or is_folder) else "file"
+                    
+                    new_node = {
+                        "id": node_id,
+                        "name": part,
+                        "type": node_type,
+                        "path": current_path
+                    }
+                    
+                    if node_type == "folder":
+                        new_node["isOpen"] = True
+                        new_node["children"] = []
+                    else:
+                        ext = part.split(".")[-1].lower() if "." in part else ""
+                        is_media = ext in ["png", "jpg", "jpeg", "gif", "svg", "webp", "mp4", "webm", "ogg"]
+                        new_node["isMedia"] = is_media
+                        if is_media:
+                            new_node["format"] = "video" if ext in ["mp4", "webm", "ogg"] else "image"
+                            new_node["url"] = f"/api/media?path={current_path}&repo={repo_name}"
+                            new_node["content"] = ""
+                        else:
+                            new_node["content"] = ""
+                    
+                    nodes_by_path[current_path] = new_node
+                    
+                    # Append node directly to root or its parent folder
+                    if parent_node is None:
+                        root_nodes.append(new_node)
+                    else:
+                        parent_node["children"].append(new_node)
+                
+                parent_node = nodes_by_path[current_path]
 
         # Retrieve and hydrate all file content concurrently using asyncio.gather [2]
         code_files = collect_code_files(root_nodes)
