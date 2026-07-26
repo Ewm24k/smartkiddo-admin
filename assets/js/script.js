@@ -728,6 +728,18 @@ document.addEventListener("DOMContentLoaded", function () {
         renderTree();
     }
 
+    // Helper function to search recursive trees and locate the first file
+    function findFirstFile(nodes) {
+        for (let node of nodes) {
+            if (node.type === 'file') return node;
+            if (node.children) {
+                const found = findFirstFile(node.children);
+                if (found) return found;
+            }
+        }
+        return null;
+    }
+
     // -----------------------------------------------------------------
     // 8. Creation and Directory Control Elements
     // -----------------------------------------------------------------
