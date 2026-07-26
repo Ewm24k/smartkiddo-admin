@@ -38,6 +38,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const aiAttachmentName = document.getElementById('ai-attachment-name');
     const aiAttachmentRemove = document.getElementById('ai-attachment-remove');
 
+    // UI elements for structural trigger action and chat maximization
+    const aiChatMaximizeBtn = document.getElementById('ai-chat-maximize-btn');
+    const aiQuickAnalyzeBtn = document.getElementById('ai-quick-analyze-btn');
+
     // Chat History Array
     let conversationHistory = [];
     let attachedFile = null; // Stores currently attached file metadata
@@ -392,7 +396,6 @@ document.addEventListener("DOMContentLoaded", function () {
         let fileCacheString = "=== SESSION LRU CACHE (ACTIVE MEMORY FOR CURRENT USER SESSION) ===\n";
         fileCacheString += "The user has loaded or analyzed these files during this session. Use their code blocks to answer contextually:\n\n";
         for (const [path, content] of Object.entries(sessionFileCache)) {
-            // Guard: If cached content somehow bloated beyond 40kb, truncate to save context window
             const cleanContent = content.length > 40000 ? (content.substring(0, 40000) + "\n\n/* ... Content Truncated inside Cache to preserve token bounds ... */") : content;
             fileCacheString += `File: ${path}\n\`\`\`\n${cleanContent}\n\`\`\`\n\n`;
         }
@@ -766,6 +769,57 @@ document.addEventListener("DOMContentLoaded", function () {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 submitChat();
+            }
+        });
+    }
+
+    // -----------------------------------------------------------------
+    // 12. FAST WORKSPACE STRUCTURAL DEPENDENCY ANALYSIS ACTIONS
+    // -----------------------------------------------------------------
+    if (aiQuickAnalyzeBtn) {
+        aiQuickAnalyzeBtn.addEventListener('click', async function () {
+            if (aiChatInput) {
+                // Populate the prompt box with combined system discovery prompt mapping dependencies
+                aiChatInput.value = "Analyze and understand the structural layout of the files and folders in my workspace first. There is no need to read the full contents of all files yet. Next, map out how the files link to each other, especially the HTML, CSS, and JS files. Provide a clear architectural dependency overview, explaining if I want to edit a specific page (like the home page), what files are related and how they interact. This will help you map our dependency boundaries.";
+                aiChatInput.dispatchEvent(new Event('input')); // auto-resize textbox height [2]
+                
+                logToTerminal("Quick Action: Initiating full codebase structure & dependency mapping...", "system");
+                await submitChat(); // Trigger immediate submission turn
+            }
+        });
+    }
+
+    // -----------------------------------------------------------------
+    // 13. COLLAPSIBLE CHAT SIDEBAR VIEWPORT MAXIMIZE / RESTORE ACTIONS
+    // -----------------------------------------------------------------
+    if (aiChatMaximizeBtn && aiChatSidebar) {
+        aiChatMaximizeBtn.addEventListener('click', function () {
+            aiChatSidebar.classList.toggle('ai-chat-maximized');
+            const isMaximized = aiChatSidebar.classList.contains('ai-chat-maximized');
+            
+            if (isMaximized) {
+                // Toggle to shrink icon
+                aiChatMaximizeBtn.innerHTML = `
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h4v4m12-4h-4v-4M4 20h4v-4m12 4h-4v-4"></path>
+                    </svg>
+                `;
+                aiChatMaximizeBtn.setAttribute('title', 'Restore Chat Panel');
+                logToTerminal("AI Chat Panel maximized to overlay workspace layout.", "system");
+            } else {
+                // Toggle back to expand icon
+                aiChatMaximizeBtn.innerHTML = `
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4m12 4V4h-4M4 16v4h4m12-4v4h-4"></path>
+                    </svg>
+                `;
+                aiChatMaximizeBtn.setAttribute('title', 'Maximize Chat Panel');
+                logToTerminal("AI Chat Panel restored to default inline boundaries.", "system");
+            }
+            
+            // Auto-scroll output container on layout state changes
+            if (aiChatOutputContainer) {
+                aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
             }
         });
     }
