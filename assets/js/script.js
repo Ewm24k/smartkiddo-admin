@@ -199,6 +199,13 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
+        // Handle clean closure of subviews (like Bedtime Story Studio) when tabs change
+        const bedtimeStoryView = document.getElementById('view-bedtime-story');
+        if (bedtimeStoryView) {
+            bedtimeStoryView.classList.remove('block');
+            bedtimeStoryView.classList.add('hidden');
+        }
+
         // Toggle visibility of panels
         Object.keys(menuMapping).forEach(btnId => {
             const viewId = menuMapping[btnId].viewId;
@@ -700,17 +707,6 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
         renderTree();
-    }
-
-    function findFirstFile(nodes) {
-        for (let node of nodes) {
-            if (node.type === 'file') return node;
-            if (node.children) {
-                const found = findFirstFile(node.children);
-                if (found) return found;
-            }
-        }
-        return null;
     }
 
     // -----------------------------------------------------------------
