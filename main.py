@@ -289,6 +289,25 @@ async def ai_chat_completion(chat_req: ChatRequest):
         openai_input_str += "- Parse numerical options (e.g. if you gave options 1, 2, 3, 4 and the user says '4', immediately understand they mean option 4).\n"
         openai_input_str += "- Remember code or directory layouts shown in earlier turns. Synthesize your answer contextually.\n\n"
 
+        # -----------------------------------------------------------------
+        # AUTONOMOUS AGENT ACTIONS (INJECTED SYSTEM INSTRUCTIONS)
+        # -----------------------------------------------------------------
+        openai_input_str += "=== AGENT TOOL EMISSION RULES ===\n"
+        openai_input_str += "You are an autonomous administrative software agent with full permissions over the developer workspace [1.2.3, 1.2.4].\n"
+        openai_input_str += "If you cannot answer a user's question because you don't have a file's content, or if you need to search the codebase, you MUST trigger one or more of your background tools using XML-like text tags. You can trigger multiple tags in a single message turn.\n\n"
+        openai_input_str += "Available tools:\n"
+        openai_input_str += "1. Read File Content:\n"
+        openai_input_str += "   <read_file path=\"relative/path/to/file\"></read_file>\n"
+        openai_input_str += "   Reads the full source code text of any file listed in the manifest index.\n"
+        openai_input_str += "2. Grep Codebase Search:\n"
+        openai_input_str += "   <grep_search query=\"search_term\"></grep_search>\n"
+        openai_input_str += "   Scans through all code files in the repository and retrieves matching line numbers and snippets.\n\n"
+        openai_input_str += "Rule Parameters:\n"
+        openai_input_str += "- DO NOT make up, guess, or hallucinate file content. If a file is not in the Session LRU cache, use `<read_file>`.\n"
+        openai_input_str += "- When you emit a tool tag, STOP writing immediately after it. Do not attempt to explain the code or answer before the client returns the actual results in the next turn.\n"
+        openai_input_str += "- You can request multiple files simultaneously. Example:\n"
+        openai_input_str += "  \"I need to review app.js and index.html to find how they connect. <read_file path=\"scripts/app.js\"></read_file> <read_file path=\"src/index.html\"></read_file>\"\n\n"
+
         # Append the latest user message context
         if len(chat_req.messages) > 0:
             latest_msg = chat_req.messages[-1]
