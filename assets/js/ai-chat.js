@@ -405,27 +405,72 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 9. OPENAI API PROXY PIPELINE (ReAct Asynchronous Tool Loop) [2]
+    // 9. UNIFIED BUBBLE GENERATION AND LOGGING PANEL BUILDER
     // -----------------------------------------------------------------
-    async function runConversationLoop(depth = 0) {
+
+    // Constructs a single, persistent visual message bubble for the entire turn
+    function createUnifiedAssistantBubble() {
+        const aiMsgDiv = document.createElement('div');
+        aiMsgDiv.className = "flex items-start gap-3 mt-4";
+        aiMsgDiv.innerHTML = `
+            <div class="w-6 h-6 rounded bg-indigo-600/20 flex items-center justify-center text-xs text-indigo-400 font-bold flex-shrink-0 select-none">AI</div>
+            <div class="flex-1 bg-[#1a1a24] p-3 rounded-lg text-xs leading-relaxed max-w-[85%] border border-[#1f1f29] select-text font-sans flex flex-col gap-2">
+                
+                <!-- 1. Collapsible Tool/Reasoning Logs Container -->
+                <div class="ai-tool-panel hidden bg-[#14141e] border border-[#1f1f29] p-2 rounded text-[11px] font-mono text-indigo-300">
+                    <div class="flex items-center justify-between cursor-pointer select-none font-bold text-indigo-400 border-b border-[#2a2a35] pb-1 mb-1" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                        <span>🛠️ Agent Operations Log</span>
+                        <span class="text-[9px] text-neutral-500 hover:text-indigo-400">click to toggle</span>
+                    </div>
+                    <div class="ai-tool-logs flex flex-col gap-1 text-neutral-400"></div>
+                </div>
+
+                <!-- 2. Thinking Loader Indicator -->
+                <div class="ai-thinking-indicator flex items-center gap-2 text-neutral-400 font-mono">
+                    <div class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-ping"></div>
+                    <span class="ai-thinking-text">Thinking...</span>
+                </div>
+
+                <!-- 3. Final Content Container -->
+                <div class="ai-final-content text-neutral-300 hidden"></div>
+            </div>
+        `;
+        
+        if (aiChatOutputContainer) {
+            aiChatOutputContainer.appendChild(aiMsgDiv);
+            aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
+        }
+
+        return {
+            bubbleEl: aiMsgDiv,
+            toolPanelEl: aiMsgDiv.querySelector('.ai-tool-panel'),
+            toolLogsEl: aiMsgDiv.querySelector('.ai-tool-logs'),
+            thinkingEl: aiMsgDiv.querySelector('.ai-thinking-indicator'),
+            thinkingTextEl: aiMsgDiv.querySelector('.ai-thinking-text'),
+            contentEl: aiMsgDiv.querySelector('.ai-final-content')
+        };
+    }
+
+    // -----------------------------------------------------------------
+    // 10. OPENAI API PROXY PIPELINE (ReAct Asynchronous Tool Loop) [2]
+    // -----------------------------------------------------------------
+    async function runConversationLoop(depth = 0, activeBubble = null) {
         if (depth >= 5) {
             logToTerminal("AI recursive tool limits reached (depth buffer safe protection triggered).", "warning");
+            if (activeBubble) {
+                activeBubble.thinkingEl.classList.add('hidden');
+                activeBubble.contentEl.classList.remove('hidden');
+                activeBubble.contentEl.innerHTML = "<p class='text-red-400'>Error: AI loop hit execution depth limit.</p>";
+            }
             return;
         }
 
-        // Generate Assistant Message Placeholder loader
-        const assistantPlaceholder = document.createElement('div');
-        assistantPlaceholder.className = "flex items-start gap-3";
-        assistantPlaceholder.innerHTML = `
-            <div class="w-6 h-6 rounded bg-indigo-600/20 flex items-center justify-center text-xs text-indigo-400 font-bold flex-shrink-0 select-none">AI</div>
-            <div class="bg-[#1a1a24] p-3 rounded-lg text-xs text-neutral-400 leading-relaxed max-w-[85%] border border-[#1f1f29] flex items-center gap-2 select-none font-mono">
-                <div class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-ping"></div>
-                ${depth > 0 ? `Thinking (Tool Loop turn ${depth})...` : "Thinking..."}
-            </div>
-        `;
-        if (aiChatOutputContainer) {
-            aiChatOutputContainer.appendChild(assistantPlaceholder);
-            aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
+        // Initialize active bubble reference if it is the first turn
+        if (!activeBubble) {
+            activeBubble = createUnifiedAssistantBubble();
+        } else {
+            // Update thinking indicator text for subsequent loops
+            activeBubble.thinkingTextEl.innerText = `Thinking (Resolving background tools turn ${depth})...`;
         }
 
         try {
@@ -448,27 +493,15 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             const chatResponse = await response.json();
-            
-            // Remove Assistant thinking placeholder
-            if (aiChatOutputContainer) aiChatOutputContainer.removeChild(assistantPlaceholder);
 
             // Safety interceptor: if server caught an API exception and returned an error [2]
             if (chatResponse.success === false || chatResponse.error) {
-                const errorDiv = document.createElement('div');
-                errorDiv.className = "flex items-start gap-3";
-                errorDiv.innerHTML = `
-                    <div class="w-6 h-6 rounded bg-red-600/20 flex items-center justify-center text-xs text-red-400 font-bold flex-shrink-0 select-none">Err</div>
-                    <div class="bg-red-500/10 p-3 rounded-lg text-xs text-red-400 leading-relaxed max-w-[85%] border border-red-500/20 select-text font-mono">
-                        ${chatResponse.error || "An unexpected error occurred during API completion."}
-                    </div>
-                `;
-                if (aiChatOutputContainer) {
-                    aiChatOutputContainer.appendChild(errorDiv);
-                    aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
+                if (activeBubble) {
+                    activeBubble.thinkingEl.classList.add('hidden');
+                    activeBubble.contentEl.classList.remove('hidden');
+                    activeBubble.contentEl.innerHTML = `<span class="text-red-400 font-mono">${chatResponse.error || "An unexpected error occurred."}</span>`;
                 }
                 logToTerminal(`API Error: ${chatResponse.error}`, "error");
-                
-                // Clear the corrupted turn from local history so context doesn't keep failing
                 conversationHistory.pop();
                 return;
             }
@@ -482,28 +515,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (aiTokenOutput) aiTokenOutput.innerText = chatResponse.usage.output_tokens;
             }
 
-            // Parse any parallel tool tags invoked inside the stream [1.2.3, 1.2.4]
+            // Parse parallel tool tags invoked inside the stream [1.2.3, 1.2.4]
             const readMatches = [...aiContent.matchAll(/<read_file path="([^"]+)"(?:\s*\/)?>(?:<\/read_file>)?/g)];
             const grepMatches = [...aiContent.matchAll(/<grep_search query="([^"]+)"(?:\s*\/)?>(?:<\/grep_search>)?/g)];
 
             const hasToolCalls = readMatches.length > 0 || grepMatches.length > 0;
 
             if (hasToolCalls) {
-                // Render custom UI element to inform user of background actions
-                const toolIndicatorDiv = document.createElement('div');
-                toolIndicatorDiv.className = "flex items-start gap-3 mt-2 mb-2 animate-pulse";
-                toolIndicatorDiv.innerHTML = `
-                    <div class="w-6 h-6 rounded bg-indigo-600/20 flex items-center justify-center text-xs text-indigo-400 font-bold flex-shrink-0 select-none">AI</div>
-                    <div class="bg-[#15151e] p-3 rounded-lg text-[11px] text-indigo-300 leading-relaxed max-w-[85%] border border-indigo-500/25 font-mono select-none">
-                        <span class="font-bold text-indigo-400">🤖 AI Agent Executed Background Operations:</span>
-                        ${readMatches.map(m => `<div class="mt-1 pl-2 text-neutral-400">• Opened workspace file: <span class="text-indigo-400">${m[1]}</span></div>`).join('')}
-                        ${grepMatches.map(m => `<div class="mt-1 pl-2 text-neutral-400">• Codebase Grep Search: <span class="text-indigo-400">"${m[1]}"</span></div>`).join('')}
-                    </div>
-                `;
-                if (aiChatOutputContainer) {
-                    aiChatOutputContainer.appendChild(toolIndicatorDiv);
-                    aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
-                }
+                // Ensure tool status panel is unhidden inside our single active bubble
+                activeBubble.toolPanelEl.classList.remove('hidden');
 
                 let toolPayloads = "";
 
@@ -513,15 +533,24 @@ document.addEventListener("DOMContentLoaded", function () {
                     const fileSystemNodes = window.getWorkspaceFileSystem ? window.getWorkspaceFileSystem() : [];
                     const foundFile = findFileByComputedPath(fileSystemNodes, targetPath);
 
+                    const logRow = document.createElement('div');
+                    logRow.className = "flex items-center gap-1.5 text-neutral-400 mt-1";
+
                     if (foundFile) {
                         logToTerminal(`🤖 AI Agent: Successfully read content of '${targetPath}'`, "success");
                         toolPayloads += `<file_content path="${targetPath}">\n${foundFile.content}\n</file_content>\n\n`;
                         
+                        logRow.innerHTML = `<span class="text-emerald-400">✓</span> Opened file: <span class="text-indigo-300">${targetPath}</span>`;
+                        activeBubble.toolLogsEl.appendChild(logRow);
+
                         // Push into user active LRU cache [2]
                         updateSessionFileCache(foundFile.name, foundFile.content);
                     } else {
                         logToTerminal(`🤖 AI Agent: File path '${targetPath}' not found in workspace traversal`, "error");
                         toolPayloads += `<file_content path="${targetPath}">\nError: File not found in workspace.\n</file_content>\n\n`;
+                        
+                        logRow.innerHTML = `<span class="text-red-400">✗</span> File path not found: <span class="text-neutral-500">${targetPath}</span>`;
+                        activeBubble.toolLogsEl.appendChild(logRow);
                     }
                 }
 
@@ -532,6 +561,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     logToTerminal(`🤖 AI Agent: Executing codebase scan for pattern: "${searchTerm}"`, "system");
 
                     const results = executeGrepSearch(fileSystemNodes, searchTerm);
+                    const logRow = document.createElement('div');
+                    logRow.className = "flex items-center gap-1.5 text-neutral-400 mt-1";
                     
                     if (results.length > 0) {
                         let formattedResults = `Grep search results for keyword "${searchTerm}":\n`;
@@ -539,39 +570,43 @@ document.addEventListener("DOMContentLoaded", function () {
                             formattedResults += `- File: ${res.path} | Line ${res.lineNumber}: ${res.lineContent}\n`;
                         });
                         toolPayloads += `<grep_results query="${searchTerm}">\n${formattedResults}\n</grep_results>\n\n`;
+                        
+                        logRow.innerHTML = `<span class="text-emerald-400">✓</span> Scanned codebase for: <span class="text-indigo-300">"${searchTerm}"</span> (${results.length} matches)`;
+                        activeBubble.toolLogsEl.appendChild(logRow);
                     } else {
                         toolPayloads += `<grep_results query="${searchTerm}">\nNo matches found in codebase text.\n</grep_results>\n\n`;
+                        
+                        logRow.innerHTML = `<span class="text-neutral-500">⚠</span> Scanned codebase for: <span class="text-indigo-300">"${searchTerm}"</span> (No matches found)`;
+                        activeBubble.toolLogsEl.appendChild(logRow);
                     }
                 }
 
-                // Append the current turn and intermediate tool response to context history
+                // Auto-scroll chat view as logs expand
+                if (aiChatOutputContainer) {
+                    aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
+                }
+
+                // Append current turn and intermediate tool response to context history
                 conversationHistory.push({ role: "assistant", content: aiContent });
                 conversationHistory.push({ 
                     role: "user", 
                     content: `=== SYSTEM AGENT TOOL EXECUTION ===\nHere is the data compiled from your workspace queries:\n\n${toolPayloads}Proceed with completing your answer.` 
                 });
 
-                // Recursively call next run loop turn
-                await runConversationLoop(depth + 1);
+                // Recursively trigger next loop turn inside the SAME unified assistant bubble
+                await runConversationLoop(depth + 1, activeBubble);
 
             } else {
-                // Print AI agent rich text result
-                const aiMsgDiv = document.createElement('div');
-                aiMsgDiv.className = "flex items-start gap-3";
-                aiMsgDiv.innerHTML = `
-                    <div class="w-6 h-6 rounded bg-indigo-600/20 flex items-center justify-center text-xs text-indigo-400 font-bold flex-shrink-0 select-none">AI</div>
-                    <div class="ai-message bg-[#1a1a24] p-3 rounded-lg text-xs text-neutral-300 leading-relaxed max-w-[85%] border border-[#1f1f29] select-text font-sans">
-                        ${parseMarkdownToHTML(aiContent)}
-                    </div>
-                `;
-                if (aiChatOutputContainer) {
-                    aiChatOutputContainer.appendChild(aiMsgDiv);
-                    aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
-                }
+                // final answer received, hide thinking loader
+                activeBubble.thinkingEl.classList.add('hidden');
+                
+                // Unhide content container and format markdown HTML
+                activeBubble.contentEl.classList.remove('hidden');
+                activeBubble.contentEl.innerHTML = parseMarkdownToHTML(aiContent);
 
-                // Trigger Prism highlighting on any nested output blocks [2]
+                // Trigger Prism highlighting on any nested code outputs inside the bubble [2]
                 if (window.Prism) {
-                    aiMsgDiv.querySelectorAll('pre code').forEach(block => {
+                    activeBubble.contentEl.querySelectorAll('pre code').forEach(block => {
                         window.Prism.highlightElement(block);
                     });
                 }
@@ -583,6 +618,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 attachedFile = null;
                 if (aiAttachmentBadge) aiAttachmentBadge.classList.add('hidden');
 
+                // Auto scroll layout
+                if (aiChatOutputContainer) {
+                    aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
+                }
+
                 logToTerminal("AI response packets received successfully.", "success");
             }
 
@@ -590,21 +630,10 @@ document.addEventListener("DOMContentLoaded", function () {
             console.error(err);
             logToTerminal(`AI request pipeline crashed: ${err.message}`, "error");
             
-            if (aiChatOutputContainer && aiChatOutputContainer.contains(assistantPlaceholder)) {
-                aiChatOutputContainer.removeChild(assistantPlaceholder);
-            }
-            
-            const errorDiv = document.createElement('div');
-            errorDiv.className = "flex items-start gap-3";
-            errorDiv.innerHTML = `
-                <div class="w-6 h-6 rounded bg-red-600/20 flex items-center justify-center text-xs text-red-400 font-bold flex-shrink-0 select-none">Err</div>
-                <div class="bg-red-500/10 p-3 rounded-lg text-xs text-red-400 leading-relaxed max-w-[85%] border border-red-500/20 select-text font-mono">
-                    System error calling Render proxy. ${err.message}
-                </div>
-            `;
-            if (aiChatOutputContainer) {
-                aiChatOutputContainer.appendChild(errorDiv);
-                aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
+            if (activeBubble) {
+                activeBubble.thinkingEl.classList.add('hidden');
+                activeBubble.contentEl.classList.remove('hidden');
+                activeBubble.contentEl.innerHTML = `<span class="text-red-400 font-mono">System error calling Render proxy. ${err.message}</span>`;
             }
         }
     }
@@ -640,8 +669,8 @@ document.addEventListener("DOMContentLoaded", function () {
         // Push to local memory log
         conversationHistory.push({ role: "user", content: query });
 
-        // Trigger dynamic conversation loop
-        await runConversationLoop(0);
+        // Trigger dynamic conversation loop starting at depth: 0
+        await runConversationLoop(0, null);
     }
 
     if (aiSendBtn) {
