@@ -47,10 +47,13 @@ document.addEventListener("DOMContentLoaded", function () {
     const btnSaveDraftStudio = document.getElementById("btn-story-save-draft");
     const btnPublishStudio = document.getElementById("btn-story-publish");
 
+    // Scoped Configuration (Must match Render API settings)
+    const RENDER_BACKEND_URL = "https://smartkiddo-admin.onrender.com";
+
     // Stepper State Data Tracking
     let currentPipelineActiveIndex = 0;
     let pipelineProgressState = {
-        title: "The Dreamland Journey",
+        title: "",
         brief: "",
         script: "",
         voiceUrl: "",
@@ -170,7 +173,7 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
             storyStudioMaximizeBtn.innerHTML = expandIcon;
             storyStudioMaximizeBtn.setAttribute("title", "Maximize Workspace");
-            logToStudioConsole("Bedtime Story workspace dimensions restored to default grid limits.", "info");
+            logToStudioConsole("Bedtime Story workspace dimensions restored to default limits.", "info");
         }
     }
 
@@ -250,33 +253,73 @@ document.addEventListener("DOMContentLoaded", function () {
         logToStudioConsole("Kicking off bedtime story AI sequence...", "info");
         logToStudioConsole(`Target age demographic: ${ageVal} | Theme direction: ${briefVal}`, "info");
 
-        // --- STEP 1: Story Brief & Concept Concept ---
+        // --- STEP 1: Story Brief & Concept Generation (LIVE API CALL) ---
         switchPipelineStepPanel(0);
-        logToStudioConsole("Synthesizing story concept ideas with GPT...", "warning");
-        await delay(2000);
+        logToStudioConsole("Contacting OpenAI proxy server to synthesize story concept...", "warning");
         
-        pipelineProgressState.title = `The Rabbit and the Whisper of ${musicVal}`;
-        pipelineProgressState.brief = `An educational story about curiosity designed for ${ageVal} years old. ${briefVal}`;
-        
-        if (storyTitleEl) storyTitleEl.innerText = pipelineProgressState.title;
-        if (storyBriefEl) storyBriefEl.innerText = pipelineProgressState.brief;
-        
-        steps[0].classList.add("completed");
-        logToStudioConsole("Successfully completed Step 1: Concept Brief generated.", "success");
+        try {
+            const apiResponse = await fetch(`${RENDER_BACKEND_URL}/api/bedtime-story/generate`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    concept_brief: briefVal,
+                    age_group: ageVal,
+                    voice_style: voiceVal,
+                    visual_style: visualVal,
+                    story_length: lengthVal,
+                    music_mood: musicVal
+                })
+            });
 
-        // --- STEP 2: Write Story Script Draft ---
+            if (!apiResponse.ok) {
+                throw new Error(`Server returned error status code: ${apiResponse.status}`);
+            }
+
+            const apiData = await apiResponse.json();
+
+            if (apiData.success) {
+                pipelineProgressState.title = apiData.title;
+                pipelineProgressState.brief = apiData.brief;
+                pipelineProgressState.script = apiData.script;
+
+                // Populate Step 1 and Step 2 UI containers with live AI content
+                if (storyTitleEl) storyTitleEl.innerText = pipelineProgressState.title;
+                if (storyBriefEl) storyBriefEl.innerText = pipelineProgressState.brief;
+                if (scriptEditorTextarea) scriptEditorTextarea.value = pipelineProgressState.script;
+
+                steps[0].classList.add("completed");
+                logToStudioConsole(`Successfully completed Step 1: Concept Brief generated. Title: "${pipelineProgressState.title}"`, "success");
+            } else {
+                throw new Error(apiData.error || "Failed to generate story details.");
+            }
+
+        } catch (apiError) {
+            console.error("OpenAI API Bedtime Story Generator crashed:", apiError);
+            logToStudioConsole(`Generation crashed: ${apiError.message}`, "error");
+            alert(`AI Pipeline Failed: ${apiError.message}. Fallback simulation values will be used to protect the session.`);
+
+            // Fallback content in case API/Token credentials are empty on Render
+            pipelineProgressState.title = `The Whispering Star of ${musicVal}`;
+            pipelineProgressState.brief = `An adorable story about discovery and dreams for ages ${ageVal}.`;
+            pipelineProgressState.script = `Once upon a time, there lived a soft, little rabbit named Barnaby. Barnaby noticed a small, flickering light at the base of the old Oak Tree. He discovered a tiny star shining gently under the mushroom caps.`;
+            
+            if (storyTitleEl) storyTitleEl.innerText = pipelineProgressState.title;
+            if (storyBriefEl) storyBriefEl.innerText = pipelineProgressState.brief;
+            if (scriptEditorTextarea) scriptEditorTextarea.value = pipelineProgressState.script;
+        }
+
+        // --- STEP 2: Write Story Script Draft (PRE-HYDRATED BY STEP 1) ---
         statusBadgeText.innerText = "Writing Script...";
         switchPipelineStepPanel(1);
         logToStudioConsole("Drafting narrative paragraphs and script breakdowns...", "warning");
-        await delay(2500);
+        await delay(1500);
 
-        pipelineProgressState.script = `Once upon a time, in a sleepy valley hidden behind the blue mountains, there lived a soft, little rabbit named Barnaby. Barnaby was extraordinarily curious about everything.\n\nOne evening, as twilight painted the sky in soft shades of lavender, Barnaby noticed a small, flickering light at the base of the old Oak Tree.\n\n"What could that be?" Barnaby whispered, his ears twitching with excitement. He hopped forward softly, taking care not to crunch any dry leaves under his paws. There, floating gently between two mushrooms, was a tiny star.`;
-        if (scriptEditorTextarea) scriptEditorTextarea.value = pipelineProgressState.script;
-        
         steps[1].classList.add("completed");
         logToStudioConsole("Successfully completed Step 2: Story script drafted.", "success");
 
-        // --- STEP 3: Narration Audio Generation ---
+        // --- STEP 3: Narration Audio Generation (MOCK PROCESS) ---
         statusBadgeText.innerText = "Generating Voice...";
         switchPipelineStepPanel(2);
         logToStudioConsole(`Requesting audio generation with ElevenLabs. Selected voice style: ${voiceVal}...`, "warning");
@@ -298,7 +341,7 @@ document.addEventListener("DOMContentLoaded", function () {
         steps[2].classList.add("completed");
         logToStudioConsole("Successfully completed Step 3: Audio narration voice files rendered.", "success");
 
-        // --- STEP 4: Storyboard Scene Descriptions ---
+        // --- STEP 4: Storyboard Scene Descriptions (MOCK PROCESS) ---
         statusBadgeText.innerText = "Designing Scenes...";
         switchPipelineStepPanel(3);
         logToStudioConsole("Formulating scene cards and layout prompts...", "warning");
@@ -334,7 +377,7 @@ document.addEventListener("DOMContentLoaded", function () {
         steps[3].classList.add("completed");
         logToStudioConsole("Successfully completed Step 4: Storyboard descriptions and cover cards ready.", "success");
 
-        // --- STEP 5: Assembling Video Clips ---
+        // --- STEP 5: Assembling Video Clips (MOCK PROCESS) ---
         statusBadgeText.innerText = "Compiling Video...";
         switchPipelineStepPanel(4);
         logToStudioConsole("Combining assets, voice-over audio files, and frames into high quality video render...", "warning");
@@ -349,7 +392,7 @@ document.addEventListener("DOMContentLoaded", function () {
         steps[4].classList.add("completed");
         logToStudioConsole("Successfully completed Step 5: Full bedtime-story video segment synthesized.", "success");
 
-        // --- STEP 6: Publishing & Cover Art Meta Metadata ---
+        // --- STEP 6: Publishing & Cover Art Metadata (MOCK PROCESS) ---
         statusBadgeText.innerText = "Ready to Publish";
         statusBadgeIndicator.className = "w-2.5 h-2.5 rounded-full bg-emerald-500";
         switchPipelineStepPanel(5);
