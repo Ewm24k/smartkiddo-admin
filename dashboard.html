@@ -17,9 +17,14 @@
     
     <!-- Custom external stylesheet -->
     <link rel="stylesheet" href="assets/css/style.css">
+    <!-- Bedtime Story Studio styles integration -->
+    <link rel="stylesheet" href="assets/css/bedtime-story.css">
+    
     <!-- Custom external scripts -->
     <script src="assets/js/script.js" defer></script>
     <script src="assets/js/ai-chat.js" defer></script>
+    <!-- Bedtime Story Workspace script integration -->
+    <script src="assets/js/bedtime-story.js" defer></script>
 </head>
 <body class="font-sans antialiased h-screen flex overflow-hidden bg-[#0f0f12] text-[#e5e7eb]">
 
@@ -123,7 +128,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         
                         <!-- Card 1: Create BedTime Story -->
-                        <div class="glow-card p-6 rounded-xl flex flex-col justify-between h-48 cursor-pointer">
+                        <div id="card-create-bedtime-story" class="glow-card p-6 rounded-xl flex flex-col justify-between h-48 cursor-pointer">
                             <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
                                 <div class="w-12 h-12 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
                                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
@@ -179,6 +184,255 @@
                                 <p class="text-sm text-neutral-400 leading-relaxed">
                                     Access advanced configuration controls. Fine-tune generative AI behavior parameters, custom LLM prompt rules, and overall language constraints.
                                 </p>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+                <!-- VIEW: BEDTIME STORY STUDIO WORKSPACE -->
+                <section id="view-bedtime-story" class="hidden h-full">
+                    <div class="studio-layout flex border border-[#1f1f29] rounded-xl overflow-hidden bg-[#0d0d11] h-[580px] w-full relative flex-col">
+                        
+                        <!-- Top Navigation & Actions Bar -->
+                        <div class="h-14 bg-[#111115] border-b border-[#1f1f29] px-4 flex items-center justify-between select-none flex-shrink-0">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs font-bold text-white bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded uppercase tracking-wider font-mono">T1ERA Studio</span>
+                                <span class="text-neutral-500">/</span>
+                                <span id="story-topbar-title" class="text-xs font-semibold text-neutral-200">New Bedtime Story Draft</span>
+                                <span class="h-4 w-px bg-[#1f1f29] mx-1"></span>
+                                <div class="flex items-center gap-1.5 bg-[#17171e] px-2 py-1 rounded border border-[#1f1f29]">
+                                    <span id="story-status-indicator" class="w-2.5 h-2.5 rounded-full bg-neutral-600"></span>
+                                    <span id="story-status-text" class="text-[10px] font-mono text-neutral-400 uppercase tracking-wide">Ready</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button id="btn-story-cancel" class="px-3 py-1.5 rounded bg-[#17171e] hover:bg-[#1a1a24] border border-[#1f1f29] text-xs text-neutral-300 font-medium transition-colors">Cancel</button>
+                                <button id="btn-story-save-draft" class="px-3 py-1.5 rounded bg-[#17171e] hover:bg-indigo-600/15 border border-indigo-500/20 text-xs text-indigo-400 font-medium transition-colors">Save Draft</button>
+                                <button id="btn-story-publish" class="px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-xs text-white font-semibold transition-colors flex items-center gap-1">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 10.742L12 8l3.316 2.742m0 0a3 3 0 10-4.143-4.143L8.684 10.742m0 0A5 5 0 1012 21a5 5 0 000-10H8.684"></path></svg>
+                                    Publish Story
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Main Studio Content Splitter Panel -->
+                        <div class="flex-1 flex overflow-hidden">
+                            
+                            <!-- Left Panel: Stepper Navigation -->
+                            <div class="w-56 bg-[#111115] border-r border-[#1f1f29] flex flex-col justify-between h-full flex-shrink-0 select-none">
+                                <div class="p-3">
+                                    <div class="px-2 py-1 mb-3">
+                                        <span class="text-[9px] font-bold tracking-wider text-neutral-500 uppercase">Generation Pipeline</span>
+                                    </div>
+                                    <nav class="space-y-1">
+                                        <!-- Step 1: Brief Concept -->
+                                        <div class="step-item flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition-colors active" data-step="0">
+                                            <div class="step-icon w-5 h-5 rounded-full border border-neutral-700 flex items-center justify-center text-[9px] font-mono font-bold text-neutral-500">1</div>
+                                            <span class="step-label text-xs text-neutral-400">Concept Brief</span>
+                                        </div>
+                                        <!-- Step 2: Script Text -->
+                                        <div class="step-item flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition-colors" data-step="1">
+                                            <div class="step-icon w-5 h-5 rounded-full border border-neutral-700 flex items-center justify-center text-[9px] font-mono font-bold text-neutral-500">2</div>
+                                            <span class="step-label text-xs text-neutral-400">Story Script</span>
+                                        </div>
+                                        <!-- Step 3: Voice Render -->
+                                        <div class="step-item flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition-colors" data-step="2">
+                                            <div class="step-icon w-5 h-5 rounded-full border border-neutral-700 flex items-center justify-center text-[9px] font-mono font-bold text-neutral-500">3</div>
+                                            <span class="step-label text-xs text-neutral-400">Narration Voice</span>
+                                        </div>
+                                        <!-- Step 4: Storyboard scenes -->
+                                        <div class="step-item flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition-colors" data-step="3">
+                                            <div class="step-icon w-5 h-5 rounded-full border border-neutral-700 flex items-center justify-center text-[9px] font-mono font-bold text-neutral-500">4</div>
+                                            <span class="step-label text-xs text-neutral-400">Scene Storyboard</span>
+                                        </div>
+                                        <!-- Step 5: Video Compile -->
+                                        <div class="step-item flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition-colors" data-step="4">
+                                            <div class="step-icon w-5 h-5 rounded-full border border-neutral-700 flex items-center justify-center text-[9px] font-mono font-bold text-neutral-500">5</div>
+                                            <span class="step-label text-xs text-neutral-400">Compiled Video</span>
+                                        </div>
+                                        <!-- Step 6: Metadata & Publish -->
+                                        <div class="step-item flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition-colors" data-step="5">
+                                            <div class="step-icon w-5 h-5 rounded-full border border-neutral-700 flex items-center justify-center text-[9px] font-mono font-bold text-neutral-500">6</div>
+                                            <span class="step-label text-xs text-neutral-400">Metadata & Review</span>
+                                        </div>
+                                    </nav>
+                                </div>
+                                <div class="p-3 border-t border-[#1f1f29] bg-[#09090d]">
+                                    <p class="text-[9px] text-neutral-500 leading-relaxed font-mono">Select a step above to preview its corresponding draft segment details.</p>
+                                </div>
+                            </div>
+
+                            <!-- Center Panel: Active Screen Viewport -->
+                            <div class="flex-1 bg-[#09090c] flex flex-col h-full overflow-hidden relative p-5">
+                                
+                                <!-- Screen 1: Concept Brief -->
+                                <div class="pipeline-panel h-full w-full overflow-y-auto space-y-4 block" data-panel="0">
+                                    <div class="border-b border-[#1f1f29] pb-3">
+                                        <h2 class="text-sm font-bold text-white uppercase tracking-wider">Concept Brief Output</h2>
+                                        <p class="text-[11px] text-neutral-500 mt-0.5">Summary outline parameters initialized by AI processing.</p>
+                                    </div>
+                                    <div class="bg-[#111115] border border-[#1f1f29] rounded-lg p-4 space-y-3">
+                                        <div>
+                                            <span class="text-[9px] font-bold text-neutral-500 uppercase tracking-wide">Generated Story Title</span>
+                                            <h3 id="res-story-title" class="text-lg font-extrabold text-indigo-400 mt-1">Awaiting concept generation...</h3>
+                                        </div>
+                                        <hr class="border-[#1f1f29]">
+                                        <div>
+                                            <span class="text-[9px] font-bold text-neutral-500 uppercase tracking-wide">Story Idea Overview</span>
+                                            <p id="res-story-brief" class="text-xs text-neutral-300 mt-1 leading-relaxed">Parameters have not been mapped yet. Use the sidebar AI console to execute the generation pipeline.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Screen 2: Script Text -->
+                                <div class="pipeline-panel h-full w-full overflow-y-auto space-y-4 hidden" data-panel="1">
+                                    <div class="border-b border-[#1f1f29] pb-3">
+                                        <h2 class="text-sm font-bold text-white uppercase tracking-wider">Narrative Script Editor</h2>
+                                        <p class="text-[11px] text-neutral-500 mt-0.5">Review and adjust raw narrative script paragraphs prior to locking narration values.</p>
+                                    </div>
+                                    <div class="flex-1 min-h-[220px]">
+                                        <textarea id="res-script-textarea" class="w-full h-48 bg-[#111115] border border-[#1f1f29] rounded-lg p-3 text-xs text-neutral-300 placeholder-neutral-600 outline-none focus:border-indigo-500 leading-relaxed font-sans" placeholder="No script has been generated yet..."></textarea>
+                                    </div>
+                                </div>
+
+                                <!-- Screen 3: Narration Voice -->
+                                <div class="pipeline-panel h-full w-full overflow-y-auto space-y-4 hidden" data-panel="2">
+                                    <div class="border-b border-[#1f1f29] pb-3">
+                                        <h2 class="text-sm font-bold text-white uppercase tracking-wider">Voice Narration Player</h2>
+                                        <p class="text-[11px] text-neutral-500 mt-0.5">Generated voice synthesizer files powered by ElevenLabs text-to-speech.</p>
+                                    </div>
+                                    <div class="bg-[#111115] border border-[#1f1f29] rounded-lg p-5 flex flex-col items-center justify-center gap-4">
+                                        <div id="res-voice-waveform" class="h-10 flex items-center gap-1 justify-center w-full max-w-sm">
+                                            <!-- Inactive placeholders -->
+                                            <div class="w-0.5 h-3 bg-neutral-700 rounded-full"></div>
+                                            <div class="w-0.5 h-5 bg-neutral-700 rounded-full"></div>
+                                            <div class="w-0.5 h-2 bg-neutral-700 rounded-full"></div>
+                                        </div>
+                                        <audio id="res-voice-player" controls class="hidden w-full max-w-xs"></audio>
+                                    </div>
+                                </div>
+
+                                <!-- Screen 4: Storyboard Scenes -->
+                                <div class="pipeline-panel h-full w-full overflow-y-auto space-y-4 hidden" data-panel="3">
+                                    <div class="border-b border-[#1f1f29] pb-3">
+                                        <h2 class="text-sm font-bold text-white uppercase tracking-wider">Storyboard Scene Cards</h2>
+                                        <p class="text-[11px] text-neutral-500 mt-0.5">Prompts and image compositions designated to accompany the narrative paragraphs.</p>
+                                    </div>
+                                    <div id="res-storyboard-grid" class="storyboard-grid overflow-y-auto max-h-[300px] pr-2 no-scrollbar">
+                                        <!-- Populated via Javascript dynamically -->
+                                        <div class="text-center py-10 text-neutral-600 text-xs font-mono">No scenes generated yet.</div>
+                                    </div>
+                                </div>
+
+                                <!-- Screen 5: Video Compile -->
+                                <div class="pipeline-panel h-full w-full overflow-y-auto space-y-4 hidden" data-panel="4">
+                                    <div class="border-b border-[#1f1f29] pb-3">
+                                        <h2 class="text-sm font-bold text-white uppercase tracking-wider">Compiled Media Render</h2>
+                                        <p class="text-[11px] text-neutral-500 mt-0.5">Assembled story video with compiled graphics, transitions, and audio sync files.</p>
+                                    </div>
+                                    <div id="res-video-player-container" class="bg-[#111115] border border-[#1f1f29] rounded-lg p-4 flex items-center justify-center min-h-[220px]">
+                                        <p class="text-xs text-neutral-500 font-mono">No video has been rendered yet.</p>
+                                    </div>
+                                </div>
+
+                                <!-- Screen 6: Metadata & Publish -->
+                                <div class="pipeline-panel h-full w-full overflow-y-auto space-y-4 hidden" data-panel="5">
+                                    <div class="border-b border-[#1f1f29] pb-3">
+                                        <h2 class="text-sm font-bold text-white uppercase tracking-wider">Story Metadata Setup</h2>
+                                        <p class="text-[11px] text-neutral-500 mt-0.5">Validate the final covers, indexes, tag lines, and child application configurations.</p>
+                                    </div>
+                                    <div class="grid grid-cols-[120px_1fr] gap-4 bg-[#111115] border border-[#1f1f29] p-4 rounded-lg">
+                                        <div class="w-full h-28 bg-neutral-800 rounded overflow-hidden relative flex items-center justify-center">
+                                            <img id="res-publish-cover" class="w-full h-full object-cover" src="https://picsum.photos/120/120?random=1" alt="Cover preview">
+                                        </div>
+                                        <div class="space-y-3">
+                                            <div>
+                                                <label class="text-[9px] font-bold text-neutral-500 uppercase tracking-wide block mb-1">Title</label>
+                                                <input id="res-publish-title" type="text" class="w-full bg-[#0d0d11] border border-[#1f1f29] rounded px-2.5 py-1.5 text-xs text-white placeholder-neutral-600 outline-none focus:border-indigo-500">
+                                            </div>
+                                            <div>
+                                                <label class="text-[9px] font-bold text-neutral-500 uppercase tracking-wide block mb-1">Meta Description</label>
+                                                <textarea id="res-publish-desc" class="w-full h-16 bg-[#0d0d11] border border-[#1f1f29] rounded p-2 text-xs text-neutral-300 placeholder-neutral-600 outline-none focus:border-indigo-500 leading-relaxed font-sans"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <!-- Right Panel: Configurations & Settings -->
+                            <div class="w-72 bg-[#121216] border-l border-[#1f1f29] flex flex-col h-full flex-shrink-0 select-none">
+                                <div class="px-4 py-3 bg-[#17171e] border-b border-[#1f1f29] flex-shrink-0">
+                                    <span class="text-xs font-bold text-neutral-200 tracking-wide">Studio Configuration</span>
+                                </div>
+                                <div class="flex-1 overflow-y-auto p-4 space-y-4">
+                                    <!-- Concept brief config input -->
+                                    <div>
+                                        <label class="text-[9px] font-bold text-neutral-500 uppercase tracking-wide block mb-1.5">Creative Theme Concept</label>
+                                        <textarea id="setting-concept-brief" rows="2" placeholder="e.g. A small rabbit discovers a magical glowing star..." class="w-full bg-[#0d0d11] border border-[#1f1f29] rounded p-2 text-xs text-white placeholder-neutral-500 outline-none focus:border-indigo-500 leading-relaxed resize-none"></textarea>
+                                    </div>
+                                    <!-- Child Target Age Group -->
+                                    <div>
+                                        <label class="text-[9px] font-bold text-neutral-500 uppercase tracking-wide block mb-1.5">Target Age Demographic</label>
+                                        <select id="setting-age-group" class="w-full bg-[#0d0d11] border border-[#1f1f29] rounded px-2.5 py-1.5 text-xs text-white outline-none focus:border-indigo-500">
+                                            <option value="2-4">Ages 2 to 4 (Early Toddler)</option>
+                                            <option value="5-7" selected>Ages 5 to 7 (Preschool / Primary)</option>
+                                            <option value="8-10">Ages 8 to 10 (Advanced Readers)</option>
+                                        </select>
+                                    </div>
+                                    <!-- Narration style -->
+                                    <div>
+                                        <label class="text-[9px] font-bold text-neutral-500 uppercase tracking-wide block mb-1.5">Voice Style Mode</label>
+                                        <select id="setting-voice-style" class="w-full bg-[#0d0d11] border border-[#1f1f29] rounded px-2.5 py-1.5 text-xs text-white outline-none focus:border-indigo-500">
+                                            <option value="soft">Soft Nurturing Voice (Lullaby style)</option>
+                                            <option value="animated" selected>Playful & Animated (Storybook character)</option>
+                                            <option value="dramatic">Dramatic Narrator (Exciting adventure)</option>
+                                        </select>
+                                    </div>
+                                    <!-- Illustrated Styles -->
+                                    <div>
+                                        <label class="text-[9px] font-bold text-neutral-500 uppercase tracking-wide block mb-1.5">Visual Art Style</label>
+                                        <select id="setting-visual-style" class="w-full bg-[#0d0d11] border border-[#1f1f29] rounded px-2.5 py-1.5 text-xs text-white outline-none focus:border-indigo-500">
+                                            <option value="watercolor" selected>Whimsical Watercolor</option>
+                                            <option value="3d-pixar">3D animated Pixar Style</option>
+                                            <option value="classic-sketch">Classic Hand-Drawn Sketch</option>
+                                        </select>
+                                    </div>
+                                    <!-- Length controls -->
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label class="text-[9px] font-bold text-neutral-500 uppercase tracking-wide block mb-1.5">Story Length</label>
+                                            <select id="setting-story-length" class="w-full bg-[#0d0d11] border border-[#1f1f29] rounded px-2 py-1.5 text-xs text-white outline-none focus:border-indigo-500">
+                                                <option value="short" selected>Short (~2m)</option>
+                                                <option value="medium">Medium (~5m)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="text-[9px] font-bold text-neutral-500 uppercase tracking-wide block mb-1.5">Music mood</label>
+                                            <select id="setting-music-mood" class="w-full bg-[#0d0d11] border border-[#1f1f29] rounded px-2 py-1.5 text-xs text-white outline-none focus:border-indigo-500">
+                                                <option value="sleepy" selected>Sleepy Lullaby</option>
+                                                <option value="magical">Magical Whimsy</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="p-3 border-t border-[#1f1f29] bg-[#17171e] flex-shrink-0">
+                                    <button id="btn-generate-story" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded py-2 text-xs font-semibold shadow-md shadow-indigo-600/20 transition-all">
+                                        Generate Bedtime Story
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Bottom Console Log Console -->
+                        <div class="h-32 bg-[#0d0d11] border-t border-[#1f1f29] flex flex-col flex-shrink-0 overflow-hidden">
+                            <div class="h-7 bg-[#111115] border-b border-[#1f1f29] px-4 flex items-center justify-between select-none flex-shrink-0">
+                                <span class="text-[9px] font-bold tracking-wider text-neutral-500 uppercase font-mono">Pipeline Compilation Log Console</span>
+                            </div>
+                            <div id="story-generation-logs" class="flex-1 overflow-y-auto p-3 font-mono text-[10px] text-neutral-400 space-y-1 bg-[#09090c] select-text">
+                                <div class="text-neutral-600 select-none">[system] Idle. Set parameters and click 'Generate Bedtime Story' to trigger background pipeline compilation.</div>
                             </div>
                         </div>
 
