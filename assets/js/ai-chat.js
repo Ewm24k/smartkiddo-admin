@@ -370,7 +370,7 @@ document.addEventListener("DOMContentLoaded", function () {
         return results;
     }
 
-    // Compiles active variables and metadata logs before shipping transactions
+    // Compiles active variables and metadata logs before shipping transactions [2]
     function buildContextPayloadString() {
         let contextPayloadString = "";
         
@@ -392,13 +392,16 @@ document.addEventListener("DOMContentLoaded", function () {
         let fileCacheString = "=== SESSION LRU CACHE (ACTIVE MEMORY FOR CURRENT USER SESSION) ===\n";
         fileCacheString += "The user has loaded or analyzed these files during this session. Use their code blocks to answer contextually:\n\n";
         for (const [path, content] of Object.entries(sessionFileCache)) {
-            fileCacheString += `File: ${path}\n\`\`\`\n${content}\n\`\`\`\n\n`;
+            // Guard: If cached content somehow bloated beyond 40kb, truncate to save context window
+            const cleanContent = content.length > 40000 ? (content.substring(0, 40000) + "\n\n/* ... Content Truncated inside Cache to preserve token bounds ... */") : content;
+            fileCacheString += `File: ${path}\n\`\`\`\n${cleanContent}\n\`\`\`\n\n`;
         }
         contextPayloadString += fileCacheString + "\n";
 
         // 3. Inject currently attached selected context file
         if (attachedFile) {
-            contextPayloadString += `=== EXPLICIT ATTACHED REFERENCE FILE: ${attachedFile.path} ===\n${attachedFile.content}\n`;
+            const cleanAttach = attachedFile.content.length > 40000 ? (attachedFile.content.substring(0, 40000) + "\n\n/* ... Content Truncated inside Attachment to preserve token bounds ... */") : attachedFile.content;
+            contextPayloadString += `=== EXPLICIT ATTACHED REFERENCE FILE: ${attachedFile.path} ===\n${cleanAttach}\n`;
         }
 
         return contextPayloadString;
@@ -452,21 +455,44 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 10. TOKEN-SAVING HISTORY COMPACTION ENGINE
+    // 10. TOKEN-SAVING HISTORY COMPACTION ENGINE (CONTEXT ENGINEERING)
     // -----------------------------------------------------------------
     
     // Scans historical chat turns and strips out redundant code payload dumps to preserve context limits
+    // Also applies sliding-window truncation to keep conversation history strictly bounded
     function compactConversationHistory() {
-        conversationHistory = conversationHistory.map(turn => {
+        // Step 1: Strip massive raw tool contents from previous turns
+        conversationHistory = conversationHistory.map((turn, index) => {
             if (turn.role === "user" && turn.content.includes("=== SYSTEM AGENT TOOL EXECUTION ===")) {
                 // Compile matching files but remove full text code dump to prevent context window overflow
                 const strippedContent = turn.content.replace(/<file_content path="([^"]+)">[\s\S]*?<\/file_content>/g, function(match, path) {
                     return `<file_content path="${path}">\n/* Code block omitted to conserve active token limits. This file is preserved in your Session LRU Cache memory if you need to reference its code directly. */\n</file_content>`;
                 });
-                return { role: "user", content: strippedContent };
+                return { role: turn.role, content: strippedContent };
             }
             return turn;
         });
+
+        // Step 2: Sliding-Window Pruning
+        // If conversation spans beyond 10 turns, retain the first turn (original project query)
+        // but drop intermediate tool execution turns to prevent context length overflow
+        if (conversationHistory.length > 10) {
+            logToTerminal("Conversation trajectory is large. Compacting older reasoning cycles to protect token context window...", "system");
+            
+            const firstTurn = conversationHistory[0]; // Retain user's initial core prompt
+            const secondTurn = conversationHistory[1]; // Retain first assistant reply
+            
+            // Slice the last 6 active turns (sliding window of recency)
+            const recentHistory = conversationHistory.slice(-6);
+            
+            // Stitch the compacted sequence back together
+            conversationHistory = [
+                firstTurn,
+                secondTurn,
+                { role: "user", content: "=== ARCHIVED INTERMEDIATE REASONING ===\n[Older agent reasoning and file search trajectories compacted to save context budget]..." },
+                ...recentHistory
+            ];
+        }
     }
 
     // -----------------------------------------------------------------
@@ -535,8 +561,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (aiTokenOutput) aiTokenOutput.innerText = chatResponse.usage.output_tokens;
             }
 
-            // Parse parallel tool tags invoked inside the stream
-            const readMatches = [...aiContent.matchAll(/<read_file path="([^"]+)"(?:\s*\/)?>(?:<\/read_file>)?/g)];
+            // Parse parallel tool tags invoked inside the stream, including optional start/end range limits
+            const readMatches = [...aiContent.matchAll(/<read_file path="([^"]+)"(?: start_line="(\d+)")?(?: end_line="(\d+)")?(?:\s*\/)?>(?:<\/read_file>)?/g)];
             const grepMatches = [...aiContent.matchAll(/<grep_search query="([^"]+)"(?:\s*\/)?>(?:<\/grep_search>)?/g)];
 
             const hasToolCalls = readMatches.length > 0 || grepMatches.length > 0;
@@ -547,9 +573,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 let toolPayloads = "";
 
-                // 1. Process Parallel File Reading
+                // 1. Process Parallel File Reading (with dynamic Line Chunk constraints)
                 for (const match of readMatches) {
                     const targetPath = match[1];
+                    const startLine = match[2] ? parseInt(match[2], 10) : null;
+                    const endLine = match[3] ? parseInt(match[3], 10) : null;
+
                     const fileSystemNodes = window.getWorkspaceFileSystem ? window.getWorkspaceFileSystem() : [];
                     const foundFile = findFileByComputedPath(fileSystemNodes, targetPath);
 
@@ -557,13 +586,34 @@ document.addEventListener("DOMContentLoaded", function () {
                     logRow.className = "flex items-center gap-1.5 text-neutral-400 mt-1";
 
                     if (foundFile) {
-                        // Max File Read Size Guard: prevent loading massive text files over 80KB all at once
-                        if (foundFile.content && foundFile.content.length > 80000) {
-                            logToTerminal(`🤖 AI Agent: File '${targetPath}' is too large to sync directly. Truncating content to protect limits...`, "warning");
-                            const truncatedCode = foundFile.content.substring(0, 40000) + "\n\n/* ... Content Truncated due to size limits. Please grep for specific blocks or ask the user to show a specific line range ... */";
-                            toolPayloads += `<file_content path="${targetPath}">\n${truncatedCode}\n</file_content>\n\n`;
-                            logRow.innerHTML = `<span class="text-amber-400">✓</span> Opened (Truncated): <span class="text-indigo-300">${targetPath}</span>`;
-                        } else {
+                        const lines = foundFile.content.split('\n');
+                        const totalLines = lines.length;
+
+                        let extractedContent = "";
+                        let displayLabel = targetPath;
+
+                        // Case A: Precision chunk coordinates were requested by the agent
+                        if (startLine !== null && endLine !== null) {
+                            const startIdx = Math.max(0, startLine - 1);
+                            const endIdx = Math.min(totalLines, endLine);
+                            extractedContent = lines.slice(startIdx, endIdx).join('\n');
+                            displayLabel = `${targetPath} (Lines ${startLine}-${endLine})`;
+                            
+                            logToTerminal(`🤖 AI Agent: Surgically reading ${targetPath} lines ${startLine} to ${endLine}`, "success");
+                            toolPayloads += `<file_content path="${targetPath}" start_line="${startLine}" end_line="${endLine}">\n${extractedContent}\n</file_content>\n\n`;
+                            logRow.innerHTML = `<span class="text-emerald-400">✓</span> Opened chunk: <span class="text-indigo-300">${displayLabel}</span>`;
+                        }
+                        // Case B: General full read requested, check if it exceeds safe reading limits
+                        else if (totalLines > 350) {
+                            // Truncate automatically and instruct agent on chunk retrieval syntax
+                            logToTerminal(`🤖 AI Agent: '${targetPath}' is too large to read fully (${totalLines} lines). Sending safety chunk (Lines 1-250)...`, "warning");
+                            extractedContent = lines.slice(0, 250).join('\n');
+                            
+                            toolPayloads += `<file_content path="${targetPath}">\n${extractedContent}\n\n/* ... Warning: This file contains ${totalLines} lines. To preserve token context budget, only lines 1-250 are displayed. To inspect subsequent sections, invoke: <read_file path="${targetPath}" start_line="251" end_line="500"></read_file> ... */\n</file_content>\n\n`;
+                            logRow.innerHTML = `<span class="text-amber-400">✓</span> Opened (Truncated): <span class="text-indigo-300">${targetPath} (Lines 1-250)</span>`;
+                        }
+                        // Case C: Standard small file full read
+                        else {
                             logToTerminal(`🤖 AI Agent: Successfully read content of '${targetPath}'`, "success");
                             toolPayloads += `<file_content path="${targetPath}">\n${foundFile.content}\n</file_content>\n\n`;
                             logRow.innerHTML = `<span class="text-emerald-400">✓</span> Opened file: <span class="text-indigo-300">${targetPath}</span>`;
@@ -618,7 +668,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     aiChatOutputContainer.scrollTop = aiChatOutputContainer.scrollHeight;
                 }
 
-                // Append the current turn and intermediate tool response to context history
+                // Append current turn and intermediate tool response to context history
                 conversationHistory.push({ role: "assistant", content: aiContent });
                 conversationHistory.push({ 
                     role: "user", 
@@ -648,7 +698,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 // Remove badge after successful upload context session
                 attachedFile = null;
-                if (aiAttachmentBadge) aiAttachmentBadge.classList.add('hidden');
+                if (activeBubble.bubbleEl.querySelector('#ai-attachment-badge')) {
+                    activeBubble.bubbleEl.querySelector('#ai-attachment-badge').classList.add('hidden');
+                }
 
                 // Auto scroll layout
                 if (aiChatOutputContainer) {
@@ -686,7 +738,7 @@ document.addEventListener("DOMContentLoaded", function () {
             <div class="bg-indigo-600/10 p-3 rounded-lg text-xs text-indigo-300 leading-relaxed max-w-[85%] border border-indigo-500/20 select-text font-sans">
                 ${query.replace(/\n/g, '<br>')}
                 ${attachedFile ? `
-                    <div class="mt-2 flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-[10px] text-indigo-400 font-mono select-none">
+                    <div id="chat-attached-file-badge" class="mt-2 flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-[10px] text-indigo-400 font-mono select-none">
                         <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
                         <span>${attachedFile.path}</span>
                     </div>
