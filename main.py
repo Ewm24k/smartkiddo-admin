@@ -97,12 +97,13 @@ async def sync_github(repo: Optional[str] = None):
         # Fetch the flat recursive Git tree from GitHub
         tree_data = await github_request(f"/repos/{GITHUB_OWNER}/{repo_name}/git/trees/{GITHUB_BRANCH}?recursive=1")
         
-        # Filter system and ignored items
+        # Pull all source files without exclusion filters (excluding only system compiled assets)
         filtered_tree = [
             item for item in tree_data.get("tree", [])
             if not item["path"].startswith(".") and 
-               "node_modules/" not in item["path"] and 
-               item["path"] not in ["package.json", "server.js", "requirements.txt", "main.py"]
+               "node_modules/" not in item["path"] and
+               "__pycache__/" not in item["path"] and
+               not item["path"].endswith(".pyc")
         ]
 
         root_nodes = []
