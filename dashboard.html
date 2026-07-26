@@ -192,11 +192,17 @@
 
                 <!-- VIEW: BEDTIME STORY STUDIO WORKSPACE -->
                 <section id="view-bedtime-story" class="hidden h-full">
-                    <div class="studio-layout flex border border-[#1f1f29] rounded-xl overflow-hidden bg-[#0d0d11] h-[580px] w-full relative flex-col">
+                    <div id="story-studio-workspace" class="studio-layout flex border border-[#1f1f29] rounded-xl overflow-hidden bg-[#0d0d11] h-[580px] w-full relative flex-col">
                         
                         <!-- Top Navigation & Actions Bar -->
                         <div class="h-14 bg-[#111115] border-b border-[#1f1f29] px-4 flex items-center justify-between select-none flex-shrink-0">
                             <div class="flex items-center gap-3">
+                                <!-- Navigation Back Arrow Button -->
+                                <button id="btn-story-back" class="p-1.5 text-neutral-400 hover:text-white rounded hover:bg-neutral-800 transition-colors" title="Back to T1ERA Studio Menu">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                                    </svg>
+                                </button>
                                 <span class="text-xs font-bold text-white bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded uppercase tracking-wider font-mono">T1ERA Studio</span>
                                 <span class="text-neutral-500">/</span>
                                 <span id="story-topbar-title" class="text-xs font-semibold text-neutral-200">New Bedtime Story Draft</span>
@@ -207,6 +213,12 @@
                                 </div>
                             </div>
                             <div class="flex items-center gap-2">
+                                <!-- Studio Full Screen Toggle Button -->
+                                <button id="story-studio-maximize-btn" class="p-1.5 text-neutral-400 hover:text-white hover:bg-[#1a1a22] rounded transition-all focus:outline-none mr-2" title="Maximize Workspace">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4m12 4V4h-4M4 16v4h4m12-4v4h-4"></path>
+                                    </svg>
+                                </button>
                                 <button id="btn-story-cancel" class="px-3 py-1.5 rounded bg-[#17171e] hover:bg-[#1a1a24] border border-[#1f1f29] text-xs text-neutral-300 font-medium transition-colors">Cancel</button>
                                 <button id="btn-story-save-draft" class="px-3 py-1.5 rounded bg-[#17171e] hover:bg-indigo-600/15 border border-indigo-500/20 text-xs text-indigo-400 font-medium transition-colors">Save Draft</button>
                                 <button id="btn-story-publish" class="px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-xs text-white font-semibold transition-colors flex items-center gap-1">
