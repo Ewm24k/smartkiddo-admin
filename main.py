@@ -1,4 +1,6 @@
 import os
+import re
+import json
 import httpx
 import asyncio
 from fastapi import FastAPI, Request, HTTPException
@@ -41,6 +43,19 @@ class ChatRequest(BaseModel):
     messages: List[ChatMessage]
     workspace_context: Optional[str] = ""
 
+# Request schema for the Bedtime Story pipeline
+class BedtimeStoryRequest(BaseModel):
+    concept_brief: str
+    age_group: str
+    voice_style: str
+    visual_style: str
+    story_length: str
+    music_mood: str
+
+# -----------------------------------------------------------------
+# Helper Utilities
+# -----------------------------------------------------------------
+
 # Helper to request GitHub REST API
 async def github_request(endpoint: str, method: str = "GET", json_data: dict = None):
     url = f"https://api.github.com{endpoint}"
@@ -82,6 +97,29 @@ async def fetch_single_file(client, node, headers, repo_name: str):
             node["content"] = f"/* Error loading content: {response.status_code} */"
     except Exception as e:
         node["content"] = f"/* Exception loading content: {str(e)} */"
+
+# Helper to extract JSON from OpenAI responses securely (handling formatting blocks)
+def extract_json_content(text: str) -> dict:
+    try:
+        # Search for content inside markdown code blocks
+        match = re.search(r"```json\s*([\s\S]*?)\s*```", text)
+        if match:
+            return json.loads(match.group(1).strip())
+        
+        match_code = re.search(r"```\s*([\s\S]*?)\s*```", text)
+        if match_code:
+            return json.loads(match_code.group(1).strip())
+            
+        # Fallback to general direct conversion
+        return json.loads(text.strip())
+    except Exception as parse_error:
+        print("JSON extraction parsing failed, utilizing emergency fallback layout. Error:", str(parse_error))
+        # Build structure fallback in case AI outputs irregular raw text
+        return {
+            "title": "A Magical Forest Adventure",
+            "brief": "A charming, relaxing story tailored directly to curiosity and bedtime comfort.",
+            "script": text
+        }
 
 # -----------------------------------------------------------------
 # Endpoint 1: Sync (GET) - Pull repository structure
@@ -288,8 +326,6 @@ async def ai_chat_completion(chat_req: ChatRequest):
     if not openai_client:
         return {"error": "OpenAI Client is not initialized on backend. Please configure OPENAI_API_KEY environment variable on Render.", "success": False}
     try:
-        # Build a single unified string input because the Responses API with 'prompt' template id
-        # expects a single string input (passing an array of messages causes a 400 error) [2]
         openai_input_str = ""
         
         # Inject Active Workspace Manifest & LRU Session File Cache [2]
@@ -308,7 +344,7 @@ async def ai_chat_completion(chat_req: ChatRequest):
         openai_input_str += "Please analyze the entire conversation history above to follow references correctly:\n"
         openai_input_str += "- Track shifting topics or multiple topics within a single query.\n"
         openai_input_str += "- Resolve pronouns ('it', 'this', 'them') based on previously mentioned files/code.\n"
-        openai_input_str += "- Parse numerical options (e.g. if you gave options 1, 2, 3, 4 and the user says '4', immediately understand they mean option 4).\n"
+        openai_input_str += "- Parse numerical options.\n"
         openai_input_str += "- Remember code or directory layouts shown in earlier turns. Synthesize your answer contextually.\n\n"
 
         # AUTONOMOUS AGENT ACTIONS (INJECTED SYSTEM INSTRUCTIONS)
@@ -325,8 +361,7 @@ async def ai_chat_completion(chat_req: ChatRequest):
         openai_input_str += "Rule Parameters:\n"
         openai_input_str += "- DO NOT make up, guess, or hallucinate file content. If a file is not in the Session LRU cache, use `<read_file>`.\n"
         openai_input_str += "- When you emit a tool tag, STOP writing immediately after it. Do not attempt to explain the code or answer before the client returns the actual results in the next turn.\n"
-        openai_input_str += "- You can request multiple files simultaneously. Example:\n"
-        openai_input_str += "  \"I need to review app.js and index.html to find how they connect. <read_file path=\"scripts/app.js\"></read_file> <read_file path=\"src/index.html\"></read_file>\"\n\n"
+        openai_input_str += "- You can request multiple files simultaneously.\n\n"
 
         # Append the latest user message context
         if len(chat_req.messages) > 0:
@@ -376,10 +411,8 @@ async def ai_chat_completion(chat_req: ChatRequest):
         total_tokens = 0
         
         if hasattr(response, "usage") and response.usage:
-            # Check modern Responses API attributes first [2]
             input_tokens = getattr(response.usage, "input_tokens", None)
             if input_tokens is None:
-                # Fallback to standard chat completion metrics [2]
                 input_tokens = getattr(response.usage, "prompt_tokens", 0) or 0
                 
             output_tokens = getattr(response.usage, "output_tokens", None)
@@ -388,7 +421,6 @@ async def ai_chat_completion(chat_req: ChatRequest):
                 
             total_tokens = getattr(response.usage, "total_tokens", input_tokens + output_tokens) or (input_tokens + output_tokens)
         else:
-            # Fallback algorithm for estimation [2]
             input_tokens = len(openai_input_str) // 4
             output_tokens = len(assistant_content) // 4
             total_tokens = input_tokens + output_tokens
@@ -403,6 +435,78 @@ async def ai_chat_completion(chat_req: ChatRequest):
             }
         }
     except Exception as e:
-        # Gracefully catch exceptions and respond with error description instead of crashing [2]
         print("OpenAI Error:", str(e))
+        return {"error": str(e), "success": False}
+
+# -----------------------------------------------------------------
+# Endpoint 5: Bedtime Story AI concept & script generator
+# -----------------------------------------------------------------
+@app.post("/api/bedtime-story/generate")
+async def generate_bedtime_story(story_req: BedtimeStoryRequest):
+    if not openai_client:
+        return {"error": "OpenAI Client is not initialized on backend. Ensure OPENAI_API_KEY environment variable is active on Render.", "success": False}
+    try:
+        # Build structured input details mapping user configurations
+        openai_input_str = (
+            f"=== BEDTIME STORY GENERATION PARAMS ===\n"
+            f"Theme Concept Brief: {story_req.concept_brief}\n"
+            f"Target Age Group: {story_req.age_group} years old\n"
+            f"Narrative Voice Selection: {story_req.voice_style}\n"
+            f"Graphic Illustration Style: {story_req.visual_style}\n"
+            f"Story Length Constraints: {story_req.story_length}\n"
+            f"Music Soundtrack Mood: {story_req.music_mood}\n\n"
+            f"=== CORE INSTRUCTIONS ===\n"
+            f"You are a master children's book author. Draft a magical, engaging bedtime story that matches all parameter requirements above.\n"
+            f"To satisfy strict application routing layers, your output MUST be formatted exactly as raw JSON using these keys:\n"
+            f"- 'title': A charming, original book title\n"
+            f"- 'brief': A short, enticing 2-sentence synopsis summarizing the concept brief (Step 1)\n"
+            f"- 'script': The complete, detailed story narrative parsed into readable sleep-time paragraphs (Step 2)\n\n"
+            f"Do not write conversational intro/outro wrappers. Respond strictly with raw JSON conforming to this schema:\n"
+            f"{{\n"
+            f"  \"title\": \"...\",\n"
+            f"  \"brief\": \"...\",\n"
+            f"  \"script\": \"...\"\n"
+            f"}}\n"
+        )
+
+        # Call OpenAI Platform Responses API with targeted template ID [2]
+        response = openai_client.responses.create(
+            model="gpt-5.4-mini", 
+            prompt={
+                "id": "pmpt_6a662bd8afd08194a20f18967be4326908f6e34aa8074ea1",
+                "version": "1"
+            },
+            input=openai_input_str, # Conform strictly to input schema properties [2]
+            reasoning={
+                "mode": "standard",
+                "summary": "auto"
+            },
+            store=True,
+            include=[
+                "reasoning.encrypted_content",
+                "web_search_call.action.sources"
+            ]
+        )
+
+        # Safely extract generated raw content from API response object
+        ai_raw_content = ""
+        if hasattr(response, "output_text") and response.output_text:
+            ai_raw_content = response.output_text
+        elif hasattr(response, "choices") and len(response.choices) > 0:
+            ai_raw_content = response.choices[0].message.content
+        elif hasattr(response, "output") and hasattr(response.output, "content"):
+            ai_raw_content = response.output.content
+
+        # Parse AI raw content wrapper into clean JSON dictionary values
+        story_json_data = extract_json_content(ai_raw_content)
+
+        return {
+            "success": True,
+            "title": story_json_data.get("title", "The Whispering Meadow"),
+            "brief": story_json_data.get("brief", "An enchanting, peaceful exploration concept summary."),
+            "script": story_json_data.get("script", ai_raw_content)
+        }
+
+    except Exception as e:
+        print("Bedtime Story Generation Failure:", str(e))
         return {"error": str(e), "success": False}
