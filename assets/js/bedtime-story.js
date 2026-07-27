@@ -107,6 +107,47 @@ document.addEventListener("DOMContentLoaded", function () {
         storyLogsContainer.scrollTop = storyLogsContainer.scrollHeight;
     }
 
+    // Generates a base64 sleepy cartoon vector illustration to prevent real landscape/portrait photos as fallbacks
+    function getCartoonPlaceholder(sceneNumber) {
+        const colors = [
+            ["#4f46e5", "#1e1b4b", "#818cf8"], // Indigo twilight
+            ["#0d9488", "#115e59", "#2dd4bf"], // Teal mystical woods
+            ["#db2777", "#831843", "#f472b6"], // Pink candy clouds
+            ["#ca8a04", "#713f12", "#fde047"], // Golden sky
+        ];
+        const c = colors[(sceneNumber - 1) % colors.length];
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="100%" height="100%">
+            <defs>
+                <linearGradient id="bg-${sceneNumber}" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="${c[1]}" />
+                    <stop offset="100%" stop-color="${c[0]}" />
+                </linearGradient>
+            </defs>
+            <rect width="400" height="200" fill="url(#bg-${sceneNumber})" />
+            <circle cx="50" cy="40" r="1.5" fill="#fff" opacity="0.8" />
+            <circle cx="120" cy="30" r="1" fill="#fff" opacity="0.5" />
+            <circle cx="280" cy="50" r="2" fill="${c[2]}" opacity="0.9" />
+            <circle cx="340" cy="25" r="1.5" fill="#fff" opacity="0.7" />
+            <path d="M 0,200 L 0,150 Q 100,120 200,160 T 400,140 L 400,200 Z" fill="${c[1]}" opacity="0.7" />
+            <path d="M 0,200 L 0,170 Q 150,140 300,180 T 400,175 L 400,200 Z" fill="${c[0]}" opacity="0.9" />
+            <path d="M 320,40 A 15,15 0 1,0 345,55 A 12,12 0 1,1 320,40" fill="#fef08a" />
+            <g transform="translate(180, 140) scale(0.6)">
+                <ellipse cx="20" cy="25" rx="6" ry="20" fill="#f5f5f5" />
+                <ellipse cx="20" cy="25" rx="3" ry="15" fill="#fecdd3" />
+                <ellipse cx="35" cy="28" rx="6" ry="18" fill="#f5f5f5" />
+                <ellipse cx="35" cy="28" rx="3" ry="13" fill="#fecdd3" />
+                <ellipse cx="35" cy="65" rx="22" ry="18" fill="#e5e5e5" />
+                <circle cx="30" cy="45" r="15" fill="#f5f5f5" />
+                <path d="M 23,45 Q 26,48 29,45" stroke="#1e293b" stroke-width="1.5" fill="none" />
+                <path d="M 33,45 Q 36,48 39,45" stroke="#1e293b" stroke-width="1.5" fill="none" />
+                <polygon points="30,49 32,49 31,51" fill="#fecdd3" />
+                <circle cx="58" cy="68" r="6" fill="#f5f5f5" />
+            </g>
+            <text x="20" y="30" font-family="monospace" font-size="10" fill="#93c5fd" opacity="0.7">CARTOON ILLUSTRATION PLACEHOLDER</text>
+        </svg>`;
+        return "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
+    }
+
     // -----------------------------------------------------------------
     // 3. Navigation Controls
     // -----------------------------------------------------------------
@@ -377,7 +418,7 @@ document.addEventListener("DOMContentLoaded", function () {
         btnGenerateStory.innerText = "Compiling...";
         btnGenerateStory.classList.add("opacity-50");
 
-        // Hide downstream continuation triggers
+        // Hide downstream continuation trigger
         if (btnContinueStoryboard) {
             btnContinueStoryboard.classList.add("hidden");
         }
@@ -434,7 +475,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     voiceAudioPlayer.classList.remove("hidden");
                 }
                 pipelineProgressState.voiceUrl = voiceData.audio;
-                steps[2].classList.add("completed");
+                steps[2].className = "step-item flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition-colors completed";
                 logToStudioConsole(`Successfully completed Step 3: Audio narration voice generated. System verified voice character: "${openaiVoiceVal}"`, "success");
             } else {
                 throw new Error(voiceData.error || "Voice response was invalid.");
@@ -449,7 +490,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 voiceAudioPlayer.src = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
                 voiceAudioPlayer.classList.remove("hidden");
             }
-            steps[2].classList.add("completed");
+            steps[2].className = "step-item flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition-colors completed";
         }
 
         // PAUSE POINT: Stop automatic continuation at Step 3 to let user listen to generated audio before designing scenes
@@ -541,7 +582,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (planData.success && planData.scenes && planData.scenes.length > 0) {
                 pipelineProgressState.scenes = planData.scenes;
-                logToStudioConsole(`Storyboard planned successfully. Partitioned story into ${planData.total_scenes_planned} scenes.`, "success");
+                logToStudioConsole(`Storyboard planned successfully. Partitioned story into ${planData.scenes.length} scenes.`, "success");
                 
                 // EXECUTE PARALLEL IMAGE GENERATIONS
                 await executeParallelSceneGenerations();
@@ -553,12 +594,23 @@ document.addEventListener("DOMContentLoaded", function () {
             console.error("Storyboard planning failed:", planError);
             logToStudioConsole(`Planning failed: ${planError.message}. Utilizing simulation storyboard setup as backup.`, "error");
             
-            // Simulation Fallback in case of backend limits
-            pipelineProgressState.scenes = [
-                { scene_number: 1, timestamp_marker: "0:00", narration_segment: "Once upon a time, there lived a soft, little rabbit named Barnaby.", image_prompt: `watercolor, whimsical, ${visualVal}, cute baby rabbit looking up at twilight purple sky` },
-                { scene_number: 2, timestamp_marker: "0:45", narration_segment: "Barnaby hopping slowly towards a glowing small light under an old Oak Tree.", image_prompt: `watercolor, ${visualVal}, glowing magical star under an old oak tree, rabbit hopping towards it` },
-                { scene_number: 3, timestamp_marker: "1:20", narration_segment: "He discovered a tiny star shining gently under the mushroom caps.", image_prompt: `watercolor, ${visualVal}, close up of soft cute rabbit paw touching glowing tiny magical star` }
-            ];
+            // Simulation Fallback in case of backend limits (Now using dynamic suggested image boundaries matching specifications)
+            // below 40s -> 4 scenes, 60s (1m) -> 6 scenes
+            let suggestedCount = duration <= 40 ? 4 : (duration <= 60 ? 6 : 8);
+            pipelineProgressState.scenes = [];
+            for (let i = 1; i <= suggestedCount; i++) {
+                const mark = Math.floor((duration / suggestedCount) * (i - 1));
+                const min = Math.floor(mark / 60);
+                const sec = mark % 60;
+                const timestamp = `${min}:${sec < 10 ? '0' : ''}${sec}`;
+                
+                pipelineProgressState.scenes.push({
+                    scene_number: i,
+                    timestamp_marker: timestamp,
+                    narration_segment: `Part ${i} of Barnaby's exciting child story adventure. Details match visual style parameters.`,
+                    image_prompt: `Cute sleepy baby rabbit in a magical grassy forest, watercolor vector, ${visualVal}, cartoon style`
+                });
+            }
             await executeParallelSceneGenerations();
         }
     }
@@ -607,7 +659,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (matchedGen) {
                         mainScene.image_url = matchedGen.image_url;
                     } else {
-                        mainScene.image_url = `https://picsum.photos/300/150?random=${mainScene.scene_number}`;
+                        mainScene.image_url = getCartoonPlaceholder(mainScene.scene_number);
                     }
                 });
 
@@ -618,11 +670,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
         } catch (genError) {
             console.error("Parallel scene generation crashed:", genError);
-            logToStudioConsole(`Generation crashed: ${genError.message}. Appending simulation visual blocks.`, "error");
+            logToStudioConsole(`Generation crashed: ${genError.message}. Appending illustrative cartoon vector placeholders instead of photos.`, "error");
 
-            // Hard fallback placeholders
+            // Cartoon vector placeholders fallback
             pipelineProgressState.scenes.forEach(s => {
-                s.image_url = `https://picsum.photos/300/150?random=${s.scene_number}`;
+                s.image_url = getCartoonPlaceholder(s.scene_number);
             });
         }
 
@@ -650,7 +702,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         // Toggle state classes to match complete review steps
-        steps[3].classList.add("completed");
+        steps[3].className = "step-item flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition-colors completed";
         
         statusBadgeText.innerText = "Review Storyboard";
         statusBadgeIndicator.className = "w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse";
@@ -711,7 +763,7 @@ document.addEventListener("DOMContentLoaded", function () {
             `;
         }
 
-        steps[4].classList.add("completed");
+        steps[4].className = "step-item flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition-colors completed";
         logToStudioConsole("Successfully completed Step 5: Full bedtime-story video segment synthesized.", "success");
 
         // --- STEP 6: Publishing & Cover Art Metadata (MOCK PROCESS) ---
@@ -725,12 +777,12 @@ document.addEventListener("DOMContentLoaded", function () {
         if (publishCoverImage) {
             publishCoverImage.src = (pipelineProgressState.scenes && pipelineProgressState.scenes.length > 0) 
                 ? pipelineProgressState.scenes[0].image_url 
-                : "https://picsum.photos/400/300?random=99";
+                : getCartoonPlaceholder(1);
         }
         if (publishTitleInput) publishTitleInput.value = pipelineProgressState.title;
         if (publishDescTextarea) publishDescTextarea.value = `Join Barnaby the Curious Rabbit in this delightful sleep-time story. Designed for children ages ${ageVal}.`;
 
-        steps[5].classList.add("completed");
+        steps[5].className = "step-item flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition-colors completed";
         logToStudioConsole("Successfully completed Step 6: Core pipeline complete! Validate metadata and click Publish.", "success");
 
         // Complete state update
