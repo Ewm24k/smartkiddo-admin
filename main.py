@@ -145,6 +145,47 @@ def extract_json_content(text: str) -> dict:
             "script": text
         }
 
+# Generates beautiful sleepy-time cartoon illustrations via inline vector SVGs as a fallback to avoid real photos
+def get_cartoon_placeholder(scene_number: int) -> str:
+    colors = [
+        ["#4f46e5", "#1e1b4b", "#818cf8"],
+        ["#0d9488", "#115e59", "#2dd4bf"],
+        ["#db2777", "#831843", "#f472b6"],
+        ["#ca8a04", "#713f12", "#fde047"],
+    ]
+    c = colors[(scene_number - 1) % len(colors)]
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="100%" height="100%">
+        <defs>
+            <linearGradient id="bg-{scene_number}" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="{c[1]}" />
+                <stop offset="100%" stop-color="{c[0]}" />
+            </linearGradient>
+        </defs>
+        <rect width="400" height="200" fill="url(#bg-{scene_number})" />
+        <circle cx="50" cy="40" r="1.5" fill="#fff" opacity="0.8" />
+        <circle cx="120" cy="30" r="1" fill="#fff" opacity="0.5" />
+        <circle cx="280" cy="50" r="2" fill="{c[2]}" opacity="0.9" />
+        <circle cx="340" cy="25" r="1.5" fill="#fff" opacity="0.7" />
+        <path d="M 0,200 L 0,150 Q 100,120 200,160 T 400,140 L 400,200 Z" fill="{c[1]}" opacity="0.7" />
+        <path d="M 0,200 L 0,170 Q 150,140 300,180 T 400,175 L 400,200 Z" fill="{c[0]}" opacity="0.9" />
+        <path d="M 320,40 A 15,15 0 1,0 345,55 A 12,12 0 1,1 320,40" fill="#fef08a" />
+        <g transform="translate(180, 140) scale(0.6)">
+            <ellipse cx="20" cy="25" rx="6" ry="20" fill="#f5f5f5" />
+            <ellipse cx="20" cy="25" rx="3" ry="15" fill="#fecdd3" />
+            <ellipse cx="35" cy="28" rx="6" ry="18" fill="#f5f5f5" />
+            <ellipse cx="35" cy="28" rx="3" ry="13" fill="#fecdd3" />
+            <ellipse cx="35" cy="65" rx="22" ry="18" fill="#e5e5e5" />
+            <circle cx="30" cy="45" r="15" fill="#f5f5f5" />
+            <path d="M 23,45 Q 26,48 29,45" stroke="#1e293b" stroke-width="1.5" fill="none" />
+            <path d="M 33,45 Q 36,48 39,45" stroke="#1e293b" stroke-width="1.5" fill="none" />
+            <polygon points="30,49 32,49 31,51" fill="#fecdd3" />
+            <circle cx="58" cy="68" r="6" fill="#f5f5f5" />
+        </g>
+        <text x="20" y="30" font-family="monospace" font-size="10" fill="#93c5fd" opacity="0.7">CARTOON ILLUSTRATION PLACEHOLDER</text>
+    </svg>"""
+    import base64
+    return f"data:image/svg+xml;base64,{base64.b64encode(svg.encode('utf-8')).decode('utf-8')}"
+
 # -----------------------------------------------------------------
 # Endpoint 1: Sync (GET) - Pull repository structure
 # -----------------------------------------------------------------
@@ -588,23 +629,25 @@ async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
         return {"error": str(e), "success": False}
 
 # -----------------------------------------------------------------
-# Endpoint 7: Bedtime Storyboard Planner [New Addition]
+# Endpoint 7: Bedtime Storyboard Planner
 # -----------------------------------------------------------------
 @app.post("/api/bedtime-story/plan-storyboard")
 async def plan_storyboard(req: StoryboardPlanRequest):
     if not openai_client:
         return {"error": "OpenAI Client is not initialized on backend.", "success": False}
     try:
-        # Determine dynamic scene count suggestions based on pacing rules (approx 1 scene per 30-45s)
+        # Dynamic pacing rules matching exact user specifications:
+        # Voice audio duration 40s or below -> at least 4 scenes
+        # Voice audio duration 60s (1m) -> at least 6 scenes
         duration = req.audio_duration
-        if duration <= 60.0:
-            suggested_scenes = 2
-        elif duration <= 120.0:
-            suggested_scenes = 3
-        elif duration <= 180.0:
+        if duration <= 40.0:
             suggested_scenes = 4
+        elif duration <= 60.0:
+            suggested_scenes = 6
+        elif duration <= 120.0:
+            suggested_scenes = 8
         else:
-            suggested_scenes = 5
+            suggested_scenes = 10
 
         openai_input_str = (
             f"=== STORYBOARD PLANNING PARAMS ===\n"
@@ -617,9 +660,9 @@ async def plan_storyboard(req: StoryboardPlanRequest):
             f"Analyze the narrative pacing and partition the story script into exactly {suggested_scenes} distinct visual scenes.\n"
             f"For each scene, provide:\n"
             f"1. The scene_number (integer)\n"
-            f"2. A timestamp_marker (string showing when the scene should appear, e.g., '0:00', '0:35')\n"
+            f"2. A timestamp_marker (string showing when the scene should appear, e.g., '0:00', '0:10')\n"
             f"3. The narration_segment (the exact portion of the script belonging to this scene)\n"
-            f"4. An image_prompt: A highly descriptive, detailed prompt for generating an illustration matching the scene's emotional context and Visual Style Theme '{req.visual_style}'. Ensure the prompt is optimized for gpt-image-1-mini and starts with descriptive nouns.\n\n"
+            f"4. An image_prompt: A highly descriptive, detailed cartoon-style illustration prompt matching the scene's context and Visual Style Theme '{req.visual_style}'. Ensure the prompt is optimized for gpt-image-1-mini and starts with descriptive nouns. Strictly specify 'cartoon vector' or 'hand-drawn child illustration' to avoid realistic photos.\n\n"
             f"Respond strictly with a raw JSON conforming to this schema:\n"
             f"{{\n"
             f"  \"total_scenes_planned\": {suggested_scenes},\n"
@@ -667,11 +710,11 @@ async def plan_storyboard(req: StoryboardPlanRequest):
         return {"error": str(e), "success": False}
 
 # -----------------------------------------------------------------
-# Endpoint 8: Bedtime Storyboard Scene Illustration Generator [New Addition]
+# Endpoint 8: Bedtime Storyboard Scene Illustration Generator
 # -----------------------------------------------------------------
 async def generate_single_scene_image(prompt: str) -> Optional[str]:
     try:
-        # standard run inside FastAPI thread executor to prevent sequential bottlenecks
+        # run inside FastAPI thread executor to prevent sequential bottlenecks
         loop = asyncio.get_event_loop()
         def sync_call():
             return openai_client.images.generate(
@@ -701,8 +744,8 @@ async def generate_scenes(req: SceneGenerationRequest):
         completed_scenes = []
         for i, item in enumerate(req.prompts):
             b64_data = results[i]
-            # Fallback placeholder cover in case of quota bounds or invalid prompt block flags
-            image_url = f"data:image/webp;base64,{b64_data}" if b64_data else f"https://picsum.photos/300/150?random={item.scene_number}"
+            # Fallback to charming vector cartoon sleepy rabbit illustration if API fails (avoids real photos)
+            image_url = f"data:image/webp;base64,{b64_data}" if b64_data else get_cartoon_placeholder(item.scene_number)
             completed_scenes.append({
                 "scene_number": item.scene_number,
                 "image_url": image_url
