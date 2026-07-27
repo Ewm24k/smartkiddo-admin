@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // AI inputs and controls
     const btnGenerateStory = document.getElementById("btn-generate-story");
+    const btnContinueGeneration = document.getElementById("btn-story-continue-generation");
     const statusBadgeText = document.getElementById("story-status-text");
     const statusBadgeIndicator = document.getElementById("story-status-indicator");
     const storyLogsContainer = document.getElementById("story-generation-logs");
@@ -20,6 +21,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // UI Interactive Input References
     const inputAgeGroup = document.getElementById("setting-age-group");
     const inputVoiceStyle = document.getElementById("setting-voice-style");
+    const inputOpenaiVoice = document.getElementById("setting-openai-voice");
     const inputVisualStyle = document.getElementById("setting-visual-style");
     const inputStoryLength = document.getElementById("setting-story-length");
     const inputMusicMood = document.getElementById("setting-music-mood");
@@ -234,10 +236,16 @@ document.addEventListener("DOMContentLoaded", function () {
         btnGenerateStory.innerText = "Generating...";
         btnGenerateStory.classList.add("opacity-50");
 
+        // Hide continue button during initial generation
+        if (btnContinueGeneration) {
+            btnContinueGeneration.classList.add("hidden");
+        }
+
         // Collect inputs
         const briefVal = inputConceptBrief.value.trim() || "A small rabbit who finds a glowing star in the woods.";
         const ageVal = inputAgeGroup.value;
         const voiceVal = inputVoiceStyle.value;
+        const openaiVoiceVal = inputOpenaiVoice ? inputOpenaiVoice.value : "nova";
         const visualVal = inputVisualStyle.value;
         const lengthVal = inputStoryLength.value;
         const musicVal = inputMusicMood.value;
@@ -252,6 +260,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         logToStudioConsole("Kicking off bedtime story AI sequence...", "info");
         logToStudioConsole(`Target age demographic: ${ageVal} | Theme direction: ${briefVal}`, "info");
+        logToStudioConsole(`Selected OpenAI Voice model character: ${openaiVoiceVal}`, "info");
 
         // --- STEP 1: Story Brief & Concept Generation (LIVE API CALL) ---
         switchPipelineStepPanel(0);
@@ -267,6 +276,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     concept_brief: briefVal,
                     age_group: ageVal,
                     voice_style: voiceVal,
+                    openai_voice: openaiVoiceVal,
                     visual_style: visualVal,
                     story_length: lengthVal,
                     music_mood: musicVal
@@ -319,10 +329,50 @@ document.addEventListener("DOMContentLoaded", function () {
         steps[1].classList.add("completed");
         logToStudioConsole("Successfully completed Step 2: Story script drafted.", "success");
 
+        // PAUSE POINT: Stop automatic continuation to let the user review and edit the draft script
+        statusBadgeText.innerText = "Review Script";
+        statusBadgeIndicator.className = "w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse";
+        logToStudioConsole("Pipeline paused. You can edit the narrative script now in the editor container.", "warning");
+        logToStudioConsole("Click the 'Continue Generation' button inside the editor viewport when ready.", "info");
+
+        if (btnContinueGeneration) {
+            btnContinueGeneration.classList.remove("hidden");
+        }
+
+        // Restore the generate button so user can restart settings if needed
+        btnGenerateStory.disabled = false;
+        btnGenerateStory.innerText = "Re-Generate Bedtime Story";
+        btnGenerateStory.classList.remove("opacity-50");
+    }
+
+    // Connect event listener to Continue button
+    if (btnContinueGeneration) {
+        btnContinueGeneration.addEventListener("click", function() {
+            // Secure edited text from textarea and write back to progress state
+            if (scriptEditorTextarea) {
+                pipelineProgressState.script = scriptEditorTextarea.value;
+            }
+            btnContinueGeneration.classList.add("hidden");
+            continuePipelineSimulation();
+        });
+    }
+
+    // Continues the workflow steps after script edit confirmation
+    async function continuePipelineSimulation() {
+        btnGenerateStory.disabled = true;
+        btnGenerateStory.innerText = "Compiling...";
+        btnGenerateStory.classList.add("opacity-50");
+
+        const ageVal = inputAgeGroup.value;
+        const voiceVal = inputVoiceStyle.value;
+        const visualVal = inputVisualStyle.value;
+        const musicVal = inputMusicMood.value;
+
         // --- STEP 3: Narration Audio Generation (MOCK PROCESS) ---
         statusBadgeText.innerText = "Generating Voice...";
+        statusBadgeIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
         switchPipelineStepPanel(2);
-        logToStudioConsole(`Requesting audio generation with ElevenLabs. Selected voice style: ${voiceVal}...`, "warning");
+        logToStudioConsole(`Requesting audio generation with ElevenLabs & OpenAI. Selected style: ${voiceVal}...`, "warning");
         await delay(2500);
 
         if (voiceWaveformContainer) {
