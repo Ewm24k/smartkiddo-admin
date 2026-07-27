@@ -52,6 +52,14 @@ class BedtimeStoryRequest(BaseModel):
     story_length: str
     music_mood: str
 
+# Request schema for Voice generation (New addition)
+class VoiceGenerationRequest(BaseModel):
+    text: str
+    voice: str
+    voice_style: str
+    response_format: Optional[str] = "wav"
+    speed: Optional[float] = 1.0
+
 # -----------------------------------------------------------------
 # Helper Utilities
 # -----------------------------------------------------------------
@@ -349,7 +357,7 @@ async def ai_chat_completion(chat_req: ChatRequest):
 
         # AUTONOMOUS AGENT ACTIONS (INJECTED SYSTEM INSTRUCTIONS)
         openai_input_str += "=== AGENT TOOL EMISSION RULES ===\n"
-        openai_input_str += "You are an autonomous administrative software agent with full permissions over the developer workspace [1.2.3, 1.2.4].\n"
+        openai_input_str += "You are an autonomous administrative software agent with full permissions over the developer workspace.\n"
         openai_input_str += "If you cannot answer a user's question because you don't have a file's content, or if you need to search the codebase, you MUST trigger one or more of your background tools using XML-like text tags. You can trigger multiple tags in a single message turn.\n\n"
         openai_input_str += "Available tools:\n"
         openai_input_str += "1. Read File Content:\n"
@@ -509,4 +517,41 @@ async def generate_bedtime_story(story_req: BedtimeStoryRequest):
 
     except Exception as e:
         print("Bedtime Story Generation Failure:", str(e))
+        return {"error": str(e), "success": False}
+
+# -----------------------------------------------------------------
+# Endpoint 6: Bedtime Story Voice Generator (OpenAI TTS) [New Addition]
+# -----------------------------------------------------------------
+@app.post("/api/bedtime-story/generate-voice")
+async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
+    if not openai_client:
+        return {"error": "OpenAI Client is not initialized on backend. Ensure OPENAI_API_KEY environment variable is active on Render.", "success": False}
+    try:
+        # Prompt optimization: formulate text-to-speech directions combining voice style and custom text
+        instructions = (
+            f"Deliver the following bedtime story narrative. "
+            f"Voice style requirements: {voice_req.voice_style}. "
+            f"Ensure the pacing is warm, soothing, and perfectly timed to relax a child."
+        )
+
+        # Utilize gpt-4o-mini-tts model with complete parameter schema as supported in 2026 docs
+        response = openai_client.audio.speech.create(
+            model="gpt-4o-mini-tts",
+            voice=voice_req.voice,
+            input=voice_req.text,
+            instructions=instructions,
+            response_format=voice_req.response_format,
+            speed=voice_req.speed
+        )
+
+        import base64
+        audio_data = response.content
+        base64_audio = base64.b64encode(audio_data).decode("utf-8")
+        
+        return {
+            "success": True,
+            "audio": f"data:audio/{voice_req.response_format};base64,{base64_audio}"
+        }
+    except Exception as e:
+        print("Bedtime Story Voice Generation Failure:", str(e))
         return {"error": str(e), "success": False}
