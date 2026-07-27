@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // AI inputs and controls
     const btnGenerateStory = document.getElementById("btn-generate-story");
     const btnContinueGeneration = document.getElementById("btn-story-continue-generation");
+    const btnContinueStoryboard = document.getElementById("btn-story-continue-storyboard");
     const statusBadgeText = document.getElementById("story-status-text");
     const statusBadgeIndicator = document.getElementById("story-status-indicator");
     const storyLogsContainer = document.getElementById("story-generation-logs");
@@ -236,9 +237,12 @@ document.addEventListener("DOMContentLoaded", function () {
         btnGenerateStory.innerText = "Generating...";
         btnGenerateStory.classList.add("opacity-50");
 
-        // Hide continue button during initial generation
+        // Hide continue buttons during initial generation
         if (btnContinueGeneration) {
             btnContinueGeneration.classList.add("hidden");
+        }
+        if (btnContinueStoryboard) {
+            btnContinueStoryboard.classList.add("hidden");
         }
 
         // Collect inputs
@@ -345,7 +349,7 @@ document.addEventListener("DOMContentLoaded", function () {
         btnGenerateStory.classList.remove("opacity-50");
     }
 
-    // Connect event listener to Continue button
+    // Connect event listener to Continue button on Step 2
     if (btnContinueGeneration) {
         btnContinueGeneration.addEventListener("click", function() {
             // Secure edited text from textarea and write back to progress state
@@ -357,24 +361,27 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Continues the workflow steps after script edit confirmation
+    // Continues the workflow to generate dynamic voice narration based on the Step 2 script
     async function continuePipelineSimulation() {
         btnGenerateStory.disabled = true;
         btnGenerateStory.innerText = "Compiling...";
         btnGenerateStory.classList.add("opacity-50");
 
-        const ageVal = inputAgeGroup.value;
-        const voiceVal = inputVoiceStyle.value;
-        const visualVal = inputVisualStyle.value;
-        const musicVal = inputMusicMood.value;
+        // Hide downstream continuation trigger
+        if (btnContinueStoryboard) {
+            btnContinueStoryboard.classList.add("hidden");
+        }
 
-        // --- STEP 3: Narration Audio Generation (MOCK PROCESS) ---
+        const voiceVal = inputVoiceStyle.value;
+        const openaiVoiceVal = inputOpenaiVoice ? inputOpenaiVoice.value : "nova";
+
+        // --- STEP 3: Narration Audio Generation (LIVE OPENAI TTS API CALL) ---
         statusBadgeText.innerText = "Generating Voice...";
         statusBadgeIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
         switchPipelineStepPanel(2);
-        logToStudioConsole(`Requesting audio generation with ElevenLabs & OpenAI. Selected style: ${voiceVal}...`, "warning");
-        await delay(2500);
+        logToStudioConsole(`Requesting voice synthesis with OpenAI gpt-4o-mini-tts. Selected voice model: ${openaiVoiceVal}...`, "warning");
 
+        // Render active animated voice waveform visualizer block
         if (voiceWaveformContainer) {
             voiceWaveformContainer.innerHTML = "";
             for (let i = 0; i < 24; i++) {
@@ -384,15 +391,88 @@ document.addEventListener("DOMContentLoaded", function () {
                 voiceWaveformContainer.appendChild(bar);
             }
         }
-        if (voiceAudioPlayer) {
-            voiceAudioPlayer.classList.remove("hidden");
+
+        try {
+            // POST request targeting the new backend proxy endpoint
+            const voiceResponse = await fetch(`${RENDER_BACKEND_URL}/api/bedtime-story/generate-voice`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    text: pipelineProgressState.script,
+                    voice: openaiVoiceVal,
+                    voice_style: voiceVal,
+                    response_format: "wav",
+                    speed: 1.0
+                })
+            });
+
+            if (!voiceResponse.ok) {
+                throw new Error(`Server returned voice synthesis status: ${voiceResponse.status}`);
+            }
+
+            const voiceData = await voiceResponse.json();
+
+            if (voiceData.success && voiceData.audio) {
+                if (voiceAudioPlayer) {
+                    voiceAudioPlayer.src = voiceData.audio;
+                    voiceAudioPlayer.classList.remove("hidden");
+                }
+                pipelineProgressState.voiceUrl = voiceData.audio;
+                steps[2].classList.add("completed");
+                logToStudioConsole("Successfully completed Step 3: Audio narration voice files rendered live.", "success");
+            } else {
+                throw new Error(voiceData.error || "Voice response was invalid.");
+            }
+
+        } catch (voiceError) {
+            console.error("OpenAI Voice synthesis failed:", voiceError);
+            logToStudioConsole(`Voice generation failed: ${voiceError.message}. Utilizing local simulation fallback.`, "error");
+            
+            // Fallback simulated file player if API/Token keys are missing
+            if (voiceAudioPlayer) {
+                voiceAudioPlayer.src = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
+                voiceAudioPlayer.classList.remove("hidden");
+            }
+            steps[2].classList.add("completed");
         }
 
-        steps[2].classList.add("completed");
-        logToStudioConsole("Successfully completed Step 3: Audio narration voice files rendered.", "success");
+        // PAUSE POINT: Stop automatic continuation at Step 3 to let user listen to generated audio before designing scenes
+        statusBadgeText.innerText = "Review Voice";
+        statusBadgeIndicator.className = "w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse";
+        logToStudioConsole("Pipeline paused at Step 3. Please listen to the voice output above.", "warning");
+        logToStudioConsole("Click the 'Continue to Storyboard' button inside the viewport when ready.", "info");
+
+        if (btnContinueStoryboard) {
+            btnContinueStoryboard.classList.remove("hidden");
+        }
+
+        btnGenerateStory.disabled = false;
+        btnGenerateStory.innerText = "Re-Generate Bedtime Story";
+        btnGenerateStory.classList.remove("opacity-50");
+    }
+
+    // Connect event listener to Continue to Storyboard button on Step 3
+    if (btnContinueStoryboard) {
+        btnContinueStoryboard.addEventListener("click", function() {
+            btnContinueStoryboard.classList.add("hidden");
+            continueStoryboardToPublishSimulation();
+        });
+    }
+
+    // Complete the remaining mockup simulation stages (Steps 4 to 6)
+    async function continueStoryboardToPublishSimulation() {
+        btnGenerateStory.disabled = true;
+        btnGenerateStory.innerText = "Compiling...";
+        btnGenerateStory.classList.add("opacity-50");
+
+        const ageVal = inputAgeGroup.value;
+        const visualVal = inputVisualStyle.value;
 
         // --- STEP 4: Storyboard Scene Descriptions (MOCK PROCESS) ---
         statusBadgeText.innerText = "Designing Scenes...";
+        statusBadgeIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
         switchPipelineStepPanel(3);
         logToStudioConsole("Formulating scene cards and layout prompts...", "warning");
         await delay(3000);
