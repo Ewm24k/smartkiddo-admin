@@ -15,6 +15,8 @@ document.addEventListener("DOMContentLoaded", function () {
     const btnGenerateStory = document.getElementById("btn-generate-story");
     const btnContinueGeneration = document.getElementById("btn-story-continue-generation");
     const btnContinueStoryboard = document.getElementById("btn-story-continue-storyboard");
+    const btnContinueVideo = document.getElementById("btn-story-continue-video");
+    const btnRegenerateStoryboard = document.getElementById("btn-story-regenerate-storyboard");
     const statusBadgeText = document.getElementById("story-status-text");
     const statusBadgeIndicator = document.getElementById("story-status-indicator");
     const storyLogsContainer = document.getElementById("story-generation-logs");
@@ -243,6 +245,12 @@ document.addEventListener("DOMContentLoaded", function () {
         if (btnContinueStoryboard) {
             btnContinueStoryboard.classList.add("hidden");
         }
+        if (btnContinueVideo) {
+            btnContinueVideo.classList.add("hidden");
+        }
+        if (btnRegenerateStoryboard) {
+            btnRegenerateStoryboard.classList.add("hidden");
+        }
 
         // Dynamically query DOM references directly to protect parameter integrity
         const ageVal = inputAgeGroup.value;
@@ -369,7 +377,7 @@ document.addEventListener("DOMContentLoaded", function () {
         btnGenerateStory.innerText = "Compiling...";
         btnGenerateStory.classList.add("opacity-50");
 
-        // Hide downstream continuation trigger
+        // Hide downstream continuation triggers
         if (btnContinueStoryboard) {
             btnContinueStoryboard.classList.add("hidden");
         }
@@ -399,7 +407,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         try {
-            // POST request targeting the new backend proxy endpoint
+            // POST request targeting the voice backend proxy endpoint
             const voiceResponse = await fetch(`${RENDER_BACKEND_URL}/api/bedtime-story/generate-voice`, {
                 method: "POST",
                 headers: {
@@ -463,58 +471,236 @@ document.addEventListener("DOMContentLoaded", function () {
     if (btnContinueStoryboard) {
         btnContinueStoryboard.addEventListener("click", function() {
             btnContinueStoryboard.classList.add("hidden");
-            continueStoryboardToPublishSimulation();
+            startStoryboardPipeline();
         });
     }
 
-    // Complete the remaining mockup simulation stages (Steps 4 to 6)
-    async function continueStoryboardToPublishSimulation() {
+    // --- STEP 4 STORYBOARD STAGE COORDINATION (NEW LIVE PIPELINE FLOW) ---
+    async function startStoryboardPipeline() {
+        btnGenerateStory.disabled = true;
+        btnGenerateStory.innerText = "Planning...";
+        btnGenerateStory.classList.add("opacity-50");
+
+        if (btnContinueVideo) {
+            btnContinueVideo.classList.add("hidden");
+        }
+        if (btnRegenerateStoryboard) {
+            btnRegenerateStoryboard.classList.add("hidden");
+        }
+
+        statusBadgeText.innerText = "Planning Scenes...";
+        statusBadgeIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
+        switchPipelineStepPanel(3);
+
+        // Determine audio duration (use read duration pacing fallback if metadata is loading)
+        let duration = voiceAudioPlayer ? voiceAudioPlayer.duration : 0;
+        if (!duration || isNaN(duration) || duration <= 0) {
+            const wordCount = pipelineProgressState.script.split(/\s+/).filter(w => w.length > 0).length;
+            duration = Math.ceil((wordCount / 130) * 60);
+            logToStudioConsole(`Audio metadata not fully loaded yet. Calculated estimated pacing duration: ${duration}s`, "warning");
+        } else {
+            duration = Math.ceil(duration);
+            logToStudioConsole(`Voice audio duration confirmed: ${duration} seconds.`, "success");
+        }
+
+        const ageVal = inputAgeGroup.value;
+        const visualVal = inputVisualStyle.value;
+
+        logToStudioConsole("Contacting OpenAI to plan scene segments and visual prompt themes...", "warning");
+
+        // Display planning loader directly inside grid
+        if (storyboardGrid) {
+            storyboardGrid.innerHTML = `
+                <div class="text-center py-10 text-neutral-400 text-xs font-mono">
+                    <div class="w-6 h-6 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin mx-auto mb-2"></div>
+                    AI is currently partitioning the script and writing prompts for gpt-image-1-mini...
+                </div>
+            `;
+        }
+
+        try {
+            // CALL THE PLANNER ENDPOINT
+            const planResponse = await fetch(`${RENDER_BACKEND_URL}/api/bedtime-story/plan-storyboard`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    story_script: pipelineProgressState.script,
+                    audio_duration: duration,
+                    visual_style: visualVal,
+                    target_age: ageVal
+                })
+            });
+
+            if (!planResponse.ok) {
+                throw new Error(`Server returned planning status code: ${planResponse.status}`);
+            }
+
+            const planData = await planResponse.json();
+
+            if (planData.success && planData.scenes && planData.scenes.length > 0) {
+                pipelineProgressState.scenes = planData.scenes;
+                logToStudioConsole(`Storyboard planned successfully. Partitioned story into ${planData.total_scenes_planned} scenes.`, "success");
+                
+                // EXECUTE PARALLEL IMAGE GENERATIONS
+                await executeParallelSceneGenerations();
+            } else {
+                throw new Error("Invalid scene data returned from planner.");
+            }
+
+        } catch (planError) {
+            console.error("Storyboard planning failed:", planError);
+            logToStudioConsole(`Planning failed: ${planError.message}. Utilizing simulation storyboard setup as backup.`, "error");
+            
+            // Simulation Fallback in case of backend limits
+            pipelineProgressState.scenes = [
+                { scene_number: 1, timestamp_marker: "0:00", narration_segment: "Once upon a time, there lived a soft, little rabbit named Barnaby.", image_prompt: `watercolor, whimsical, ${visualVal}, cute baby rabbit looking up at twilight purple sky` },
+                { scene_number: 2, timestamp_marker: "0:45", narration_segment: "Barnaby hopping slowly towards a glowing small light under an old Oak Tree.", image_prompt: `watercolor, ${visualVal}, glowing magical star under an old oak tree, rabbit hopping towards it` },
+                { scene_number: 3, timestamp_marker: "1:20", narration_segment: "He discovered a tiny star shining gently under the mushroom caps.", image_prompt: `watercolor, ${visualVal}, close up of soft cute rabbit paw touching glowing tiny magical star` }
+            ];
+            await executeParallelSceneGenerations();
+        }
+    }
+
+    // Coordinates concurrent generation calls utilizing gpt-image-1-mini low quality tier
+    async function executeParallelSceneGenerations() {
+        statusBadgeText.innerText = "Rendering Art...";
+        logToStudioConsole(`Requesting parallel image generations via gpt-image-1-mini ($0.005/img tier)...`, "warning");
+
+        if (storyboardGrid) {
+            storyboardGrid.innerHTML = `
+                <div class="text-center py-10 text-neutral-400 text-xs font-mono">
+                    <div class="w-6 h-6 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin mx-auto mb-2"></div>
+                    Generating ${pipelineProgressState.scenes.length} illustrations in parallel on OpenAI...
+                </div>
+            `;
+        }
+
+        const visualVal = inputVisualStyle.value;
+
+        try {
+            const genResponse = await fetch(`${RENDER_BACKEND_URL}/api/bedtime-story/generate-scenes`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    prompts: pipelineProgressState.scenes.map(s => ({
+                        scene_number: s.scene_number,
+                        image_prompt: s.image_prompt
+                    })),
+                    visual_style: visualVal
+                })
+            });
+
+            if (!genResponse.ok) {
+                throw new Error(`Server returned image generation status: ${genResponse.status}`);
+            }
+
+            const genData = await genResponse.json();
+
+            if (genData.success && genData.scenes) {
+                // Merge generated image URLs back into our main state array
+                pipelineProgressState.scenes.forEach(mainScene => {
+                    const matchedGen = genData.scenes.find(gs => gs.scene_number === mainScene.scene_number);
+                    if (matchedGen) {
+                        mainScene.image_url = matchedGen.image_url;
+                    } else {
+                        mainScene.image_url = `https://picsum.photos/300/150?random=${mainScene.scene_number}`;
+                    }
+                });
+
+                logToStudioConsole("Successfully completed Step 4: Parallel storyboard illustrations rendered.", "success");
+            } else {
+                throw new Error("Invalid image data returned from generator.");
+            }
+
+        } catch (genError) {
+            console.error("Parallel scene generation crashed:", genError);
+            logToStudioConsole(`Generation crashed: ${genError.message}. Appending simulation visual blocks.`, "error");
+
+            // Hard fallback placeholders
+            pipelineProgressState.scenes.forEach(s => {
+                s.image_url = `https://picsum.photos/300/150?random=${s.scene_number}`;
+            });
+        }
+
+        // Render fully complete scene cards dynamically into the grid viewport
+        renderStoryboardCards();
+    }
+
+    // Handles DOM template generation for each planned storyboard segment
+    function renderStoryboardCards() {
+        if (!storyboardGrid) return;
+        storyboardGrid.innerHTML = "";
+
+        pipelineProgressState.scenes.forEach(sc => {
+            const card = document.createElement("div");
+            card.className = "bg-[#14141e] border border-[#1f1f29] rounded-lg overflow-hidden flex flex-col p-3";
+            card.innerHTML = `
+                <div class="h-28 bg-neutral-800 flex items-center justify-center text-xs text-neutral-500 rounded relative overflow-hidden mb-2">
+                    <img src="${sc.image_url}" alt="Scene ${sc.scene_number}" class="w-full h-full object-cover">
+                    <span class="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/60 text-[9px] font-mono font-bold text-white uppercase">Scene ${sc.scene_number} [${sc.timestamp_marker}]</span>
+                </div>
+                <p class="text-[11px] font-semibold text-white leading-relaxed mb-1 leading-relaxed line-clamp-2" title="${sc.narration_segment}">${sc.narration_segment}</p>
+                <textarea class="bg-[#0d0d11] border border-[#1f1f29] text-[9px] text-neutral-400 p-1.5 rounded outline-none font-mono h-12 leading-relaxed resize-none" readonly>${sc.image_prompt}</textarea>
+            `;
+            storyboardGrid.appendChild(card);
+        });
+
+        // Toggle state classes to match complete review steps
+        steps[3].classList.add("completed");
+        
+        statusBadgeText.innerText = "Review Storyboard";
+        statusBadgeIndicator.className = "w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse";
+        logToStudioConsole("Pipeline paused at Step 4. Validate scene visual cards.", "warning");
+        logToStudioConsole("Click 'Continue to Video Compile' inside the viewport when ready, or 'Regenerate' to refresh.", "info");
+
+        // Display user controls
+        if (btnContinueVideo) {
+            btnContinueVideo.classList.remove("hidden");
+        }
+        if (btnRegenerateStoryboard) {
+            btnRegenerateStoryboard.classList.remove("hidden");
+        }
+
+        btnGenerateStory.disabled = false;
+        btnGenerateStory.innerText = "Re-Generate Bedtime Story";
+        btnGenerateStory.classList.remove("opacity-50");
+    }
+
+    // Connect event listener to "Regenerate Storyboard" button inside Step 4 Viewport
+    if (btnRegenerateStoryboard) {
+        btnRegenerateStoryboard.addEventListener("click", function() {
+            if (confirm("Are you sure you want to regenerate all storyboard illustrations? This will execute parallel OpenAI gpt-image-1-mini calls matching your latest style.")) {
+                startStoryboardPipeline();
+            }
+        });
+    }
+
+    // Connect event listener to Continue to Video Compile button inside Step 4 Viewport
+    if (btnContinueVideo) {
+        btnContinueVideo.addEventListener("click", function() {
+            btnContinueVideo.classList.add("hidden");
+            if (btnRegenerateStoryboard) {
+                btnRegenerateStoryboard.classList.add("hidden");
+            }
+            continueVideoToPublishSimulation();
+        });
+    }
+
+    // Completes the remaining mockup stages (Steps 5 and 6)
+    async function continueVideoToPublishSimulation() {
         btnGenerateStory.disabled = true;
         btnGenerateStory.innerText = "Compiling...";
         btnGenerateStory.classList.add("opacity-50");
 
         const ageVal = inputAgeGroup.value;
-        const visualVal = inputVisualStyle.value;
-
-        // --- STEP 4: Storyboard Scene Descriptions (MOCK PROCESS) ---
-        statusBadgeText.innerText = "Designing Scenes...";
-        statusBadgeIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
-        switchPipelineStepPanel(3);
-        logToStudioConsole("Formulating scene cards and layout prompts...", "warning");
-        await delay(3000);
-
-        const mockScenes = [
-            { num: 1, text: "Barnaby the curious rabbit looking at the twilight purple sky.", prompt: `watercolor, whimsical, ${visualVal}, cute baby rabbit looking at twilight sky` },
-            { num: 2, text: "Barnaby hopping slowly towards a glowing small light under a tree.", prompt: `watercolor, ${visualVal}, glowing magical star under an old oak tree, rabbit hopping towards it` },
-            { num: 3, text: "Barnaby carefully touching the glowing star with his paw.", prompt: `watercolor, ${visualVal}, close up of soft cute rabbit paw touching glowing tiny magical star` }
-        ];
-
-        if (storyboardGrid) {
-            storyboardGrid.innerHTML = "";
-            mockScenes.forEach(sc => {
-                const card = document.createElement("div");
-                card.className = "bg-[#14141e] border border-[#1f1f29] rounded-lg overflow-hidden flex flex-col p-3";
-                card.innerHTML = `
-                    <div class="h-28 bg-neutral-800 flex items-center justify-center text-xs text-neutral-500 rounded relative overflow-hidden mb-2">
-                        <img src="https://picsum.photos/300/150?random=${sc.num}" alt="Scene ${sc.num}" class="w-full h-full object-cover">
-                        <span class="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/60 text-[9px] font-mono font-bold text-white uppercase">Scene ${sc.num}</span>
-                    </div>
-                    <p class="text-[11px] font-semibold text-white truncate">${sc.text}</p>
-                    <textarea class="bg-[#0d0d11] border border-neutral-800 text-[10px] text-neutral-400 p-1.5 rounded outline-none font-mono mt-1.5 h-12 leading-relaxed" readonly>${sc.prompt}</textarea>
-                    <div class="flex items-center justify-between gap-1 mt-2.5">
-                        <button class="flex-1 bg-neutral-800 hover:bg-neutral-700 text-[9px] font-bold py-1 rounded transition-colors text-neutral-300">Regen</button>
-                        <button class="flex-1 bg-neutral-800 hover:bg-neutral-700 text-[9px] font-bold py-1 rounded transition-colors text-neutral-300">Edit Prompt</button>
-                    </div>
-                `;
-                storyboardGrid.appendChild(card);
-            });
-        }
-
-        steps[3].classList.add("completed");
-        logToStudioConsole("Successfully completed Step 4: Storyboard descriptions and cover cards ready.", "success");
 
         // --- STEP 5: Assembling Video Clips (MOCK PROCESS) ---
         statusBadgeText.innerText = "Compiling Video...";
+        statusBadgeIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
         switchPipelineStepPanel(4);
         logToStudioConsole("Combining assets, voice-over audio files, and frames into high quality video render...", "warning");
         await delay(3500);
@@ -535,7 +721,12 @@ document.addEventListener("DOMContentLoaded", function () {
         logToStudioConsole("Loading final cover art and database publication setup...", "warning");
         await delay(1500);
 
-        if (publishCoverImage) publishCoverImage.src = "https://picsum.photos/400/300?random=99";
+        // Bind first generated scene illustration dynamically as official cover art rather than dummy placeholder
+        if (publishCoverImage) {
+            publishCoverImage.src = (pipelineProgressState.scenes && pipelineProgressState.scenes.length > 0) 
+                ? pipelineProgressState.scenes[0].image_url 
+                : "https://picsum.photos/400/300?random=99";
+        }
         if (publishTitleInput) publishTitleInput.value = pipelineProgressState.title;
         if (publishDescTextarea) publishDescTextarea.value = `Join Barnaby the Curious Rabbit in this delightful sleep-time story. Designed for children ages ${ageVal}.`;
 
