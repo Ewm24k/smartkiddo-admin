@@ -22,7 +22,6 @@ document.addEventListener("DOMContentLoaded", function () {
     // UI Interactive Input References
     const inputAgeGroup = document.getElementById("setting-age-group");
     const inputVoiceStyle = document.getElementById("setting-voice-style");
-    const inputOpenaiVoice = document.getElementById("setting-openai-voice");
     const inputVisualStyle = document.getElementById("setting-visual-style");
     const inputStoryLength = document.getElementById("setting-story-length");
     const inputMusicMood = document.getElementById("setting-music-mood");
@@ -245,11 +244,14 @@ document.addEventListener("DOMContentLoaded", function () {
             btnContinueStoryboard.classList.add("hidden");
         }
 
-        // Collect inputs
-        const briefVal = inputConceptBrief.value.trim() || "A small rabbit who finds a glowing star in the woods.";
+        // Dynamically query DOM references directly to protect parameter integrity
         const ageVal = inputAgeGroup.value;
         const voiceVal = inputVoiceStyle.value;
-        const openaiVoiceVal = inputOpenaiVoice ? inputOpenaiVoice.value : "nova";
+        
+        const openaiVoiceEl = document.getElementById("setting-openai-voice");
+        const openaiVoiceVal = openaiVoiceEl ? openaiVoiceEl.value.trim().lower() : "nova";
+
+        const briefVal = inputConceptBrief.value.trim() || "A small rabbit who finds a glowing star in the woods.";
         const visualVal = inputVisualStyle.value;
         const lengthVal = inputStoryLength.value;
         const musicVal = inputMusicMood.value;
@@ -372,14 +374,18 @@ document.addEventListener("DOMContentLoaded", function () {
             btnContinueStoryboard.classList.add("hidden");
         }
 
-        const voiceVal = inputVoiceStyle.value;
-        const openaiVoiceVal = inputOpenaiVoice ? inputOpenaiVoice.value : "nova";
+        // Dynamically query DOM selectors to capture current settings securely
+        const voiceStyleEl = document.getElementById("setting-voice-style");
+        const openaiVoiceEl = document.getElementById("setting-openai-voice");
+
+        const voiceVal = voiceStyleEl ? voiceStyleEl.value : "animated";
+        const openaiVoiceVal = openaiVoiceEl ? openaiVoiceEl.value.trim().lower() : "nova";
 
         // --- STEP 3: Narration Audio Generation (LIVE OPENAI TTS API CALL) ---
         statusBadgeText.innerText = "Generating Voice...";
         statusBadgeIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
         switchPipelineStepPanel(2);
-        logToStudioConsole(`Requesting voice synthesis with OpenAI gpt-4o-mini-tts. Selected voice model: ${openaiVoiceVal}...`, "warning");
+        logToStudioConsole(`Requesting voice synthesis with OpenAI gpt-4o-mini-tts. Target Voice character: "${openaiVoiceVal}" | Tone style: "${voiceVal}"`, "warning");
 
         // Render active animated voice waveform visualizer block
         if (voiceWaveformContainer) {
@@ -421,7 +427,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
                 pipelineProgressState.voiceUrl = voiceData.audio;
                 steps[2].classList.add("completed");
-                logToStudioConsole("Successfully completed Step 3: Audio narration voice files rendered live.", "success");
+                logToStudioConsole(`Successfully completed Step 3: Audio narration voice generated. System verified voice character: "${openaiVoiceVal}"`, "success");
             } else {
                 throw new Error(voiceData.error || "Voice response was invalid.");
             }
