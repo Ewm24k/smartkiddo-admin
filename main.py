@@ -52,7 +52,7 @@ class BedtimeStoryRequest(BaseModel):
     story_length: str
     music_mood: str
 
-# Request schema for Voice generation (New addition)
+# Request schema for Voice generation
 class VoiceGenerationRequest(BaseModel):
     text: str
     voice: str
@@ -206,7 +206,7 @@ async def sync_github(repo: Optional[str] = None):
                 
                 parent_node = nodes_by_path[current_path]
 
-        # Retrieve and hydrate all file content concurrently using asyncio.gather [2]
+        # Hydrate all file content concurrently [2]
         code_files = collect_code_files(root_nodes)
         if code_files:
             async with httpx.AsyncClient() as client:
@@ -520,14 +520,29 @@ async def generate_bedtime_story(story_req: BedtimeStoryRequest):
         return {"error": str(e), "success": False}
 
 # -----------------------------------------------------------------
-# Endpoint 6: Bedtime Story Voice Generator (OpenAI TTS) [New Addition]
+# Endpoint 6: Bedtime Story Voice Generator (OpenAI TTS)
 # -----------------------------------------------------------------
 @app.post("/api/bedtime-story/generate-voice")
 async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
     if not openai_client:
         return {"error": "OpenAI Client is not initialized on backend. Ensure OPENAI_API_KEY environment variable is active on Render.", "success": False}
     try:
-        # Prompt optimization: formulate text-to-speech directions combining voice style and custom text
+        # Whitespace cleaning & lowercasing to handle mismatched values
+        requested_voice = voice_req.voice.strip().lower()
+        supported_voices = [
+            "alloy", "ash", "ballad", "cedar", "coral", "echo", 
+            "fable", "marin", "nova", "onyx", "sage", "shimmer", "verse"
+        ]
+        
+        # Whitelist verification fallback to ensure correctness
+        if requested_voice not in supported_voices:
+            print(f"[TTS Warning] Requested voice '{requested_voice}' is unsupported. Falling back to 'nova'.")
+            requested_voice = "nova"
+
+        # Output explicit log verification to standard out
+        print(f"[TTS Debug] Request received | Text length: {len(voice_req.text)} | Voice parameter sent to OpenAI: '{requested_voice}' | Style: '{voice_req.voice_style}'")
+
+        # Prompt optimization combining voice style and story text for gpt-4o-mini-tts instructions
         instructions = (
             f"Deliver the following bedtime story narrative. "
             f"Voice style requirements: {voice_req.voice_style}. "
@@ -537,7 +552,7 @@ async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
         # Utilize gpt-4o-mini-tts model with complete parameter schema as supported in 2026 docs
         response = openai_client.audio.speech.create(
             model="gpt-4o-mini-tts",
-            voice=voice_req.voice,
+            voice=requested_voice,  # Send verified and sanitized lowercase option
             input=voice_req.text,
             instructions=instructions,
             response_format=voice_req.response_format,
