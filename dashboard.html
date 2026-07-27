@@ -321,7 +321,7 @@
                                 <div class="pipeline-panel h-full w-full overflow-y-auto space-y-4 hidden" data-panel="2">
                                     <div class="border-b border-[#1f1f29] pb-3">
                                         <h2 class="text-sm font-bold text-white uppercase tracking-wider">Voice Narration Player</h2>
-                                        <p class="text-[11px] text-neutral-500 mt-0.5">Generated voice synthesizer files powered by ElevenLabs text-to-speech.</p>
+                                        <p class="text-[11px] text-neutral-500 mt-0.5">Generated voice synthesizer files powered by OpenAI text-to-speech.</p>
                                     </div>
                                     <div class="bg-[#111115] border border-[#1f1f29] rounded-lg p-5 flex flex-col items-center justify-center gap-4">
                                         <div id="res-voice-waveform" class="h-10 flex items-center gap-1 justify-center w-full max-w-sm">
@@ -331,6 +331,15 @@
                                             <div class="w-0.5 h-2 bg-neutral-700 rounded-full"></div>
                                         </div>
                                         <audio id="res-voice-player" controls class="hidden w-full max-w-xs"></audio>
+                                    </div>
+                                    <!-- Continue Button to Storyboard (Pauses pipeline at Step 3 until clicked) -->
+                                    <div class="flex justify-end mt-2">
+                                        <button id="btn-story-continue-storyboard" class="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-xs text-white font-semibold transition-colors flex items-center gap-1.5 hidden">
+                                            <span>Continue to Storyboard</span>
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                                            </svg>
+                                        </button>
                                     </div>
                                 </div>
 
@@ -623,7 +632,7 @@
                             <div id="ai-chat-output-container" class="flex-1 overflow-y-auto p-4 space-y-4">
                                 <!-- Default Greeting -->
                                 <div class="flex items-start gap-3">
-                                    <div class="w-6 h-6 rounded bg-indigo-600/20 flex items-center justify-center text-xs text-indigo-400 font-bold flex-shrink-0">AI</div>
+                                    <div class="w-6 h-6 rounded bg-[#1a1a24] border border-[#1f1f29] flex items-center justify-center text-xs text-indigo-400 font-bold flex-shrink-0">AI</div>
                                     <div class="bg-[#1a1a24] p-3 rounded-lg text-xs text-neutral-300 leading-relaxed max-w-[85%] border border-[#1f1f29]">
                                         Hi! I am your SmartKiddo AI Agent. I can write and optimize code, perform search functions, and analyze all files within your active directory structure. How can I help you today?
                                     </div>
