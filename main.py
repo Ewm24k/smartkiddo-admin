@@ -60,6 +60,22 @@ class VoiceGenerationRequest(BaseModel):
     response_format: Optional[str] = "wav"
     speed: Optional[float] = 1.0
 
+# Request schema for Storyboard planning
+class StoryboardPlanRequest(BaseModel):
+    story_script: str
+    audio_duration: float
+    visual_style: str
+    target_age: str
+
+# Request schemas for parallel Scene image generation
+class ScenePromptItem(BaseModel):
+    scene_number: int
+    image_prompt: str
+
+class SceneGenerationRequest(BaseModel):
+    prompts: List[ScenePromptItem]
+    visual_style: str
+
 # -----------------------------------------------------------------
 # Helper Utilities
 # -----------------------------------------------------------------
@@ -569,4 +585,133 @@ async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
         }
     except Exception as e:
         print("Bedtime Story Voice Generation Failure:", str(e))
+        return {"error": str(e), "success": False}
+
+# -----------------------------------------------------------------
+# Endpoint 7: Bedtime Storyboard Planner [New Addition]
+# -----------------------------------------------------------------
+@app.post("/api/bedtime-story/plan-storyboard")
+async def plan_storyboard(req: StoryboardPlanRequest):
+    if not openai_client:
+        return {"error": "OpenAI Client is not initialized on backend.", "success": False}
+    try:
+        # Determine dynamic scene count suggestions based on pacing rules (approx 1 scene per 30-45s)
+        duration = req.audio_duration
+        if duration <= 60.0:
+            suggested_scenes = 2
+        elif duration <= 120.0:
+            suggested_scenes = 3
+        elif duration <= 180.0:
+            suggested_scenes = 4
+        else:
+            suggested_scenes = 5
+
+        openai_input_str = (
+            f"=== STORYBOARD PLANNING PARAMS ===\n"
+            f"Story Script: {req.story_script}\n"
+            f"Audio Duration: {duration} seconds\n"
+            f"Suggested Scene Count: {suggested_scenes}\n"
+            f"Visual Style Theme: {req.visual_style}\n"
+            f"Target Age Demographic: {req.target_age} years old\n\n"
+            f"=== CORE INSTRUCTIONS ===\n"
+            f"Analyze the narrative pacing and partition the story script into exactly {suggested_scenes} distinct visual scenes.\n"
+            f"For each scene, provide:\n"
+            f"1. The scene_number (integer)\n"
+            f"2. A timestamp_marker (string showing when the scene should appear, e.g., '0:00', '0:35')\n"
+            f"3. The narration_segment (the exact portion of the script belonging to this scene)\n"
+            f"4. An image_prompt: A highly descriptive, detailed prompt for generating an illustration matching the scene's emotional context and Visual Style Theme '{req.visual_style}'. Ensure the prompt is optimized for gpt-image-1-mini and starts with descriptive nouns.\n\n"
+            f"Respond strictly with a raw JSON conforming to this schema:\n"
+            f"{{\n"
+            f"  \"total_scenes_planned\": {suggested_scenes},\n"
+            f"  \"scenes\": [\n"
+            f"    {{\n"
+            f"      \"scene_number\": 1,\n"
+            f"      \"timestamp_marker\": \"...\",\n"
+            f"      \"narration_segment\": \"...\",\n"
+            f"      \"image_prompt\": \"...\"\n"
+            f"    }}\n"
+            f"  ]\n"
+            f"}}\n"
+        )
+
+        response = openai_client.responses.create(
+            model="gpt-5.4-mini",
+            prompt={
+                "id": "pmpt_6a662bd8afd08194a20f18967be4326908f6e34aa8074ea1",
+                "version": "1"
+            },
+            input=openai_input_str,
+            reasoning={
+                "mode": "standard",
+                "summary": "auto"
+            },
+            store=True
+        )
+
+        ai_raw_content = ""
+        if hasattr(response, "output_text") and response.output_text:
+            ai_raw_content = response.output_text
+        elif hasattr(response, "choices") and len(response.choices) > 0:
+            ai_raw_content = response.choices[0].message.content
+        elif hasattr(response, "output") and hasattr(response.output, "content"):
+            ai_raw_content = response.output.content
+
+        plan_data = extract_json_content(ai_raw_content)
+        return {
+            "success": True,
+            "total_scenes_planned": plan_data.get("total_scenes_planned", suggested_scenes),
+            "scenes": plan_data.get("scenes", [])
+        }
+    except Exception as e:
+        print("Storyboard Planning Failure:", str(e))
+        return {"error": str(e), "success": False}
+
+# -----------------------------------------------------------------
+# Endpoint 8: Bedtime Storyboard Scene Illustration Generator [New Addition]
+# -----------------------------------------------------------------
+async def generate_single_scene_image(prompt: str) -> Optional[str]:
+    try:
+        # standard run inside FastAPI thread executor to prevent sequential bottlenecks
+        loop = asyncio.get_event_loop()
+        def sync_call():
+            return openai_client.images.generate(
+                model="gpt-image-1-mini",
+                prompt=prompt,
+                quality="low",  # Triggers cost-saving $0.005 tier
+                size="1024x1024",
+                response_format="b64_json"
+            )
+        response = await loop.run_in_executor(None, sync_call)
+        return response.data[0].b64_json
+    except Exception as e:
+        print(f"Error generating scene image concurrently: {str(e)}")
+        return None
+
+@app.post("/api/bedtime-story/generate-scenes")
+async def generate_scenes(req: SceneGenerationRequest):
+    if not openai_client:
+        return {"error": "OpenAI Client is not initialized on backend.", "success": False}
+    try:
+        print(f"[Storyboard Debug] Initiating parallel scene generation of {len(req.prompts)} panels in '{req.visual_style}' style.")
+
+        # Coordinate asynchronous parallel API requests
+        tasks = [generate_single_scene_image(item.image_prompt) for item in req.prompts]
+        results = await asyncio.gather(*tasks)
+
+        completed_scenes = []
+        for i, item in enumerate(req.prompts):
+            b64_data = results[i]
+            # Fallback placeholder cover in case of quota bounds or invalid prompt block flags
+            image_url = f"data:image/webp;base64,{b64_data}" if b64_data else f"https://picsum.photos/300/150?random={item.scene_number}"
+            completed_scenes.append({
+                "scene_number": item.scene_number,
+                "image_url": image_url
+            })
+
+        return {
+            "success": True,
+            "scenes": completed_scenes
+        }
+    except Exception as e:
+        print("Scene Images Generation Failure:", str(e))
         return {"error": str(e), "success": False}
