@@ -345,13 +345,29 @@
 
                                 <!-- Screen 4: Storyboard Scenes -->
                                 <div class="pipeline-panel h-full w-full overflow-y-auto space-y-4 hidden" data-panel="3">
-                                    <div class="border-b border-[#1f1f29] pb-3">
-                                        <h2 class="text-sm font-bold text-white uppercase tracking-wider">Storyboard Scene Cards</h2>
-                                        <p class="text-[11px] text-neutral-500 mt-0.5">Prompts and image compositions designated to accompany the narrative paragraphs.</p>
+                                    <div class="border-b border-[#1f1f29] pb-3 flex items-center justify-between">
+                                        <div>
+                                            <h2 class="text-sm font-bold text-white uppercase tracking-wider">Storyboard Scene Cards</h2>
+                                            <p class="text-[11px] text-neutral-500 mt-0.5">Prompts and image compositions designated to accompany the narrative paragraphs.</p>
+                                        </div>
+                                        <!-- Regeneration Option Trigger -->
+                                        <button id="btn-story-regenerate-storyboard" class="px-3 py-1.5 rounded bg-[#17171e] hover:bg-neutral-800 border border-[#1f1f29] text-[10px] text-neutral-300 font-semibold transition-colors flex items-center gap-1.5 hidden" title="Regenerate all scenes using latest settings">
+                                            <svg class="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 11H19"></path></svg>
+                                            <span>Regenerate Storyboard</span>
+                                        </button>
                                     </div>
                                     <div id="res-storyboard-grid" class="storyboard-grid overflow-y-auto max-h-[300px] pr-2 no-scrollbar">
                                         <!-- Populated via Javascript dynamically -->
                                         <div class="text-center py-10 text-neutral-600 text-xs font-mono">No scenes generated yet.</div>
+                                    </div>
+                                    <!-- Continue Button to Video Compile (Pauses pipeline at Step 4 until clicked) -->
+                                    <div class="flex justify-end mt-2">
+                                        <button id="btn-story-continue-video" class="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-xs text-white font-semibold transition-colors flex items-center gap-1.5 hidden">
+                                            <span>Continue to Video Compile</span>
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                                            </svg>
+                                        </button>
                                     </div>
                                 </div>
 
