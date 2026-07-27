@@ -249,7 +249,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const voiceVal = inputVoiceStyle.value;
         
         const openaiVoiceEl = document.getElementById("setting-openai-voice");
-        const openaiVoiceVal = openaiVoiceEl ? openaiVoiceEl.value.trim().lower() : "nova";
+        const openaiVoiceVal = openaiVoiceEl ? openaiVoiceEl.value.trim().toLowerCase() : "nova";
 
         const briefVal = inputConceptBrief.value.trim() || "A small rabbit who finds a glowing star in the woods.";
         const visualVal = inputVisualStyle.value;
@@ -379,7 +379,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const openaiVoiceEl = document.getElementById("setting-openai-voice");
 
         const voiceVal = voiceStyleEl ? voiceStyleEl.value : "animated";
-        const openaiVoiceVal = openaiVoiceEl ? openaiVoiceEl.value.trim().lower() : "nova";
+        const openaiVoiceVal = openaiVoiceEl ? openaiVoiceEl.value.trim().toLowerCase() : "nova";
 
         // --- STEP 3: Narration Audio Generation (LIVE OPENAI TTS API CALL) ---
         statusBadgeText.innerText = "Generating Voice...";
