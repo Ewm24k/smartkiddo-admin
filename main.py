@@ -61,6 +61,7 @@ class VoiceGenerationRequest(BaseModel):
     voice_style: str
     response_format: Optional[str] = "wav"
     speed: Optional[float] = 1.0
+    story_language: Optional[str] = "en"
 
 # Request schema for Storyboard planning
 class StoryboardPlanRequest(BaseModel):
@@ -211,12 +212,16 @@ def get_cartoon_placeholder(scene_number: int) -> str:
             </linearGradient>
         </defs>
         <rect width="400" height="200" fill="url(#bg-{scene_number})" />
+        
+        <!-- Standard ambient starry dots -->
         <circle cx="50" cy="40" r="1.5" fill="#fff" opacity="0.8" />
         <circle cx="120" cy="30" r="1" fill="#fff" opacity="0.5" />
         <circle cx="280" cy="50" r="2" fill="{c[2]}" opacity="0.9" />
         <circle cx="340" cy="25" r="1.5" fill="#fff" opacity="0.7" />
         <circle cx="90" cy="75" r="1" fill="#fff" opacity="0.6" />
         <circle cx="220" cy="20" r="1.5" fill="#fff" opacity="0.4" />
+        
+        <!-- Background Mountain / Hills silhouettes -->
         <path d="M 0,200 L 0,150 Q 100,120 200,160 T 400,140 L 400,200 Z" fill="{c[1]}" opacity="0.7" />
         <path d="M 0,200 L 0,170 Q 150,140 300,180 T 400,175 L 400,200 Z" fill="{c[0]}" opacity="0.9" />
         {custom_vector_elements}
@@ -582,9 +587,7 @@ async def generate_bedtime_story(story_req: BedtimeStoryRequest):
             f"}}\n"
         )
 
-        # Dynamic Route to Completions or Responses API
         if model_name == "gpt-4o":
-            # Direct chat completions call with JSON Mode. Standard models do not support Responses API template restrictions [2]
             response = openai_client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
@@ -595,7 +598,6 @@ async def generate_bedtime_story(story_req: BedtimeStoryRequest):
             )
             ai_raw_content = response.choices[0].message.content
         else:
-            # Responses API template structure for reasoning-capable models (gpt-5.4-mini)
             call_kwargs = {
                 "model": model_name,
                 "prompt": {
@@ -659,12 +661,22 @@ async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
 
         print(f"[TTS Debug] Request received | Text length: {len(clean_text)} | Voice: '{requested_voice}' | Style: '{voice_req.voice_style}'")
 
+        # Custom phonetic accent instructions designed to guide pronunciation toward Malaysian Melayu (soft schwa / 'e' pepet)
+        if voice_req.story_language == "ms":
+            instructions = (
+                "Sila baca teks naratif ini dengan dialek Bahasa Melayu Malaysia (Johor-Riau / Baku) yang tulen. "
+                "Jangan sebut dengan loghat Indonesia (sebutan huruf 'a' di hujung perkataan hendaklah berbunyi 'e' pepet / schwa, seperti menyebut 'saye', 'ape', 'kenape', 'bace', 'biasenye' - bukan sebutan keras 'ah' Indonesia). "
+                "Sebut dengan nada yang mesra, tenang, dan lembut untuk kanak-kanak."
+            )
+        else:
+            instructions = f"Deliver the following bedtime story. Style: {voice_req.voice_style}. Keep pacing slow and warm."
+
         try:
             response = openai_client.audio.speech.create(
                 model="gpt-4o-mini-tts",
                 voice=requested_voice,
                 input=clean_text,
-                instructions=f"Deliver the following bedtime story. Style: {voice_req.voice_style}. Keep pacing slow and warm.",
+                instructions=instructions,
                 response_format=voice_req.response_format,
                 speed=voice_req.speed
             )
@@ -740,7 +752,6 @@ async def plan_storyboard(req: StoryboardPlanRequest):
 
         # Dynamic Route for Storyboard planning based on language (avoids reasoning-template 400 parameters errors) [2]
         if req.story_language == "ms":
-            # Bypass responses templates and call standard completions with JSON mode for gpt-4o [2]
             response = openai_client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
@@ -751,7 +762,6 @@ async def plan_storyboard(req: StoryboardPlanRequest):
             )
             ai_raw_content = response.choices[0].message.content
         else:
-            # Responses API template structure for reasoning-capable models (gpt-5.4-mini)
             response = openai_client.responses.create(
                 model="gpt-5.4-mini",
                 prompt={
