@@ -157,28 +157,23 @@ def get_cartoon_placeholder(scene_number: int) -> str:
     # Render different vector paths and characters based on scene numbers to guarantee visual uniqueness
     custom_vector_elements = ""
     if scene_number == 1:
-        # Scene 1: Big crescent moon with stars
         custom_vector_elements = """
         <path d="M 310,30 A 25,25 0 1,0 350,60 A 20,20 0 1,1 310,30" fill="#fef08a" />
         <circle cx="150" cy="50" r="3" fill="#fff" opacity="0.9" />
         """
     elif scene_number == 2:
-        # Scene 2: Giant magical hollow tree trunk
         custom_vector_elements = """
         <path d="M 50,200 Q 80,100 70,50 Q 150,30 220,60 Q 210,120 350,200 Z" fill="#065f46" opacity="0.4" />
         <path d="M 120,200 L 140,110 Q 160,80 150,50 L 190,50 Q 200,90 220,200" fill="#451a03" />
         <circle cx="170" cy="130" r="12" fill="#172554" />
         """
     elif scene_number == 3:
-        # Scene 3: Prominent sparkling ground stars under mushrooms
         custom_vector_elements = """
         <path d="M 80,200 C 80,160 120,160 120,200" fill="#ef4444" />
         <path d="M 280,200 C 280,150 330,150 330,200" fill="#f59e0b" />
-        <!-- Sparkling star details -->
         <polygon points="180,150 183,158 191,158 185,163 187,171 180,166 173,171 175,163 169,158 177,158" fill="#fef08a" />
         """
     elif scene_number == 4:
-        # Scene 4: Friendly round wise owl perched
         custom_vector_elements = """
         <circle cx="280" cy="100" r="22" fill="#78350f" />
         <circle cx="272" cy="95" r="6" fill="#fff" />
@@ -188,7 +183,6 @@ def get_cartoon_placeholder(scene_number: int) -> str:
         <polygon points="280,102 277,108 283,108" fill="#f59e0b" />
         """
     elif scene_number == 5:
-        # Scene 5: Sleepy bluebird sitting in a bush
         custom_vector_elements = """
         <path d="M 60,200 Q 110,130 160,200 Z" fill="#1e3a8a" opacity="0.6" />
         <circle cx="110" cy="160" r="14" fill="#3b82f6" />
@@ -196,19 +190,16 @@ def get_cartoon_placeholder(scene_number: int) -> str:
         <polygon points="120,158 126,160 120,162" fill="#f59e0b" />
         """
     elif scene_number == 6:
-        # Scene 6: Wavy reflecting forest stream
         custom_vector_elements = """
         <path d="M 0,200 C 100,160 200,210 400,180 L 400,200 L 0,200 Z" fill="#0284c7" opacity="0.8" />
         <path d="M 0,190 C 120,170 180,195 400,170" stroke="#bae6fd" stroke-width="2" fill="none" opacity="0.5" />
         """
     elif scene_number == 7:
-        # Scene 7: Star rising in the sky trail
         custom_vector_elements = """
         <path d="M 50,180 Q 150,120 280,40" stroke="#fef08a" stroke-width="3" stroke-dasharray="5,5" fill="none" opacity="0.6" />
         <polygon points="280,40 284,48 292,48 286,53 288,61 281,56 274,61 276,53 270,48 278,48" fill="#fef08a" />
         """
     else:
-        # Scene 8: Bunny cozy dreaming cloud bubble
         custom_vector_elements = """
         <ellipse cx="200" cy="80" rx="40" ry="25" fill="#f8fafc" opacity="0.2" />
         <circle cx="150" cy="100" r="8" fill="#f8fafc" opacity="0.2" />
@@ -223,23 +214,15 @@ def get_cartoon_placeholder(scene_number: int) -> str:
             </linearGradient>
         </defs>
         <rect width="400" height="200" fill="url(#bg-{scene_number})" />
-        
-        <!-- Standard ambient starry dots -->
         <circle cx="50" cy="40" r="1.5" fill="#fff" opacity="0.8" />
         <circle cx="120" cy="30" r="1" fill="#fff" opacity="0.5" />
         <circle cx="280" cy="50" r="2" fill="{c[2]}" opacity="0.9" />
         <circle cx="340" cy="25" r="1.5" fill="#fff" opacity="0.7" />
         <circle cx="90" cy="75" r="1" fill="#fff" opacity="0.6" />
         <circle cx="220" cy="20" r="1.5" fill="#fff" opacity="0.4" />
-        
-        <!-- Background Mountain / Hills silhouettes -->
         <path d="M 0,200 L 0,150 Q 100,120 200,160 T 400,140 L 400,200 Z" fill="{c[1]}" opacity="0.7" />
         <path d="M 0,200 L 0,170 Q 150,140 300,180 T 400,175 L 400,200 Z" fill="{c[0]}" opacity="0.9" />
-        
-        <!-- Inject dynamic scene-specific vector drawings to avoid visually duplicated cards -->
         {custom_vector_elements}
-        
-        <!-- Sleepy Little Rabbit Vector Body -->
         <g transform="translate(180, 140) scale(0.6)">
             <ellipse cx="20" cy="25" rx="6" ry="20" fill="#f5f5f5" />
             <ellipse cx="20" cy="25" rx="3" ry="15" fill="#fecdd3" />
@@ -264,13 +247,9 @@ async def sync_github(repo: Optional[str] = None):
     if not GITHUB_TOKEN:
         raise HTTPException(status_code=500, detail="Missing GITHUB_TOKEN on backend.")
     try:
-        # Determine active target repository [1]
         repo_name = repo if repo else GITHUB_REPO
-
-        # Fetch the flat recursive Git tree from GitHub
         tree_data = await github_request(f"/repos/{GITHUB_OWNER}/{repo_name}/git/trees/{GITHUB_BRANCH}?recursive=1")
         
-        # Pull all source files without exclusion filters (excluding only system compiled assets)
         filtered_tree = [
             item for item in tree_data.get("tree", [])
             if not item["path"].startswith(".") and 
@@ -281,15 +260,11 @@ async def sync_github(repo: Optional[str] = None):
 
         root_nodes = []
         nodes_by_path = {}
-
-        # Sort so parent directories are processed before their nested files [1]
         sorted_tree = sorted(filtered_tree, key=lambda x: x["path"])
 
-        # Dynamic Nesting Tree Builder
         for item in sorted_tree:
             parts = item["path"].split("/")
             is_folder = item["type"] == "tree"
-            
             current_path = ""
             parent_node = None
             
@@ -298,7 +273,6 @@ async def sync_github(repo: Optional[str] = None):
                 is_last = (i == len(parts) - 1)
                 
                 if current_path not in nodes_by_path:
-                    # Create the node dynamically to preserve 100% accurate file positions [1]
                     node_id = f"gh_{item['sha']}" if is_last else f"gen_{current_path}"
                     node_type = "folder" if (not is_last or is_folder) else "file"
                     
@@ -325,7 +299,6 @@ async def sync_github(repo: Optional[str] = None):
                     
                     nodes_by_path[current_path] = new_node
                     
-                    # Append node directly to root or its parent folder
                     if parent_node is None:
                         root_nodes.append(new_node)
                     else:
@@ -333,16 +306,13 @@ async def sync_github(repo: Optional[str] = None):
                 
                 parent_node = nodes_by_path[current_path]
 
-        # Hydrate all file content concurrently [2]
         code_files = collect_code_files(root_nodes)
         if code_files:
             async with httpx.AsyncClient() as client:
                 headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
-                # Create and schedule concurrent tasks, passing active repository target [1]
                 tasks = [fetch_single_file(client, node, headers, repo_name) for node in code_files]
                 await asyncio.gather(*tasks)
 
-        # Strip temporary path parameter before responding
         def strip_paths(nodes):
             for node in nodes:
                 if "path" in node:
@@ -350,7 +320,6 @@ async def sync_github(repo: Optional[str] = None):
                 if "children" in node:
                     strip_paths(node["children"])
         strip_paths(root_nodes)
-
         return root_nodes
     except HTTPException as he:
         raise he
@@ -367,10 +336,8 @@ async def send_sync_github(request: Request, repo: Optional[str] = None):
         if not isinstance(file_system, list):
             raise HTTPException(status_code=400, detail="Invalid payload. Array expected.")
 
-        # Determine active target repository [1]
         repo_name = repo if repo else GITHUB_REPO
 
-        # Flatten nested structure to path mappings
         def flatten(nodes, current_path=""):
             flat_list = []
             for node in nodes:
@@ -386,16 +353,12 @@ async def send_sync_github(request: Request, repo: Optional[str] = None):
             return flat_list
 
         flattened_files = flatten(file_system)
-
-        # Fetch HEAD commit context
         ref_data = await github_request(f"/repos/{GITHUB_OWNER}/{repo_name}/git/refs/heads/{GITHUB_BRANCH}")
         base_commit_sha = ref_data["object"]["sha"]
 
-        # Retrieve tree SHA
         commit_data = await github_request(f"/repos/{GITHUB_OWNER}/{repo_name}/git/commits/{base_commit_sha}")
         base_tree_sha = commit_data["tree"]["sha"]
 
-        # Build git Tree payload (skip binary media uploads)
         tree_items = [
             {
                 "path": file["path"],
@@ -411,14 +374,12 @@ async def send_sync_github(request: Request, repo: Optional[str] = None):
             "tree": tree_items
         })
 
-        # Create new Commit
         new_commit_data = await github_request(f"/repos/{GITHUB_OWNER}/{repo_name}/git/commits", "POST", {
             "message": "Backup update from SmartKiddo Studio Workspace",
             "tree": new_tree_data["sha"],
             "parents": [base_commit_sha]
         })
 
-        # Update branch head reference
         await github_request(f"/repos/{GITHUB_OWNER}/{repo_name}/git/refs/heads/{GITHUB_BRANCH}", "PATCH", {
             "sha": new_commit_data["sha"],
             "force": True
@@ -438,9 +399,7 @@ async def stream_media(path: str, repo: Optional[str] = None):
     if not path:
         raise HTTPException(status_code=400, detail="Missing path parameter")
     try:
-        # Determine active target repository [1]
         repo_name = repo if repo else GITHUB_REPO
-
         raw_url = f"https://raw.githubusercontent.com/{GITHUB_OWNER}/{repo_name}/{GITHUB_BRANCH}/{path}"
         headers = {"Authorization": f"Bearer {GITHUB_TOKEN}"}
         async with httpx.AsyncClient() as client:
@@ -462,19 +421,14 @@ async def ai_chat_completion(chat_req: ChatRequest):
         return {"error": "OpenAI Client is not initialized on backend. Please configure OPENAI_API_KEY environment variable on Render.", "success": False}
     try:
         openai_input_str = ""
-        
-        # Inject Active Workspace Manifest & LRU Session File Cache [2]
         if chat_req.workspace_context:
             openai_input_str += f"=== ACTIVE WORKSPACE MANIFEST && SESSION FILE CACHE ===\n{chat_req.workspace_context}\n\n"
             
         openai_input_str += "=== CONVERSATION HISTORY ===\n"
-        
-        # Iterate over all messages except the latest one [2]
         for msg in chat_req.messages[:-1]:
             speaker = "User" if msg.role == "user" else "Assistant"
             openai_input_str += f"{speaker}: {msg.content}\n"
 
-        # Inject the Context Tracker Instruction Layer right before the latest user message [2]
         openai_input_str += "\n=== CONTEXT TRACKER INSTRUCTIONS ===\n"
         openai_input_str += "Please analyze the entire conversation history above to follow references correctly:\n"
         openai_input_str += "- Track shifting topics or multiple topics within a single query.\n"
@@ -482,7 +436,6 @@ async def ai_chat_completion(chat_req: ChatRequest):
         openai_input_str += "- Parse numerical options.\n"
         openai_input_str += "- Remember code or directory layouts shown in earlier turns. Synthesize your answer contextually.\n\n"
 
-        # AUTONOMOUS AGENT ACTIONS (INJECTED SYSTEM INSTRUCTIONS)
         openai_input_str += "=== AGENT TOOL EMISSION RULES ===\n"
         openai_input_str += "You are an autonomous administrative software agent with full permissions over the developer workspace.\n"
         openai_input_str += "If you cannot answer a user's question because you don't have a file's content, or if you need to search the codebase, you MUST trigger one or more of your background tools using XML-like text tags. You can trigger multiple tags in a single message turn.\n\n"
@@ -498,19 +451,17 @@ async def ai_chat_completion(chat_req: ChatRequest):
         openai_input_str += "- When you emit a tool tag, STOP writing immediately after it. Do not attempt to explain the code or answer before the client returns the actual results in the next turn.\n"
         openai_input_str += "- You can request multiple files simultaneously.\n\n"
 
-        # Append the latest user message context
         if len(chat_req.messages) > 0:
             latest_msg = chat_req.messages[-1]
             openai_input_str += f"=== LATEST USER MESSAGE ===\nUser: {latest_msg.content}\n"
 
-        # Trigger Saved Prompt Template [2]
         response = openai_client.responses.create(
             model="gpt-5.4-mini", 
             prompt={
                 "id": "pmpt_6a64c46b5e5c8190bdb0b6f7aacbb7450b1160d1c16e4e6e",
                 "version": "1"
             },
-            input=openai_input_str, # String input conforms strictly to schema validation [2]
+            input=openai_input_str,
             reasoning={
                 "mode": "standard",
                 "summary": "auto"
@@ -531,7 +482,6 @@ async def ai_chat_completion(chat_req: ChatRequest):
             ]
         )
 
-        # Access assistant response
         assistant_content = ""
         if hasattr(response, "output_text") and response.output_text:
             assistant_content = response.output_text
@@ -540,7 +490,6 @@ async def ai_chat_completion(chat_req: ChatRequest):
         elif hasattr(response, "output") and hasattr(response.output, "content"):
             assistant_content = response.output.content
 
-        # Error-Proof Token Usage extraction utilizing safe attribute checks [2]
         input_tokens = 0
         output_tokens = 0
         total_tokens = 0
@@ -581,7 +530,6 @@ async def generate_bedtime_story(story_req: BedtimeStoryRequest):
     if not openai_client:
         return {"error": "OpenAI Client is not initialized on backend. Ensure OPENAI_API_KEY environment variable is active on Render.", "success": False}
     try:
-        # Determine target model and strict BM-to-BI vocabulary-control instructions based on chosen language
         model_name = "gpt-5.4-mini"
         language_instructions = ""
         
@@ -613,7 +561,6 @@ async def generate_bedtime_story(story_req: BedtimeStoryRequest):
                 "Write the story, title, and brief strictly in natural, clear, child-friendly English.\n"
             )
 
-        # Build structured input details mapping user configurations
         openai_input_str = (
             f"=== BEDTIME STORY GENERATION PARAMS ===\n"
             f"Theme Concept Brief: {story_req.concept_brief}\n"
@@ -638,7 +585,6 @@ async def generate_bedtime_story(story_req: BedtimeStoryRequest):
             f"}}\n"
         )
 
-        # Dynamically build argument keywords payload to support standard engines (avoiding reasoning-specific errors) [2]
         call_kwargs = {
             "model": model_name,
             "prompt": {
@@ -649,7 +595,7 @@ async def generate_bedtime_story(story_req: BedtimeStoryRequest):
             "store": True
         }
 
-        # Apply reasoning features strictly when targeting reasoning-capable architectures (preventing gpt-4o 400 errors) [2]
+        # reasoning configurations are strictly stripped when targeting standard gpt-4o
         if model_name != "gpt-4o":
             call_kwargs["reasoning"] = {
                 "mode": "standard",
@@ -660,10 +606,8 @@ async def generate_bedtime_story(story_req: BedtimeStoryRequest):
                 "web_search_call.action.sources"
             ]
 
-        # Call OpenAI Platform Responses API securely [2]
         response = openai_client.responses.create(**call_kwargs)
 
-        # Safely extract generated raw content from API response object
         ai_raw_content = ""
         if hasattr(response, "output_text") and response.output_text:
             ai_raw_content = response.output_text
@@ -672,16 +616,13 @@ async def generate_bedtime_story(story_req: BedtimeStoryRequest):
         elif hasattr(response, "output") and hasattr(response.output, "content"):
             ai_raw_content = response.output.content
 
-        # Parse AI raw content wrapper into clean JSON dictionary values
         story_json_data = extract_json_content(ai_raw_content)
-
         return {
             "success": True,
             "title": story_json_data.get("title", "The Whispering Meadow"),
             "brief": story_json_data.get("brief", "An enchanting, peaceful exploration concept summary."),
             "script": story_json_data.get("script", ai_raw_content)
         }
-
     except Exception as e:
         print("Bedtime Story Generation Failure:", str(e))
         return {"error": str(e), "success": False}
@@ -694,30 +635,24 @@ async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
     if not openai_client:
         return {"error": "OpenAI Client is not initialized on backend. Ensure OPENAI_API_KEY environment variable is active on Render.", "success": False}
     try:
-        # Enforce text truncation limit (maximum 3,500 characters) to prevent token length overflow crashes
         clean_text = voice_req.text.strip()
         if len(clean_text) > 3500:
             print(f"[TTS Warning] Script text length ({len(clean_text)}) is too long. Truncating to 3500 characters to prevent API crash.")
             clean_text = clean_text[:3500] + "..."
 
-        # Whitespace cleaning & lowercasing to handle mismatched values
         requested_voice = voice_req.voice.strip().lower()
         supported_voices = [
             "alloy", "ash", "ballad", "cedar", "coral", "echo", 
             "fable", "marin", "nova", "onyx", "sage", "shimmer", "verse"
         ]
         
-        # Whitelist verification fallback to ensure correctness
         if requested_voice not in supported_voices:
             print(f"[TTS Warning] Requested voice '{requested_voice}' is unsupported. Falling back to 'nova'.")
             requested_voice = "nova"
 
-        # Output explicit log verification to standard out
         print(f"[TTS Debug] Request received | Text length: {len(clean_text)} | Voice: '{requested_voice}' | Style: '{voice_req.voice_style}'")
 
-        # Dynamic fallback parameters designed to support older versions of the python openai library
         try:
-            # Attempt next-generation gpt-4o-mini-tts with instructions configuration
             response = openai_client.audio.speech.create(
                 model="gpt-4o-mini-tts",
                 voice=requested_voice,
@@ -727,7 +662,6 @@ async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
                 speed=voice_req.speed
             )
         except TypeError as param_error:
-            # Fallback to tts-1 without instructions if python libraries are outdated on Render
             print(f"[TTS Dynamic Fallback] Current library version lacks advanced TTS keyword support: {str(param_error)}. Retrying with 'tts-1' fallback...")
             response = openai_client.audio.speech.create(
                 model="tts-1",
@@ -757,9 +691,6 @@ async def plan_storyboard(req: StoryboardPlanRequest):
     if not openai_client:
         return {"error": "OpenAI Client is not initialized on backend.", "success": False}
     try:
-        # Dynamic pacing rules matching exact user specifications:
-        # Voice audio duration 40s or below -> at least 4 scenes
-        # Voice audio duration 60s (1m) -> at least 6 scenes
         duration = req.audio_duration
         if duration <= 40.0:
             suggested_scenes = 4
@@ -840,12 +771,10 @@ async def generate_single_scene(req: SingleSceneGenerationRequest):
     if not openai_client:
         raise HTTPException(status_code=500, detail="OpenAI Client is not initialized on backend.")
     try:
-        # Guarantee style prompt injection directly on the server layer
         full_prompt = req.image_prompt
         if req.visual_style.lower() not in full_prompt.lower():
             full_prompt = f"{req.image_prompt}, painted in {req.visual_style} style"
 
-        # Explicitly enforce child-friendly illustrative styles to prevent photographic leaks
         if "photo" in full_prompt.lower() or "realistic" in full_prompt.lower() or "portrait" in full_prompt.lower():
             full_prompt = re.sub(r"(?i)photo|realistic|portrait|camera", "cute cartoon vector", full_prompt)
         
@@ -853,17 +782,14 @@ async def generate_single_scene(req: SingleSceneGenerationRequest):
 
         loop = asyncio.get_event_loop()
         def sync_call():
-            # gpt-image-1-mini rejects the response_format parameter. It natively returns base64.
-            # gpt-image-1-mini supports widescreen landscape "1536x1024"
             return openai_client.images.generate(
                 model="gpt-image-1-mini",
                 prompt=full_prompt,
-                quality="low",  # Cost-saving $0.005 tier
-                size="1536x1024"  # Webapp Widescreen Aspect-Video Size
+                quality="low",
+                size="1536x1024"
             )
         response = await loop.run_in_executor(None, sync_call)
         
-        # Robust extractor that handles either b64_json or url response formats safely
         img_item = response.data[0]
         if hasattr(img_item, "b64_json") and img_item.b64_json:
             b64_data = img_item.b64_json
@@ -880,7 +806,6 @@ async def generate_single_scene(req: SingleSceneGenerationRequest):
         }
     except Exception as e:
         print(f"Error generating scene {req.scene_number} illustration: {str(e)}")
-        # Return fallback cartoon vector to make sure execution continues cleanly
         fallback_url = get_cartoon_placeholder(req.scene_number)
         return {
             "success": True,
