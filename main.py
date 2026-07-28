@@ -3,6 +3,7 @@ import re
 import json
 import httpx
 import asyncio
+import base64
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -145,15 +146,77 @@ def extract_json_content(text: str) -> dict:
             "script": text
         }
 
-# Generates beautiful sleepy-time cartoon illustrations via inline vector SVGs as a fallback to avoid real photos
+# Generates unique, highly varied sleepy-time cartoon illustrations via vector SVGs to prevent duplicate visual blocks
 def get_cartoon_placeholder(scene_number: int) -> str:
     colors = [
-        ["#4f46e5", "#1e1b4b", "#818cf8"],
-        ["#0d9488", "#115e59", "#2dd4bf"],
-        ["#db2777", "#831843", "#f472b6"],
-        ["#ca8a04", "#713f12", "#fde047"],
+        ["#4f46e5", "#1e1b4b", "#818cf8"], # Indigo twilight
+        ["#0d9488", "#115e59", "#2dd4bf"], # Teal mystical woods
+        ["#db2777", "#831843", "#f472b6"], # Pink candy clouds
+        ["#ca8a04", "#713f12", "#fde047"], # Golden sky
     ]
     c = colors[(scene_number - 1) % len(colors)]
+    
+    # Render different vector paths and characters based on scene numbers to guarantee visual uniqueness
+    custom_vector_elements = ""
+    if scene_number == 1:
+        # Scene 1: Big crescent moon with stars
+        custom_vector_elements = """
+        <path d="M 310,30 A 25,25 0 1,0 350,60 A 20,20 0 1,1 310,30" fill="#fef08a" />
+        <circle cx="150" cy="50" r="3" fill="#fff" opacity="0.9" />
+        """
+    elif scene_number == 2:
+        # Scene 2: Giant magical hollow tree trunk
+        custom_vector_elements = """
+        <path d="M 50,200 Q 80,100 70,50 Q 150,30 220,60 Q 210,120 350,200 Z" fill="#065f46" opacity="0.4" />
+        <path d="M 120,200 L 140,110 Q 160,80 150,50 L 190,50 Q 200,90 220,200" fill="#451a03" />
+        <circle cx="170" cy="130" r="12" fill="#172554" />
+        """
+    elif scene_number == 3:
+        # Scene 3: Prominent sparkling ground stars under mushrooms
+        custom_vector_elements = """
+        <path d="M 80,200 C 80,160 120,160 120,200" fill="#ef4444" />
+        <path d="M 280,200 C 280,150 330,150 330,200" fill="#f59e0b" />
+        <!-- Sparkling star details -->
+        <polygon points="180,150 183,158 191,158 185,163 187,171 180,166 173,171 175,163 169,158 177,158" fill="#fef08a" />
+        """
+    elif scene_number == 4:
+        # Scene 4: Friendly round wise owl perched
+        custom_vector_elements = """
+        <circle cx="280" cy="100" r="22" fill="#78350f" />
+        <circle cx="272" cy="95" r="6" fill="#fff" />
+        <circle cx="272" cy="95" r="3" fill="#000" />
+        <circle cx="288" cy="95" r="6" fill="#fff" />
+        <circle cx="288" cy="95" r="3" fill="#000" />
+        <polygon points="280,102 277,108 283,108" fill="#f59e0b" />
+        """
+    elif scene_number == 5:
+        # Scene 5: Sleepy bluebird sitting in a bush
+        custom_vector_elements = """
+        <path d="M 60,200 Q 110,130 160,200 Z" fill="#1e3a8a" opacity="0.6" />
+        <circle cx="110" cy="160" r="14" fill="#3b82f6" />
+        <path d="M 110,160 Q 125,150 120,168" stroke="#1d4ed8" stroke-width="2" fill="none" />
+        <polygon points="120,158 126,160 120,162" fill="#f59e0b" />
+        """
+    elif scene_number == 6:
+        # Scene 6: Wavy reflecting forest stream
+        custom_vector_elements = """
+        <path d="M 0,200 C 100,160 200,210 400,180 L 400,200 L 0,200 Z" fill="#0284c7" opacity="0.8" />
+        <path d="M 0,190 C 120,170 180,195 400,170" stroke="#bae6fd" stroke-width="2" fill="none" opacity="0.5" />
+        """
+    elif scene_number == 7:
+        # Scene 7: Star rising in the sky trail
+        custom_vector_elements = """
+        <path d="M 50,180 Q 150,120 280,40" stroke="#fef08a" stroke-width="3" stroke-dasharray="5,5" fill="none" opacity="0.6" />
+        <polygon points="280,40 284,48 292,48 286,53 288,61 281,56 274,61 276,53 270,48 278,48" fill="#fef08a" />
+        """
+    else:
+        # Scene 8: Bunny cozy dreaming cloud bubble
+        custom_vector_elements = """
+        <ellipse cx="200" cy="80" rx="40" ry="25" fill="#f8fafc" opacity="0.2" />
+        <circle cx="150" cy="100" r="8" fill="#f8fafc" opacity="0.2" />
+        <circle cx="135" cy="115" r="4" fill="#f8fafc" opacity="0.2" />
+        """
+
     svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="100%" height="100%">
         <defs>
             <linearGradient id="bg-{scene_number}" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -162,13 +225,23 @@ def get_cartoon_placeholder(scene_number: int) -> str:
             </linearGradient>
         </defs>
         <rect width="400" height="200" fill="url(#bg-{scene_number})" />
+        
+        <!-- Standard ambient starry dots -->
         <circle cx="50" cy="40" r="1.5" fill="#fff" opacity="0.8" />
         <circle cx="120" cy="30" r="1" fill="#fff" opacity="0.5" />
         <circle cx="280" cy="50" r="2" fill="{c[2]}" opacity="0.9" />
         <circle cx="340" cy="25" r="1.5" fill="#fff" opacity="0.7" />
+        <circle cx="90" cy="75" r="1" fill="#fff" opacity="0.6" />
+        <circle cx="220" cy="20" r="1.5" fill="#fff" opacity="0.4" />
+        
+        <!-- Background Mountain / Hills silhouettes -->
         <path d="M 0,200 L 0,150 Q 100,120 200,160 T 400,140 L 400,200 Z" fill="{c[1]}" opacity="0.7" />
         <path d="M 0,200 L 0,170 Q 150,140 300,180 T 400,175 L 400,200 Z" fill="{c[0]}" opacity="0.9" />
-        <path d="M 320,40 A 15,15 0 1,0 345,55 A 12,12 0 1,1 320,40" fill="#fef08a" />
+        
+        <!-- Inject dynamic scene-specific vector drawings to avoid visually duplicated cards -->
+        {custom_vector_elements}
+        
+        <!-- Sleepy Little Rabbit Vector Body -->
         <g transform="translate(180, 140) scale(0.6)">
             <ellipse cx="20" cy="25" rx="6" ry="20" fill="#f5f5f5" />
             <ellipse cx="20" cy="25" rx="3" ry="15" fill="#fecdd3" />
@@ -183,7 +256,6 @@ def get_cartoon_placeholder(scene_number: int) -> str:
         </g>
         <text x="20" y="30" font-family="monospace" font-size="10" fill="#93c5fd" opacity="0.7">CARTOON ILLUSTRATION PLACEHOLDER</text>
     </svg>"""
-    import base64
     return f"data:image/svg+xml;base64,{base64.b64encode(svg.encode('utf-8')).decode('utf-8')}"
 
 # -----------------------------------------------------------------
@@ -744,7 +816,7 @@ async def generate_scenes(req: SceneGenerationRequest):
         completed_scenes = []
         for i, item in enumerate(req.prompts):
             b64_data = results[i]
-            # Fallback to charming vector cartoon sleepy rabbit illustration if API fails (avoids real photos)
+            # Fallback to charming, highly unique vector cartoon sleepy rabbit illustration if API fails (avoids duplicate photos)
             image_url = f"data:image/webp;base64,{b64_data}" if b64_data else get_cartoon_placeholder(item.scene_number)
             completed_scenes.append({
                 "scene_number": item.scene_number,
