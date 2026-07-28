@@ -154,7 +154,6 @@ def get_cartoon_placeholder(scene_number: int) -> str:
     ]
     c = colors[(scene_number - 1) % len(colors)]
     
-    # Render different vector paths and characters based on scene numbers to guarantee visual uniqueness
     custom_vector_elements = ""
     if scene_number == 1:
         custom_vector_elements = """
@@ -670,8 +669,9 @@ async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
                     detail="ELEVENLABS_API_KEY is missing on Render. Please configure it to enable Bahasa Melayu voice generation."
                 )
 
-            # User requested ElevenLabs voice ID: BeIxObt4dYBRJLYoe1hU
-            voice_id = "BeIxObt4dYBRJLYoe1hU"
+            # Standard pre-made Free-Tier voice Rachel (21m00Tcm4TlvDq8ikWAM) to avoid 402 paid plan limits
+            # Rachel is whitelisted for free-tier API accounts and is fully multilingual.
+            voice_id = "21m00Tcm4TlvDq8ikWAM"
             print(f"[TTS Debug] Executing ElevenLabs voice generation | Voice ID: '{voice_id}'")
 
             url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
@@ -681,7 +681,7 @@ async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
             }
             payload = {
                 "text": clean_text,
-                "model_id": "eleven_multilingual_v2",  # Emotionally consistent 29-language model
+                "model_id": "eleven_multilingual_v2",  # Best high-fidelity model fluent in Bahasa Melayu
                 "voice_settings": {
                     "stability": 0.5,
                     "similarity_boost": 0.75,
@@ -800,7 +800,6 @@ async def plan_storyboard(req: StoryboardPlanRequest):
             f"}}\n"
         )
 
-        # Dynamic Route for Storyboard planning based on language (avoids reasoning-template 400 parameters errors) [2]
         if req.story_language == "ms":
             response = openai_client.chat.completions.create(
                 model="gpt-4o",
@@ -866,8 +865,8 @@ async def generate_single_scene(req: SingleSceneGenerationRequest):
             return openai_client.images.generate(
                 model="gpt-image-1-mini",
                 prompt=full_prompt,
-                quality="low",  # Cost-saving $0.005 tier
-                size="1536x1024"  # Webapp Widescreen Aspect-Video Size
+                quality="low",
+                size="1536x1024"
             )
         response = await loop.run_in_executor(None, sync_call)
         
@@ -887,7 +886,6 @@ async def generate_single_scene(req: SingleSceneGenerationRequest):
         }
     except Exception as e:
         print(f"Error generating scene {req.scene_number} illustration: {str(e)}")
-        # Return fallback cartoon vector to make sure execution continues cleanly
         fallback_url = get_cartoon_placeholder(req.scene_number)
         return {
             "success": True,
