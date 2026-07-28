@@ -17,6 +17,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const btnContinueStoryboard = document.getElementById("btn-story-continue-storyboard");
     const btnContinueVideo = document.getElementById("btn-story-continue-video");
     const btnRegenerateStoryboard = document.getElementById("btn-story-regenerate-storyboard");
+    const btnFinishCompile = document.getElementById("btn-story-compile-finish");
     const statusBadgeText = document.getElementById("story-status-text");
     const statusBadgeIndicator = document.getElementById("story-status-indicator");
     const storyLogsContainer = document.getElementById("story-generation-logs");
@@ -44,7 +45,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const voiceWaveformContainer = document.getElementById("res-voice-waveform");
     const voiceAudioPlayer = document.getElementById("res-voice-player");
     const storyboardGrid = document.getElementById("res-storyboard-grid");
-    const videoVideoContainer = document.getElementById("res-video-player-container");
     const publishCoverImage = document.getElementById("res-publish-cover");
     const publishTitleInput = document.getElementById("res-publish-title");
     const publishDescTextarea = document.getElementById("res-publish-desc");
@@ -239,6 +239,9 @@ document.addEventListener("DOMContentLoaded", function () {
             lightbox.classList.remove("flex");
         }
     });
+
+    // Expose dynamic logging to other scripts so modular video-editor.js can write compiling details [2]
+    window.logToStudioConsole = logToStudioConsole;
 
     // -----------------------------------------------------------------
     // 3. Navigation Controls
@@ -966,7 +969,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Connect event listener to "Regenerate Storyboard" button inside Step 4 Viewport
     if (btnRegenerateStoryboard) {
-        
         btnRegenerateStoryboard.addEventListener("click", function() {
             if (confirm("Are you sure you want to regenerate all storyboard illustrations? This will execute sequential OpenAI gpt-image-1-mini calls matching your latest style.")) {
                 startStoryboardPipeline();
@@ -981,33 +983,34 @@ document.addEventListener("DOMContentLoaded", function () {
             if (btnRegenerateStoryboard) {
                 btnRegenerateStoryboard.classList.add("hidden");
             }
-            continueVideoToPublishSimulation();
+            
+            // Switch view to Step 5 Compiled Video container dynamically
+            switchPipelineStepPanel(4);
+            statusBadgeText.innerText = "Edit Timeline";
+            statusBadgeIndicator.className = "w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse";
+            
+            // Call the newly implemented modular video timeline editor initializer [2]
+            if (window.initializeVideoEditorTimeline) {
+                window.initializeVideoEditorTimeline(pipelineProgressState);
+            }
         });
     }
 
-    // Completes the remaining mockup stages (Steps 5 and 6)
-    async function continueVideoToPublishSimulation() {
+    // Connect continue to metadata button on Step 5 CapCut Timeline Editor
+    if (btnFinishCompile) {
+        btnFinishCompile.addEventListener("click", function() {
+            btnFinishCompile.classList.add("hidden");
+            continueToMetadataAndReview();
+        });
+    }
+
+    // Completes Step 5 Timeline Editing and switches view to Step 6 Metadata and Review
+    async function continueToMetadataAndReview() {
         btnGenerateStory.disabled = true;
-        btnGenerateStory.innerText = "Compiling...";
+        btnGenerateStory.innerText = "Processing...";
         btnGenerateStory.classList.add("opacity-50");
 
         const ageVal = inputAgeGroup.value;
-
-        // --- STEP 5: Assembling Video Clips (MOCK PROCESS) ---
-        statusBadgeText.innerText = "Compiling Video...";
-        statusBadgeIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
-        switchPipelineStepPanel(4);
-        logToStudioConsole("Combining assets, voice-over audio files, and frames into high quality video render...", "warning");
-        await delay(3500);
-
-        if (videoVideoContainer) {
-            videoVideoContainer.innerHTML = `
-                <video controls class="w-full h-48 rounded object-cover border border-neutral-800" src="https://www.w3schools.com/html/mov_bbb.mp4"></video>
-            `;
-        }
-
-        steps[4].className = "step-item flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition-colors completed";
-        logToStudioConsole("Successfully completed Step 5: Full bedtime-story video segment synthesized.", "success");
 
         // --- STEP 6: Publishing & Cover Art Metadata (MOCK PROCESS) ---
         statusBadgeText.innerText = "Ready to Publish";
