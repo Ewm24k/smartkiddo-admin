@@ -638,24 +638,30 @@ async def generate_bedtime_story(story_req: BedtimeStoryRequest):
             f"}}\n"
         )
 
-        # Call OpenAI Platform Responses API with targeted template ID [2]
-        response = openai_client.responses.create(
-            model=model_name, # Dynamically loads gpt-4o or gpt-5.4-mini
-            prompt={
+        # Dynamically build argument keywords payload to support standard engines (avoiding reasoning-specific errors) [2]
+        call_kwargs = {
+            "model": model_name,
+            "prompt": {
                 "id": "pmpt_6a662bd8afd08194a20f18967be4326908f6e34aa8074ea1",
                 "version": "1"
             },
-            input=openai_input_str, # Conform strictly to input schema properties [2]
-            reasoning={
+            "input": openai_input_str,
+            "store": True
+        }
+
+        # Apply reasoning features strictly when targeting reasoning-capable architectures (preventing gpt-4o 400 errors) [2]
+        if model_name != "gpt-4o":
+            call_kwargs["reasoning"] = {
                 "mode": "standard",
                 "summary": "auto"
-            },
-            store=True,
-            include=[
+            }
+            call_kwargs["include"] = [
                 "reasoning.encrypted_content",
                 "web_search_call.action.sources"
             ]
-        )
+
+        # Call OpenAI Platform Responses API securely [2]
+        response = openai_client.responses.create(**call_kwargs)
 
         # Safely extract generated raw content from API response object
         ai_raw_content = ""
