@@ -534,7 +534,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Dynamically update the logging console output based on the user's selected language [1, 2]
         if (isMalay) {
-            logToStudioConsole("Requesting voice synthesis with ElevenLabs Multilingual V2. Voice ID: \"BeIxObt4dYBRJLYoe1hU\" | Style: \"" + voiceVal + "\"", "warning");
+            logToStudioConsole("Requesting voice synthesis with ElevenLabs Multilingual V2. Voice ID: \"21m00Tcm4TlvDq8ikWAM\" | Style: \"" + voiceVal + "\"", "warning");
         } else {
             logToStudioConsole("Requesting voice synthesis with OpenAI gpt-4o-mini-tts. Target Voice character: \"" + openaiVoiceVal + "\" | Tone style: \"" + voiceVal + "\"", "warning");
         }
@@ -567,8 +567,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 })
             });
 
+            // Extract and bubble up the raw JSON exception string from ElevenLabs on 402/Quota errors
             if (!voiceResponse.ok) {
-                throw new Error(`Server returned voice synthesis status: ${voiceResponse.status}`);
+                try {
+                    const errPayload = await voiceResponse.json();
+                    throw new Error(errPayload.detail || `Server returned error status: ${voiceResponse.status}`);
+                } catch (e) {
+                    throw new Error(`Server returned error status: ${voiceResponse.status}`);
+                }
             }
 
             const voiceData = await voiceResponse.json();
@@ -581,10 +587,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 pipelineProgressState.voiceUrl = voiceData.audio;
                 steps[2].className = "step-item flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition-colors completed";
                 
-                if (isMalay) {
+                if (voiceData.source === "elevenlabs") {
                     logToStudioConsole("Successfully completed Step 3: Audio narration voice generated live via ElevenLabs.", "success");
                 } else {
-                    logToStudioConsole("Successfully completed Step 3: Audio narration voice generated. System verified OpenAI voice character: \"" + openaiVoiceVal + "\"", "success");
+                    logToStudioConsole("Successfully completed Step 3: Audio narration voice generated via OpenAI. System verified OpenAI voice character: \"" + openaiVoiceVal + "\"", "success");
                 }
             } else {
                 throw new Error(voiceData.error || "Voice response was invalid.");
@@ -960,6 +966,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Connect event listener to "Regenerate Storyboard" button inside Step 4 Viewport
     if (btnRegenerateStoryboard) {
+        
         btnRegenerateStoryboard.addEventListener("click", function() {
             if (confirm("Are you sure you want to regenerate all storyboard illustrations? This will execute sequential OpenAI gpt-image-1-mini calls matching your latest style.")) {
                 startStoryboardPipeline();
