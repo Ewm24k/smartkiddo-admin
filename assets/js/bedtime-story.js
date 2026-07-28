@@ -114,102 +114,6 @@ document.addEventListener("DOMContentLoaded", function () {
         storyLogsContainer.scrollTop = storyLogsContainer.scrollHeight;
     }
 
-    // Generates completely unique vector cartoon compositions based on scene numbers so offline placeholders look different
-    function getCartoonPlaceholder(sceneNumber) {
-        const colors = [
-            ["#4f46e5", "#1e1b4b", "#818cf8"], // Indigo twilight
-            ["#0d9488", "#115e59", "#2dd4bf"], // Teal mystical woods
-            ["#db2777", "#831843", "#f472b6"], // Pink candy clouds
-            ["#ca8a04", "#713f12", "#fde047"], // Golden sky
-        ];
-        const c = colors[(sceneNumber - 1) % colors.length];
-        
-        let customVectorElements = "";
-        if (sceneNumber === 1) {
-            customVectorElements = `
-            <path d="M 310,30 A 25,25 0 1,0 350,60 A 20,20 0 1,1 310,30" fill="#fef08a" />
-            <circle cx="150" cy="50" r="3" fill="#fff" opacity="0.9" />
-            `;
-        } else if (sceneNumber === 2) {
-            customVectorElements = `
-            <path d="M 50,200 Q 80,100 70,50 Q 150,30 220,60 Q 210,120 350,200 Z" fill="#065f46" opacity="0.4" />
-            <path d="M 120,200 L 140,110 Q 160,80 150,50 L 190,50 Q 200,90 220,200" fill="#451a03" />
-            <circle cx="170" cy="130" r="12" fill="#172554" />
-            `;
-        } else if (sceneNumber === 3) {
-            customVectorElements = `
-            <path d="M 80,200 C 80,160 120,160 120,200" fill="#ef4444" />
-            <path d="M 280,200 C 280,150 330,150 330,200" fill="#f59e0b" />
-            <polygon points="180,150 183,158 191,158 185,163 187,171 180,166 173,171 175,163 169,158 177,158" fill="#fef08a" />
-            `;
-        } else if (sceneNumber === 4) {
-            customVectorElements = `
-            <circle cx="280" cy="100" r="22" fill="#78350f" />
-            <circle cx="272" cy="95" r="6" fill="#fff" />
-            <circle cx="272" cy="95" r="3" fill="#000" />
-            <circle cx="288" cy="95" r="6" fill="#fff" />
-            <circle cx="288" cy="95" r="3" fill="#000" />
-            <polygon points="280,102 277,108 283,108" fill="#f59e0b" />
-            `;
-        } else if (sceneNumber === 5) {
-            customVectorElements = `
-            <path d="M 60,200 Q 110,130 160,200 Z" fill="#1e3a8a" opacity="0.6" />
-            <circle cx="110" cy="160" r="14" fill="#3b82f6" />
-            <path d="M 110,160 Q 125,150 120,168" stroke="#1d4ed8" stroke-width="2" fill="none" />
-            <polygon points="120,158 126,160 120,162" fill="#f59e0b" />
-            `;
-        } else if (sceneNumber === 6) {
-            customVectorElements = `
-            <path d="M 0,200 C 100,160 200,210 400,180 L 400,200 L 0,200 Z" fill="#0284c7" opacity="0.8" />
-            <path d="M 0,190 C 120,170 180,195 400,170" stroke="#bae6fd" stroke-width="2" fill="none" opacity="0.5" />
-            `;
-        } else if (sceneNumber === 7) {
-            customVectorElements = `
-            <path d="M 50,180 Q 150,120 280,40" stroke="#fef08a" stroke-width="3" stroke-dasharray="5,5" fill="none" opacity="0.6" />
-            <polygon points="280,40 284,48 292,48 286,53 288,61 281,56 274,61 276,53 270,48 278,48" fill="#fef08a" />
-            `;
-        } else {
-            customVectorElements = `
-            <ellipse cx="200" cy="80" rx="40" ry="25" fill="#f8fafc" opacity="0.2" />
-            <circle cx="150" cy="100" r="8" fill="#f8fafc" opacity="0.2" />
-            <circle cx="135" cy="115" r="4" fill="#f8fafc" opacity="0.2" />
-            `;
-        }
-
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="100%" height="100%">
-            <defs>
-                <linearGradient id="bg-${sceneNumber}" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stop-color="${c[1]}" />
-                    <stop offset="100%" stop-color="${c[0]}" />
-                </linearGradient>
-            </defs>
-            <rect width="400" height="200" fill="url(#bg-${sceneNumber})" />
-            <circle cx="50" cy="40" r="1.5" fill="#fff" opacity="0.8" />
-            <circle cx="120" cy="30" r="1" fill="#fff" opacity="0.5" />
-            <circle cx="280" cy="50" r="2" fill="${c[2]}" opacity="0.9" />
-            <circle cx="340" cy="25" r="1.5" fill="#fff" opacity="0.7" />
-            <circle cx="90" cy="75" r="1" fill="#fff" opacity="0.6" />
-            <circle cx="220" cy="20" r="1.5" fill="#fff" opacity="0.4" />
-            <path d="M 0,200 L 0,150 Q 100,120 200,160 T 400,140 L 400,200 Z" fill="${c[1]}" opacity="0.7" />
-            <path d="M 0,200 L 0,170 Q 150,140 300,180 T 400,175 L 400,200 Z" fill="${c[0]}" opacity="0.9" />
-            ${customVectorElements}
-            <g transform="translate(180, 140) scale(0.6)">
-                <ellipse cx="20" cy="25" rx="6" ry="20" fill="#f5f5f5" />
-                <ellipse cx="20" cy="25" rx="3" ry="15" fill="#fecdd3" />
-                <ellipse cx="35" cy="28" rx="6" ry="18" fill="#f5f5f5" />
-                <ellipse cx="35" cy="28" rx="3" ry="13" fill="#fecdd3" />
-                <ellipse cx="35" cy="65" rx="22" ry="18" fill="#e5e5e5" />
-                <circle cx="30" cy="45" r="15" fill="#f5f5f5" />
-                <path d="M 23,45 Q 26,48 29,45" stroke="#1e293b" stroke-width="1.5" fill="none" />
-                <path d="M 33,45 Q 36,48 39,45" stroke="#1e293b" stroke-width="1.5" fill="none" />
-                <polygon points="30,49 32,49 31,51" fill="#fecdd3" />
-                <circle cx="58" cy="68" r="6" fill="#f5f5f5" />
-            </g>
-            <text x="20" y="30" font-family="monospace" font-size="10" fill="#93c5fd" opacity="0.7">CARTOON ILLUSTRATION PLACEHOLDER</text>
-        </svg>`;
-        return "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
-    }
-
     // Opens the large immersive lightbox popup viewer
     function openLightbox(imageUrl, sceneNumber, caption) {
         if (lightbox && lightboxImg) {
@@ -607,7 +511,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // --- STEP 4 STORYBOARD STAGE COORDINATION (NEW LIVE PIPELINE FLOW) ---
+    // --- STEP 4 STORYBOARD STAGE COORDINATION (NEW SEQUENTIAL LIVE PIPELINE) ---
     async function startStoryboardPipeline() {
         btnGenerateStory.disabled = true;
         btnGenerateStory.innerText = "Planning...";
@@ -675,17 +579,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 pipelineProgressState.scenes = planData.scenes;
                 logToStudioConsole("Storyboard planned successfully. Partitioned story into " + planData.scenes.length + " scenes.", "success");
                 
-                // EXECUTE PARALLEL IMAGE GENERATIONS
-                await executeParallelSceneGenerations();
+                // EXECUTE SEQUENTIAL REAL-IMAGE GENERATION (ONE-BY-ONE)
+                await executeSequentialSceneGenerations();
             } else {
                 throw new Error("Invalid scene data returned from planner.");
             }
 
         } catch (planError) {
             console.error("Storyboard planning failed:", planError);
-            logToStudioConsole("Planning failed: " + planError.message + ". Utilizing sequential fallback plan to guarantee distinct prompts.", "error");
+            logToStudioConsole("Planning failed: " + planError.message + ". Utilizing sequential production-fallback plan to guarantee distinct prompts.", "error");
             
-            // Sequential Fallback with 100% unique paragraphs and custom prompts telling Barnaby's adventure
+            // Production-grade Fallback with 100% unique paragraphs and custom prompts telling Barnaby's adventure
             let suggestedCount = duration <= 40 ? 4 : (duration <= 60 ? 6 : 8);
             
             const uniqueFallbacks = [
@@ -714,7 +618,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     prompt: "Watercolor cartoon illustration of a graceful gentle deer guiding a cute rabbit across a small sparkling stream reflecting twinkling star lights"
                 },
                 {
-                    text: "As the moon rose high, the star floated gently back up into the velvety night sky.",
+                    text: "As the moon rose high, the star floated gracefully back up into the velvety night sky.",
                     prompt: "Watercolor cartoon illustration of a glowing yellow star floating gracefully upwards into a deep blue night sky, leaving a trail of sparkly stardust, cute rabbit watching from below"
                 },
                 {
@@ -739,111 +643,123 @@ document.addEventListener("DOMContentLoaded", function () {
                     image_prompt: template.prompt + `, ${visualVal} palette`
                 });
             }
-            await executeParallelSceneGenerations();
+            await executeSequentialSceneGenerations();
         }
     }
 
-    // Coordinates concurrent generation calls utilizing gpt-image-1-mini low quality tier
-    async function executeParallelSceneGenerations() {
-        statusBadgeText.innerText = "Rendering Art...";
-        logToStudioConsole("Requesting parallel image generations via gpt-image-1-mini ($0.005/img tier)...", "warning");
-
-        if (storyboardGrid) {
-            storyboardGrid.innerHTML = `
-                <div class="text-center py-10 text-neutral-400 text-xs font-mono">
-                    <div class="w-6 h-6 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin mx-auto mb-2"></div>
-                    Generating ${pipelineProgressState.scenes.length} illustrations in parallel on OpenAI...
-                </div>
-            `;
-        }
-
-        const visualVal = inputVisualStyle.value;
-
-        try {
-            const genResponse = await fetch(`${RENDER_BACKEND_URL}/api/bedtime-story/generate-scenes`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    prompts: pipelineProgressState.scenes.map(s => ({
-                        scene_number: s.scene_number,
-                        image_prompt: s.image_prompt
-                    })),
-                    visual_style: visualVal
-                })
-            });
-
-            if (!genResponse.ok) {
-                throw new Error(`Server returned image generation status: ${genResponse.status}`);
-            }
-
-            const genData = await genResponse.json();
-
-            if (genData.success && genData.scenes) {
-                // Merge generated image URLs back into our main state array
-                pipelineProgressState.scenes.forEach(mainScene => {
-                    const matchedGen = genData.scenes.find(gs => gs.scene_number === mainScene.scene_number);
-                    if (matchedGen) {
-                        mainScene.image_url = matchedGen.image_url;
-                    } else {
-                        mainScene.image_url = getCartoonPlaceholder(mainScene.scene_number);
-                    }
-                });
-
-                logToStudioConsole("Successfully completed Step 4: Parallel storyboard illustrations rendered.", "success");
-            } else {
-                throw new Error("Invalid image data returned from generator.");
-            }
-
-        } catch (genError) {
-            console.error("Parallel scene generation crashed:", genError);
-            logToStudioConsole("Generation crashed: " + genError.message + ". Appending illustrative cartoon vector placeholders instead of photos.", "error");
-
-            // Cartoon vector placeholders fallback
-            pipelineProgressState.scenes.forEach(s => {
-                s.image_url = getCartoonPlaceholder(s.scene_number);
-            });
-        }
-
-        // Render fully complete scene cards dynamically into the grid viewport
-        renderStoryboardCards();
-    }
-
-    // Handles DOM template generation for each planned storyboard segment
-    function renderStoryboardCards() {
+    // Displays the empty loading cards inside the layout grid immediately
+    function renderLoadingStoryboardCards() {
         if (!storyboardGrid) return;
         storyboardGrid.innerHTML = "";
 
         pipelineProgressState.scenes.forEach(sc => {
             const card = document.createElement("div");
-            card.className = "bg-[#14141e] border border-[#1f1f29] rounded-lg overflow-hidden flex flex-col p-3";
+            card.className = "bg-[#14141e] border border-[#1f1f29] rounded-lg overflow-hidden flex flex-col p-3 scene-card-item";
+            card.id = `scene-card-${sc.scene_number}`;
             card.innerHTML = `
-                <div class="h-28 bg-neutral-800 flex items-center justify-center text-xs text-neutral-500 rounded relative overflow-hidden mb-2 cursor-zoom-in transition-all duration-200 hover:scale-[1.02] group">
-                    <img src="${sc.image_url}" alt="Scene ${sc.scene_number}" class="w-full h-full object-cover">
+                <div class="w-full aspect-video bg-neutral-900/60 flex flex-col items-center justify-center rounded relative overflow-hidden mb-2 border border-dashed border-[#1f1f29] image-container">
+                    <!-- Spinning Loader -->
+                    <div class="loader-spinner w-6 h-6 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin mb-1"></div>
+                    <span class="loader-text text-[10px] font-mono text-neutral-500 uppercase tracking-wider">Awaiting generation...</span>
                     <span class="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/60 text-[9px] font-mono font-bold text-white uppercase">Scene ${sc.scene_number} [${sc.timestamp_marker}]</span>
-                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
-                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    </div>
                 </div>
                 <p class="text-[11px] font-semibold text-white leading-relaxed mb-1 leading-relaxed line-clamp-2" title="${sc.narration_segment}">${sc.narration_segment}</p>
                 <textarea class="bg-[#0d0d11] border border-[#1f1f29] text-[9px] text-neutral-400 p-1.5 rounded outline-none font-mono h-12 leading-relaxed resize-none" readonly>${sc.image_prompt}</textarea>
             `;
-            
-            // Connect interactive click-to-zoom handler to opening the lightbox pop-up viewer
-            card.querySelector("img").parentElement.addEventListener("click", function() {
-                openLightbox(sc.image_url, sc.scene_number, sc.narration_segment);
-            });
-
             storyboardGrid.appendChild(card);
         });
+    }
+
+    // Handles sequential image generations one-by-one to avoid rate bounds and allow live UI hydration
+    async function executeSequentialSceneGenerations() {
+        statusBadgeText.innerText = "Rendering Art...";
+        logToStudioConsole("Initiating sequential image generations via gpt-image-1-mini ($0.005/img widescreen 1792x1024)...", "warning");
+
+        // Hydrate blank card containers with loading placeholders first
+        renderLoadingStoryboardCards();
+
+        const visualVal = inputVisualStyle.value;
+
+        // Loop through each scene card one by one
+        for (let i = 0; i < pipelineProgressState.scenes.length; i++) {
+            const sc = pipelineProgressState.scenes[i];
+            logToStudioConsole(`Generating illustration for Scene ${sc.scene_number} of ${pipelineProgressState.scenes.length}...`, "warning");
+            
+            const cardEl = document.getElementById(`scene-card-${sc.scene_number}`);
+            const imageContainer = cardEl ? cardEl.querySelector(".image-container") : null;
+            
+            if (imageContainer) {
+                const loaderText = imageContainer.querySelector(".loader-text");
+                if (loaderText) loaderText.innerText = "Rendering artwork...";
+            }
+
+            try {
+                const response = await fetch(`${RENDER_BACKEND_URL}/api/bedtime-story/generate-scene`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        scene_number: sc.scene_number,
+                        image_prompt: sc.image_prompt,
+                        visual_style: visualVal
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorDetail = await response.json();
+                    throw new Error(errorDetail.detail || "API return status code error");
+                }
+
+                const data = await response.json();
+
+                if (data.success && data.image_url) {
+                    sc.image_url = data.image_url;
+                    
+                    // Update this specific card element immediately with the active generated base64 webp
+                    if (imageContainer) {
+                        imageContainer.className = "w-full aspect-video bg-neutral-800 flex items-center justify-center rounded relative overflow-hidden mb-2 cursor-zoom-in transition-all duration-200 hover:scale-[1.02] group";
+                        imageContainer.innerHTML = `
+                            <img src="${data.image_url}" alt="Scene ${sc.scene_number}" class="w-full h-full object-cover">
+                            <span class="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/60 text-[9px] font-mono font-bold text-white uppercase">Scene ${sc.scene_number} [${sc.timestamp_marker}]</span>
+                            <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            </div>
+                        `;
+                        // Attach interactive pop-up lightbox trigger on click
+                        imageContainer.addEventListener("click", function() {
+                            openLightbox(sc.image_url, sc.scene_number, sc.narration_segment);
+                        });
+                    }
+
+                    logToStudioConsole(`Scene ${sc.scene_number} illustration rendered successfully.`, "success");
+                } else {
+                    throw new Error("Invalid image format returned.");
+                }
+
+            } catch (err) {
+                console.error(`Generation failed for Scene ${sc.scene_number}:`, err);
+                logToStudioConsole(`Scene ${sc.scene_number} generation failed: ${err.message}`, "error");
+
+                // Render red error visual warning inside the card's image layout block
+                if (imageContainer) {
+                    imageContainer.className = "w-full aspect-video bg-red-950/40 border border-red-500/25 flex flex-col items-center justify-center rounded relative overflow-hidden mb-2 p-3";
+                    imageContainer.innerHTML = `
+                        <svg class="w-6 h-6 text-red-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        <span class="text-[9px] font-mono text-red-300 font-bold uppercase tracking-wider">Generation Failed</span>
+                        <span class="text-[8px] font-mono text-neutral-400 text-center leading-normal mt-0.5 line-clamp-2">${err.message}</span>
+                        <span class="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/60 text-[9px] font-mono font-bold text-white uppercase">Scene ${sc.scene_number}</span>
+                    `;
+                }
+            }
+        }
 
         // Toggle state classes to match complete review steps
         steps[3].className = "step-item flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition-colors completed";
         
         statusBadgeText.innerText = "Review Storyboard";
         statusBadgeIndicator.className = "w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse";
-        logToStudioConsole("Pipeline paused at Step 4. Validate scene visual cards.", "warning");
+        logToStudioConsole("Sequential image generation complete. Please review the storyboard panels.", "success");
         logToStudioConsole("Click 'Continue to Video Compile' inside the viewport when ready, or 'Regenerate' to refresh.", "info");
 
         // Display user controls
@@ -862,7 +778,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Connect event listener to "Regenerate Storyboard" button inside Step 4 Viewport
     if (btnRegenerateStoryboard) {
         btnRegenerateStoryboard.addEventListener("click", function() {
-            if (confirm("Are you sure you want to regenerate all storyboard illustrations? This will execute parallel OpenAI gpt-image-1-mini calls matching your latest style.")) {
+            if (confirm("Are you sure you want to regenerate all storyboard illustrations? This will execute sequential OpenAI gpt-image-1-mini calls matching your latest style.")) {
                 startStoryboardPipeline();
             }
         });
