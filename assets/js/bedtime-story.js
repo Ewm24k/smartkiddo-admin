@@ -35,6 +35,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const inputStoryLength = document.getElementById("setting-story-length");
     const inputMusicMood = document.getElementById("setting-music-mood");
     const inputConceptBrief = document.getElementById("setting-concept-brief");
+    const inputStoryLanguage = document.getElementById("setting-story-language");
 
     // Dynamic Result UI Elements
     const storyTitleEl = document.getElementById("res-story-title");
@@ -186,7 +187,7 @@ document.addEventListener("DOMContentLoaded", function () {
             <rect width="400" height="200" fill="url(#bg-${sceneNumber})" />
             <circle cx="50" cy="40" r="1.5" fill="#fff" opacity="0.8" />
             <circle cx="120" cy="30" r="1" fill="#fff" opacity="0.5" />
-            <circle cx="280" cy="50" r="2" fill="${c[2]}" opacity="0.9" />
+            <circle cx="280" cy="50" r="2" fill="{c[2]}" opacity="0.9" />
             <circle cx="340" cy="25" r="1.5" fill="#fff" opacity="0.7" />
             <circle cx="90" cy="75" r="1" fill="#fff" opacity="0.6" />
             <circle cx="220" cy="20" r="1.5" fill="#fff" opacity="0.4" />
@@ -395,6 +396,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const visualVal = inputVisualStyle.value;
         const lengthVal = inputStoryLength.value;
         const musicVal = inputMusicMood.value;
+        const languageVal = inputStoryLanguage ? inputStoryLanguage.value : "en";
 
         // Reset elements
         statusBadgeText.innerText = "Generating Concept...";
@@ -407,6 +409,7 @@ document.addEventListener("DOMContentLoaded", function () {
         logToStudioConsole("Kicking off bedtime story AI sequence...", "info");
         logToStudioConsole("Target age demographic: " + ageVal + " | Theme direction: " + briefVal, "info");
         logToStudioConsole("Selected OpenAI Voice model character: " + openaiVoiceVal, "info");
+        logToStudioConsole("Selected Story Generation Language: " + (languageVal === "ms" ? "Bahasa Melayu" : "English"), "info");
 
         // --- STEP 1: Story Brief & Concept Generation (LIVE API CALL) ---
         switchPipelineStepPanel(0);
@@ -425,7 +428,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     openai_voice: openaiVoiceVal,
                     visual_style: visualVal,
                     story_length: lengthVal,
-                    music_mood: musicVal
+                    music_mood: musicVal,
+                    story_language: languageVal
                 })
             });
 
