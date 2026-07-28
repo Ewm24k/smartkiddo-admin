@@ -376,7 +376,7 @@ async def ai_chat_completion(chat_req: ChatRequest):
         openai_input_str += "Available tools:\n"
         openai_input_str += "1. Read File Content:\n"
         openai_input_str += "   <read_file path=\"relative/path/to/file\"></read_file>\n"
-        openai_input_str += "   Reads the full source code text of any file listed in the manifest index.\n"
+        openai_input_str += "   Reads the full source code text of any file listed in the manual manifest.\n"
         openai_input_str += "2. Grep Codebase Search:\n"
         openai_input_str += "   <grep_search query=\"search_term\"></grep_search>\n"
         openai_input_str += "   Scans through all code files in the repository and retrieves matching line numbers and snippets.\n\n"
@@ -534,13 +534,19 @@ async def generate_bedtime_story(story_req: BedtimeStoryRequest):
         return {"error": str(e), "success": False}
 
 # -----------------------------------------------------------------
-# Endpoint 6: Bedtime Story Voice Generator (OpenAI TTS)
+# Endpoint 6: Bedtime Story Voice Generator (OpenAI TTS - Error-Proof Version)
 # -----------------------------------------------------------------
 @app.post("/api/bedtime-story/generate-voice")
 async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
     if not openai_client:
         return {"error": "OpenAI Client is not initialized on backend. Ensure OPENAI_API_KEY environment variable is active on Render.", "success": False}
     try:
+        # Enforce text truncation limit (maximum 3,500 characters) to prevent token length overflow crashes
+        clean_text = voice_req.text.strip()
+        if len(clean_text) > 3500:
+            print(f"[TTS Warning] Script text length ({len(clean_text)}) is too long. Truncating to 3500 characters to prevent API crash.")
+            clean_text = clean_text[:3500] + "..."
+
         # Whitespace cleaning & lowercasing to handle mismatched values
         requested_voice = voice_req.voice.strip().lower()
         supported_voices = [
@@ -554,24 +560,29 @@ async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
             requested_voice = "nova"
 
         # Output explicit log verification to standard out
-        print(f"[TTS Debug] Request received | Text length: {len(voice_req.text)} | Voice parameter sent to OpenAI: '{requested_voice}' | Style: '{voice_req.voice_style}'")
+        print(f"[TTS Debug] Request received | Text length: {len(clean_text)} | Voice: '{requested_voice}' | Style: '{voice_req.voice_style}'")
 
-        # Prompt optimization combining voice style and story text for gpt-4o-mini-tts instructions
-        instructions = (
-            f"Deliver the following bedtime story narrative. "
-            f"Voice style requirements: {voice_req.voice_style}. "
-            f"Ensure the pacing is warm, soothing, and perfectly timed to relax a child."
-        )
-
-        # Utilize gpt-4o-mini-tts model with complete parameter schema as supported in 2026 docs
-        response = openai_client.audio.speech.create(
-            model="gpt-4o-mini-tts",
-            voice=requested_voice,  # Send verified and sanitized lowercase option
-            input=voice_req.text,
-            instructions=instructions,
-            response_format=voice_req.response_format,
-            speed=voice_req.speed
-        )
+        # Dynamic fallback parameters designed to support older versions of the python openai library
+        try:
+            # Attempt next-generation gpt-4o-mini-tts with instructions configuration
+            response = openai_client.audio.speech.create(
+                model="gpt-4o-mini-tts",
+                voice=requested_voice,
+                input=clean_text,
+                instructions=f"Deliver the following bedtime story. Style: {voice_req.voice_style}. Keep pacing slow and warm.",
+                response_format=voice_req.response_format,
+                speed=voice_req.speed
+            )
+        except TypeError as param_error:
+            # Fallback to tts-1 without instructions if python libraries are outdated on Render
+            print(f"[TTS Dynamic Fallback] Current library version lacks advanced TTS keyword support: {str(param_error)}. Retrying with 'tts-1' fallback...")
+            response = openai_client.audio.speech.create(
+                model="tts-1",
+                voice=requested_voice if requested_voice in ["alloy", "echo", "fable", "onyx", "nova", "shimmer"] else "nova",
+                input=clean_text,
+                response_format=voice_req.response_format,
+                speed=voice_req.speed
+            )
 
         import base64
         audio_data = response.content
