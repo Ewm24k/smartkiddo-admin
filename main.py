@@ -68,6 +68,7 @@ class StoryboardPlanRequest(BaseModel):
     audio_duration: float
     visual_style: str
     target_age: str
+    story_language: Optional[str] = "en"
 
 # Request schema for generating a single storyboard scene illustration
 class SingleSceneGenerationRequest(BaseModel):
@@ -124,7 +125,6 @@ async def fetch_single_file(client, node, headers, repo_name: str):
 # Helper to extract JSON from OpenAI responses securely (handling formatting blocks)
 def extract_json_content(text: str) -> dict:
     try:
-        # Search for content inside markdown code blocks
         match = re.search(r"```json\s*([\s\S]*?)\s*```", text)
         if match:
             return json.loads(match.group(1).strip())
@@ -133,11 +133,9 @@ def extract_json_content(text: str) -> dict:
         if match_code:
             return json.loads(match_code.group(1).strip())
             
-        # Fallback to general direct conversion
         return json.loads(text.strip())
     except Exception as parse_error:
         print("JSON extraction parsing failed, utilizing emergency fallback layout. Error:", str(parse_error))
-        # Build structure fallback in case AI outputs irregular raw text
         return {
             "title": "A Magical Forest Adventure",
             "brief": "A charming, relaxing story tailored directly to curiosity and bedtime comfort.",
@@ -154,7 +152,6 @@ def get_cartoon_placeholder(scene_number: int) -> str:
     ]
     c = colors[(scene_number - 1) % len(colors)]
     
-    # Render different vector paths and characters based on scene numbers to guarantee visual uniqueness
     custom_vector_elements = ""
     if scene_number == 1:
         custom_vector_elements = """
@@ -585,36 +582,46 @@ async def generate_bedtime_story(story_req: BedtimeStoryRequest):
             f"}}\n"
         )
 
-        call_kwargs = {
-            "model": model_name,
-            "prompt": {
-                "id": "pmpt_6a662bd8afd08194a20f18967be4326908f6e34aa8074ea1",
-                "version": "1"
-            },
-            "input": openai_input_str,
-            "store": True
-        }
-
-        # reasoning configurations are strictly stripped when targeting standard gpt-4o
-        if model_name != "gpt-4o":
-            call_kwargs["reasoning"] = {
-                "mode": "standard",
-                "summary": "auto"
-            }
-            call_kwargs["include"] = [
-                "reasoning.encrypted_content",
-                "web_search_call.action.sources"
-            ]
-
-        response = openai_client.responses.create(**call_kwargs)
-
-        ai_raw_content = ""
-        if hasattr(response, "output_text") and response.output_text:
-            ai_raw_content = response.output_text
-        elif hasattr(response, "choices") and len(response.choices) > 0:
+        # Dynamic Route to Completions or Responses API
+        if model_name == "gpt-4o":
+            # Direct chat completions call with JSON Mode. Standard models do not support Responses API template restrictions [2]
+            response = openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are a master children's book author. Output strictly in raw JSON format matching the schema rules."},
+                    {"role": "user", "content": openai_input_str}
+                ],
+                response_format={"type": "json_object"}
+            )
             ai_raw_content = response.choices[0].message.content
-        elif hasattr(response, "output") and hasattr(response.output, "content"):
-            ai_raw_content = response.output.content
+        else:
+            # Responses API template structure for reasoning-capable models (gpt-5.4-mini)
+            call_kwargs = {
+                "model": model_name,
+                "prompt": {
+                    "id": "pmpt_6a662bd8afd08194a20f18967be4326908f6e34aa8074ea1",
+                    "version": "1"
+                },
+                "input": openai_input_str,
+                "store": True,
+                "reasoning": {
+                    "mode": "standard",
+                    "summary": "auto"
+                },
+                "include": [
+                    "reasoning.encrypted_content",
+                    "web_search_call.action.sources"
+                ]
+            }
+            response = openai_client.responses.create(**call_kwargs)
+            
+            ai_raw_content = ""
+            if hasattr(response, "output_text") and response.output_text:
+                ai_raw_content = response.output_text
+            elif hasattr(response, "choices") and len(response.choices) > 0:
+                ai_raw_content = response.choices[0].message.content
+            elif hasattr(response, "output") and hasattr(response.output, "content"):
+                ai_raw_content = response.output.content
 
         story_json_data = extract_json_content(ai_raw_content)
         return {
@@ -731,27 +738,41 @@ async def plan_storyboard(req: StoryboardPlanRequest):
             f"}}\n"
         )
 
-        response = openai_client.responses.create(
-            model="gpt-5.4-mini",
-            prompt={
-                "id": "pmpt_6a662bd8afd08194a20f18967be4326908f6e34aa8074ea1",
-                "version": "1"
-            },
-            input=openai_input_str,
-            reasoning={
-                "mode": "standard",
-                "summary": "auto"
-            },
-            store=True
-        )
-
-        ai_raw_content = ""
-        if hasattr(response, "output_text") and response.output_text:
-            ai_raw_content = response.output_text
-        elif hasattr(response, "choices") and len(response.choices) > 0:
+        # Dynamic Route for Storyboard planning based on language (avoids reasoning-template 400 parameters errors) [2]
+        if req.story_language == "ms":
+            # Bypass responses templates and call standard completions with JSON mode for gpt-4o [2]
+            response = openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are a master storyboard planner. Output strictly in raw JSON format matching the schema rules."},
+                    {"role": "user", "content": openai_input_str}
+                ],
+                response_format={"type": "json_object"}
+            )
             ai_raw_content = response.choices[0].message.content
-        elif hasattr(response, "output") and hasattr(response.output, "content"):
-            ai_raw_content = response.output.content
+        else:
+            # Responses API template structure for reasoning-capable models (gpt-5.4-mini)
+            response = openai_client.responses.create(
+                model="gpt-5.4-mini",
+                prompt={
+                    "id": "pmpt_6a662bd8afd08194a20f18967be4326908f6e34aa8074ea1",
+                    "version": "1"
+                },
+                input=openai_input_str,
+                reasoning={
+                    "mode": "standard",
+                    "summary": "auto"
+                },
+                store=True
+            )
+            
+            ai_raw_content = ""
+            if hasattr(response, "output_text") and response.output_text:
+                ai_raw_content = response.output_text
+            elif hasattr(response, "choices") and len(response.choices) > 0:
+                ai_raw_content = response.choices[0].message.content
+            elif hasattr(response, "output") and hasattr(response.output, "content"):
+                ai_raw_content = response.output.content
 
         plan_data = extract_json_content(ai_raw_content)
         return {
@@ -785,8 +806,8 @@ async def generate_single_scene(req: SingleSceneGenerationRequest):
             return openai_client.images.generate(
                 model="gpt-image-1-mini",
                 prompt=full_prompt,
-                quality="low",
-                size="1536x1024"
+                quality="low",  # Cost-saving $0.005 tier
+                size="1536x1024"  # Webapp Widescreen Aspect-Video Size
             )
         response = await loop.run_in_executor(None, sync_call)
         
@@ -806,6 +827,7 @@ async def generate_single_scene(req: SingleSceneGenerationRequest):
         }
     except Exception as e:
         print(f"Error generating scene {req.scene_number} illustration: {str(e)}")
+        # Return fallback cartoon vector to make sure execution continues cleanly
         fallback_url = get_cartoon_placeholder(req.scene_number)
         return {
             "success": True,
