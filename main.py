@@ -154,6 +154,7 @@ def get_cartoon_placeholder(scene_number: int) -> str:
     ]
     c = colors[(scene_number - 1) % len(colors)]
     
+    # Render different vector paths and characters based on scene numbers to guarantee visual uniqueness
     custom_vector_elements = ""
     if scene_number == 1:
         custom_vector_elements = """
@@ -213,12 +214,16 @@ def get_cartoon_placeholder(scene_number: int) -> str:
             </linearGradient>
         </defs>
         <rect width="400" height="200" fill="url(#bg-{scene_number})" />
+        
+        <!-- Standard ambient starry dots -->
         <circle cx="50" cy="40" r="1.5" fill="#fff" opacity="0.8" />
         <circle cx="120" cy="30" r="1" fill="#fff" opacity="0.5" />
         <circle cx="280" cy="50" r="2" fill="{c[2]}" opacity="0.9" />
         <circle cx="340" cy="25" r="1.5" fill="#fff" opacity="0.7" />
         <circle cx="90" cy="75" r="1" fill="#fff" opacity="0.6" />
         <circle cx="220" cy="20" r="1.5" fill="#fff" opacity="0.4" />
+        
+        <!-- Background Mountain / Hills silhouettes -->
         <path d="M 0,200 L 0,150 Q 100,120 200,160 T 400,140 L 400,200 Z" fill="{c[1]}" opacity="0.7" />
         <path d="M 0,200 L 0,170 Q 150,140 300,180 T 400,175 L 400,200 Z" fill="{c[0]}" opacity="0.9" />
         {custom_vector_elements}
@@ -655,62 +660,62 @@ async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
             requested_voice = "nova"
 
         # Determine whether to use ElevenLabs (strictly for Bahasa Melayu) or OpenAI TTS (for English / fallback)
-        use_elevenlabs = (voice_req.story_language == "ms" and ELEVENLABS_API_KEY)
+        use_elevenlabs = (voice_req.story_language == "ms")
 
         if use_elevenlabs:
-            try:
-                # User requested ElevenLabs voice ID: BeIxObt4dYBRJLYoe1hU
-                voice_id = "BeIxObt4dYBRJLYoe1hU"
-                print(f"[TTS Debug] Routing voice generation to ElevenLabs Multilingual V2 | Voice ID: '{voice_id}'")
+            if not ELEVENLABS_API_KEY:
+                print("[TTS Error] ELEVENLABS_API_KEY environment variable is not configured on Render. Raising error.")
+                raise HTTPException(
+                    status_code=400,
+                    detail="ELEVENLABS_API_KEY is missing on Render. Please configure it to enable Bahasa Melayu voice generation."
+                )
 
-                url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
-                headers = {
-                    "xi-api-key": ELEVENLABS_API_KEY,
-                    "Content-Type": "application/json"
+            # User requested ElevenLabs voice ID: BeIxObt4dYBRJLYoe1hU
+            voice_id = "BeIxObt4dYBRJLYoe1hU"
+            print(f"[TTS Debug] Executing ElevenLabs voice generation | Voice ID: '{voice_id}'")
+
+            url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+            headers = {
+                "xi-api-key": ELEVENLABS_API_KEY,
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "text": clean_text,
+                "model_id": "eleven_multilingual_v2",  # Emotionally consistent 29-language model
+                "voice_settings": {
+                    "stability": 0.5,
+                    "similarity_boost": 0.75,
+                    "style": 0.0,
+                    "use_speaker_boost": True
                 }
-                payload = {
-                    "text": clean_text,
-                    "model_id": "eleven_multilingual_v2",  # Emotionally consistent 29-language model
-                    "voice_settings": {
-                        "stability": 0.5,
-                        "similarity_boost": 0.75,
-                        "style": 0.0,
-                        "use_speaker_boost": True
-                    }
-                }
+            }
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.post(url, headers=headers, json=payload, timeout=30.0)
+                if response.status_code != 200:
+                    error_msg = response.text
+                    print(f"[TTS Error] ElevenLabs API error response: {error_msg}")
+                    raise HTTPException(
+                        status_code=response.status_code,
+                        detail=f"ElevenLabs API Error: {error_msg}"
+                    )
                 
-                async with httpx.AsyncClient() as client:
-                    response = await client.post(url, headers=headers, json=payload, timeout=30.0)
-                    if response.status_code != 200:
-                        raise ValueError(f"ElevenLabs API returned error status: {response.status_code} - {response.text}")
-                    
-                    audio_content = response.content
-                    base64_audio = base64.b64encode(audio_content).decode("utf-8")
-                    
-                    return {
-                        "success": True,
-                        "audio": f"data:audio/mp3;base64,{base64_audio}"
-                    }
-            except Exception as el_err:
-                print(f"[TTS Warning] ElevenLabs synthesis failed: {str(el_err)}. Falling back to standard OpenAI TTS generator.")
-                # Force fallback to standard OpenAI generator below on any ElevenLabs quota bounds/fails
-                use_elevenlabs = False
+                audio_content = response.content
+                base64_audio = base64.b64encode(audio_content).decode("utf-8")
+                
+                return {
+                    "success": True,
+                    "audio": f"data:audio/mp3;base64,{base64_audio}",
+                    "source": "elevenlabs"  # Explicitly report source so frontend is certain
+                }
 
-        if not use_elevenlabs:
+        else:
             if not openai_client:
-                return {"error": "OpenAI Client is not initialized on backend.", "success": False}
+                raise HTTPException(status_code=500, detail="OpenAI Client is not initialized on backend.")
                 
             print(f"[TTS Debug] Request received | Text length: {len(clean_text)} | Voice: '{requested_voice}' | Style: '{voice_req.voice_style}'")
 
-            # Custom phonetic instructions designed to force OpenAI to pronounce standard BM baku
-            if voice_req.story_language == "ms":
-                instructions = (
-                    "Sila baca teks naratif ini dengan dialek Bahasa Melayu Malaysia (Johor-Riau / Baku) yang tulen. "
-                    "Jangan sebut dengan loghat Indonesia (sebutan huruf 'a' di hujung perkataan hendaklah berbunyi 'e' pepet / schwa, seperti menyebut 'saye', 'ape', 'kenape', 'bace', 'biasenye' - bukan sebutan keras 'ah' Indonesia). "
-                    "Sebut dengan nada yang mesra, tenang, dan lembut untuk kanak-kanak."
-                )
-            else:
-                instructions = f"Deliver the following bedtime story. Style: {voice_req.voice_style}. Keep pacing slow and warm."
+            instructions = f"Deliver the following bedtime story. Style: {voice_req.voice_style}. Keep pacing slow and warm."
 
             try:
                 response = openai_client.audio.speech.create(
@@ -737,11 +742,15 @@ async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
             
             return {
                 "success": True,
-                "audio": f"data:audio/{voice_req.response_format};base64,{base64_audio}"
+                "audio": f"data:audio/{voice_req.response_format};base64,{base64_audio}",
+                "source": "openai"  # Explicitly report source so frontend is certain
             }
+            
+    except HTTPException as he:
+        raise he
     except Exception as e:
         print("Bedtime Story Voice Generation Failure:", str(e))
-        return {"error": str(e), "success": False}
+        raise HTTPException(status_code=500, detail=str(e))
 
 # -----------------------------------------------------------------
 # Endpoint 7: Bedtime Storyboard Planner (Enforces strict visual character consistency sheets)
