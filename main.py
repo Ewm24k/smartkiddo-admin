@@ -52,6 +52,7 @@ class BedtimeStoryRequest(BaseModel):
     visual_style: str
     story_length: str
     music_mood: str
+    story_language: Optional[str] = "en"
 
 # Request schema for Voice generation
 class VoiceGenerationRequest(BaseModel):
@@ -580,6 +581,38 @@ async def generate_bedtime_story(story_req: BedtimeStoryRequest):
     if not openai_client:
         return {"error": "OpenAI Client is not initialized on backend. Ensure OPENAI_API_KEY environment variable is active on Render.", "success": False}
     try:
+        # Determine target model and strict BM-to-BI vocabulary-control instructions based on chosen language
+        model_name = "gpt-5.4-mini"
+        language_instructions = ""
+        
+        if story_req.story_language == "ms":
+            model_name = "gpt-4o"
+            language_instructions = (
+                "=== STRICT BAHASA MELAYU STANDARD (MALAYSIA) RULES ===\n"
+                "You must write the entire story, book title, and brief strictly in Standard Malaysian Malay (Bahasa Melayu Baku/Standard) used in Malaysia.\n"
+                "To prevent Indonesian language drift (Bahasa Indonesia is strictly banned), you must strictly follow these vocabulary rules:\n"
+                "- Use 'boleh' (NOT 'bisa')\n"
+                "- Use 'kerana' (NOT 'karena')\n"
+                "- Use 'anda', 'awak', or 'mereka' (NOT 'kamu', 'kalian')\n"
+                "- Use 'kerajaan' (NOT 'pemerintah')\n"
+                "- Use 'syarikat' (NOT 'perusahaan')\n"
+                "- Use 'pejabat' (NOT 'kantor')\n"
+                "- Use 'kereta' (NOT 'mobil')\n"
+                "- Use 'hospital' (NOT 'rumah sakit')\n"
+                "- Use 'sila' or 'tolong' (NOT 'silakan')\n"
+                "- Use 'semua' or 'setiap' (NOT 'seluruh')\n"
+                "- Use 'kawasan', 'daerah', or 'zon' (NOT 'wilayah')\n"
+                "- Use 'faham' (NOT 'mengerti', 'paham')\n"
+                "- Use 'fikir' (NOT 'pikir')\n"
+                "- Use 'perlu' (NOT 'butuh')\n"
+                "Write the entire book, title, and brief strictly adhering to standard Malaysian Malay spelling and grammar conventions.\n"
+            )
+        else:
+            language_instructions = (
+                "=== ENGLISH STORYTELLING RULES ===\n"
+                "Write the story, title, and brief strictly in natural, clear, child-friendly English.\n"
+            )
+
         # Build structured input details mapping user configurations
         openai_input_str = (
             f"=== BEDTIME STORY GENERATION PARAMS ===\n"
@@ -588,9 +621,11 @@ async def generate_bedtime_story(story_req: BedtimeStoryRequest):
             f"Narrative Voice Selection: {story_req.voice_style}\n"
             f"Graphic Illustration Style: {story_req.visual_style}\n"
             f"Story Length Constraints: {story_req.story_length}\n"
-            f"Music Soundtrack Mood: {story_req.music_mood}\n\n"
+            f"Music Soundtrack Mood: {story_req.music_mood}\n"
+            f"Requested Language: {'Bahasa Melayu (Malaysia)' if story_req.story_language == 'ms' else 'English'}\n\n"
             f"=== CORE INSTRUCTIONS ===\n"
             f"You are a master children's book author. Draft a magical, engaging bedtime story that matches all parameter requirements above.\n"
+            f"{language_instructions}\n"
             f"To satisfy strict application routing layers, your output MUST be formatted exactly as raw JSON using these keys:\n"
             f"- 'title': A charming, original book title\n"
             f"- 'brief': A short, enticing 2-sentence synopsis summarizing the concept brief (Step 1)\n"
@@ -605,7 +640,7 @@ async def generate_bedtime_story(story_req: BedtimeStoryRequest):
 
         # Call OpenAI Platform Responses API with targeted template ID [2]
         response = openai_client.responses.create(
-            model="gpt-5.4-mini", 
+            model=model_name, # Dynamically loads gpt-4o or gpt-5.4-mini
             prompt={
                 "id": "pmpt_6a662bd8afd08194a20f18967be4326908f6e34aa8074ea1",
                 "version": "1"
