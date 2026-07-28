@@ -524,6 +524,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const voiceVal = voiceStyleEl ? voiceStyleEl.value : "animated";
         const openaiVoiceVal = openaiVoiceEl ? openaiVoiceEl.value.trim().toLowerCase() : "nova";
+        const languageVal = inputStoryLanguage ? inputStoryLanguage.value : "en";
 
         // --- STEP 3: Narration Audio Generation (LIVE OPENAI TTS API CALL) ---
         statusBadgeText.innerText = "Generating Voice...";
@@ -554,7 +555,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     voice: openaiVoiceVal,
                     voice_style: voiceVal,
                     response_format: "wav",
-                    speed: 1.0
+                    speed: 1.0,
+                    story_language: languageVal // Synchronize language routing to Step 3TTS accent generator as well [1, 2]
                 })
             });
 
@@ -667,7 +669,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     audio_duration: duration,
                     visual_style: visualVal,
                     target_age: ageVal,
-                    story_language: languageVal // Enforce strict model selection in Step 4 planning as well [1, 2]
+                    story_language: languageVal // Complete Step 4 dynamic language planning [1, 2]
                 })
             });
 
