@@ -114,6 +114,102 @@ document.addEventListener("DOMContentLoaded", function () {
         storyLogsContainer.scrollTop = storyLogsContainer.scrollHeight;
     }
 
+    // Generates completely unique vector cartoon compositions based on scene numbers so offline placeholders look different
+    function getCartoonPlaceholder(sceneNumber) {
+        const colors = [
+            ["#4f46e5", "#1e1b4b", "#818cf8"], // Indigo twilight
+            ["#0d9488", "#115e59", "#2dd4bf"], // Teal mystical woods
+            ["#db2777", "#831843", "#f472b6"], // Pink candy clouds
+            ["#ca8a04", "#713f12", "#fde047"], // Golden sky
+        ];
+        const c = colors[(sceneNumber - 1) % colors.length];
+        
+        let customVectorElements = "";
+        if (sceneNumber === 1) {
+            customVectorElements = `
+            <path d="M 310,30 A 25,25 0 1,0 350,60 A 20,20 0 1,1 310,30" fill="#fef08a" />
+            <circle cx="150" cy="50" r="3" fill="#fff" opacity="0.9" />
+            `;
+        } else if (sceneNumber === 2) {
+            customVectorElements = `
+            <path d="M 50,200 Q 80,100 70,50 Q 150,30 220,60 Q 210,120 350,200 Z" fill="#065f46" opacity="0.4" />
+            <path d="M 120,200 L 140,110 Q 160,80 150,50 L 190,50 Q 200,90 220,200" fill="#451a03" />
+            <circle cx="170" cy="130" r="12" fill="#172554" />
+            `;
+        } else if (sceneNumber === 3) {
+            customVectorElements = `
+            <path d="M 80,200 C 80,160 120,160 120,200" fill="#ef4444" />
+            <path d="M 280,200 C 280,150 330,150 330,200" fill="#f59e0b" />
+            <polygon points="180,150 183,158 191,158 185,163 187,171 180,166 173,171 175,163 169,158 177,158" fill="#fef08a" />
+            `;
+        } else if (sceneNumber === 4) {
+            customVectorElements = `
+            <circle cx="280" cy="100" r="22" fill="#78350f" />
+            <circle cx="272" cy="95" r="6" fill="#fff" />
+            <circle cx="272" cy="95" r="3" fill="#000" />
+            <circle cx="288" cy="95" r="6" fill="#fff" />
+            <circle cx="288" cy="95" r="3" fill="#000" />
+            <polygon points="280,102 277,108 283,108" fill="#f59e0b" />
+            `;
+        } else if (sceneNumber === 5) {
+            customVectorElements = `
+            <path d="M 60,200 Q 110,130 160,200 Z" fill="#1e3a8a" opacity="0.6" />
+            <circle cx="110" cy="160" r="14" fill="#3b82f6" />
+            <path d="M 110,160 Q 125,150 120,168" stroke="#1d4ed8" stroke-width="2" fill="none" />
+            <polygon points="120,158 126,160 120,162" fill="#f59e0b" />
+            `;
+        } else if (sceneNumber === 6) {
+            customVectorElements = `
+            <path d="M 0,200 C 100,160 200,210 400,180 L 400,200 L 0,200 Z" fill="#0284c7" opacity="0.8" />
+            <path d="M 0,190 C 120,170 180,195 400,170" stroke="#bae6fd" stroke-width="2" fill="none" opacity="0.5" />
+            `;
+        } else if (sceneNumber === 7) {
+            customVectorElements = `
+            <path d="M 50,180 Q 150,120 280,40" stroke="#fef08a" stroke-width="3" stroke-dasharray="5,5" fill="none" opacity="0.6" />
+            <polygon points="280,40 284,48 292,48 286,53 288,61 281,56 274,61 276,53 270,48 278,48" fill="#fef08a" />
+            `;
+        } else {
+            customVectorElements = `
+            <ellipse cx="200" cy="80" rx="40" ry="25" fill="#f8fafc" opacity="0.2" />
+            <circle cx="150" cy="100" r="8" fill="#f8fafc" opacity="0.2" />
+            <circle cx="135" cy="115" r="4" fill="#f8fafc" opacity="0.2" />
+            `;
+        }
+
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="100%" height="100%">
+            <defs>
+                <linearGradient id="bg-${sceneNumber}" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="${c[1]}" />
+                    <stop offset="100%" stop-color="${c[0]}" />
+                </linearGradient>
+            </defs>
+            <rect width="400" height="200" fill="url(#bg-${sceneNumber})" />
+            <circle cx="50" cy="40" r="1.5" fill="#fff" opacity="0.8" />
+            <circle cx="120" cy="30" r="1" fill="#fff" opacity="0.5" />
+            <circle cx="280" cy="50" r="2" fill="${c[2]}" opacity="0.9" />
+            <circle cx="340" cy="25" r="1.5" fill="#fff" opacity="0.7" />
+            <circle cx="90" cy="75" r="1" fill="#fff" opacity="0.6" />
+            <circle cx="220" cy="20" r="1.5" fill="#fff" opacity="0.4" />
+            <path d="M 0,200 L 0,150 Q 100,120 200,160 T 400,140 L 400,200 Z" fill="${c[1]}" opacity="0.7" />
+            <path d="M 0,200 L 0,170 Q 150,140 300,180 T 400,175 L 400,200 Z" fill="${c[0]}" opacity="0.9" />
+            ${customVectorElements}
+            <g transform="translate(180, 140) scale(0.6)">
+                <ellipse cx="20" cy="25" rx="6" ry="20" fill="#f5f5f5" />
+                <ellipse cx="20" cy="25" rx="3" ry="15" fill="#fecdd3" />
+                <ellipse cx="35" cy="28" rx="6" ry="18" fill="#f5f5f5" />
+                <ellipse cx="35" cy="28" rx="3" ry="13" fill="#fecdd3" />
+                <ellipse cx="35" cy="65" rx="22" ry="18" fill="#e5e5e5" />
+                <circle cx="30" cy="45" r="15" fill="#f5f5f5" />
+                <path d="M 23,45 Q 26,48 29,45" stroke="#1e293b" stroke-width="1.5" fill="none" />
+                <path d="M 33,45 Q 36,48 39,45" stroke="#1e293b" stroke-width="1.5" fill="none" />
+                <polygon points="30,49 32,49 31,51" fill="#fecdd3" />
+                <circle cx="58" cy="68" r="6" fill="#f5f5f5" />
+            </g>
+            <text x="20" y="30" font-family="monospace" font-size="10" fill="#93c5fd" opacity="0.7">CARTOON ILLUSTRATION PLACEHOLDER</text>
+        </svg>`;
+        return "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
+    }
+
     // Opens the large immersive lightbox popup viewer
     function openLightbox(imageUrl, sceneNumber, caption) {
         if (lightbox && lightboxImg) {
@@ -587,43 +683,43 @@ document.addEventListener("DOMContentLoaded", function () {
 
         } catch (planError) {
             console.error("Storyboard planning failed:", planError);
-            logToStudioConsole("Planning failed: " + planError.message + ". Utilizing sequential production-fallback plan to guarantee distinct prompts.", "error");
+            logToStudioConsole("Planning failed: " + planError.message + ". Utilizing sequential production-fallback plan with consistent character styles.", "error");
             
-            // Production-grade Fallback with 100% unique paragraphs and custom prompts telling Barnaby's adventure
+            // Production-grade Fallback with 100% unique paragraphs and static character details to guarantee perfect visual consistency
             let suggestedCount = duration <= 40 ? 4 : (duration <= 60 ? 6 : 8);
             
             const uniqueFallbacks = [
                 {
                     text: "Once upon a time, there lived a soft, little rabbit named Barnaby who loved watching the purple twilight sky.",
-                    prompt: "Watercolor cartoon illustration of cute fluffy baby rabbit Barnaby sitting on a soft grassy hill, looking up in wonder at a starry twilight sky with purple clouds, magical style"
+                    prompt: "Watercolor cartoon illustration of cute baby rabbit Barnaby, a fluffy white rabbit wearing a tiny blue knitted vest, sitting on a soft grassy hill, looking up in wonder at a starry twilight sky with purple clouds, magical style"
                 },
                 {
                     text: "Barnaby noticed a warm flickering light at the base of the ancient hollow Oak Tree.",
-                    prompt: "Watercolor cartoon illustration of baby rabbit Barnaby hopping cautiously towards a warm glowing lantern-like light radiating from the roots of a giant ancient hollow tree"
+                    prompt: "Watercolor cartoon illustration of cute baby rabbit Barnaby, a fluffy white rabbit wearing a tiny blue knitted vest, hopping cautiously towards a warm glowing lantern-like light radiating from the roots of a giant ancient hollow tree"
                 },
                 {
                     text: "He crept closer and discovered a tiny fallen star shining gently under the mushroom caps.",
-                    prompt: "Watercolor cartoon illustration of cute rabbit Barnaby peering under a cluster of colorful forest mushrooms, discovering a small glittering yellow star shining with soft light"
+                    prompt: "Watercolor cartoon illustration of cute baby rabbit Barnaby, a fluffy white rabbit wearing a tiny blue knitted vest, peering under a cluster of colorful forest mushrooms, discovering a small glittering yellow star shining with soft light"
                 },
                 {
                     text: "Suddenly, a friendly wise owl swooped down from a branch and offered to help them find a home.",
-                    prompt: "Watercolor cartoon illustration of a friendly round owl with large glasses perched on a branch, smiling down at a cute fluffy rabbit, mystical magical forest"
+                    prompt: "Watercolor cartoon illustration of a friendly round owl with large glasses perched on a branch, smiling down at cute baby rabbit Barnaby, a fluffy white rabbit wearing a tiny blue knitted vest, mystical magical forest"
                 },
                 {
                     text: "Together, they walked past a group of sleepy bluebirds resting on a bed of glowing orchids.",
-                    prompt: "Watercolor cartoon illustration of a cute rabbit and a wise owl walking past three small sleeping bluebirds nestled in glowing teal orchids, serene"
+                    prompt: "Watercolor cartoon illustration of cute baby rabbit Barnaby, a fluffy white rabbit wearing a tiny blue knitted vest, walking past three small sleeping bluebirds nestled in glowing teal orchids, serene"
                 },
                 {
                     text: "They met a gentle forest deer who guided them safely across a shimmering shallow stream.",
-                    prompt: "Watercolor cartoon illustration of a graceful gentle deer guiding a cute rabbit across a small sparkling stream reflecting twinkling star lights"
+                    prompt: "Watercolor cartoon illustration of a graceful gentle deer guiding cute baby rabbit Barnaby, a fluffy white rabbit wearing a tiny blue knitted vest, across a small sparkling stream reflecting twinkling star lights"
                 },
                 {
                     text: "As the moon rose high, the star floated gracefully back up into the velvety night sky.",
-                    prompt: "Watercolor cartoon illustration of a glowing yellow star floating gracefully upwards into a deep blue night sky, leaving a trail of sparkly stardust, cute rabbit watching from below"
+                    prompt: "Watercolor cartoon illustration of a glowing yellow star floating gracefully upwards into a deep blue night sky, leaving a trail of sparkly stardust, cute baby rabbit Barnaby, a fluffy white rabbit wearing a tiny blue knitted vest, watching from below"
                 },
                 {
                     text: "Warm and content, Barnaby curled up inside his cozy hollow trunk bed, ready for sweet dreams.",
-                    prompt: "Watercolor cartoon illustration of cute fluffy baby rabbit Barnaby sleeping happily, curled up on a bed of soft leaves inside a safe hollow wooden log, stars shining outside"
+                    prompt: "Watercolor cartoon illustration of cute baby rabbit Barnaby, a fluffy white rabbit wearing a tiny blue knitted vest, sleeping happily, curled up on a bed of soft leaves inside a safe hollow wooden log, stars shining outside"
                 }
             ];
 
@@ -643,8 +739,75 @@ document.addEventListener("DOMContentLoaded", function () {
                     image_prompt: template.prompt + `, ${visualVal} palette`
                 });
             }
-            await executeSequentialSceneGenerations();
+            await executeParallelSceneGenerations();
         }
+    }
+
+    // Coordinates concurrent generation calls utilizing gpt-image-1-mini low quality tier
+    async function executeParallelSceneGenerations() {
+        statusBadgeText.innerText = "Rendering Art...";
+        logToStudioConsole("Requesting parallel image generations via gpt-image-1-mini ($0.005/img tier)...", "warning");
+
+        if (storyboardGrid) {
+            storyboardGrid.innerHTML = `
+                <div class="text-center py-10 text-neutral-400 text-xs font-mono">
+                    <div class="w-6 h-6 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin mx-auto mb-2"></div>
+                    Generating ${pipelineProgressState.scenes.length} illustrations in parallel on OpenAI...
+                </div>
+            `;
+        }
+
+        const visualVal = inputVisualStyle.value;
+
+        try {
+            const genResponse = await fetch(`${RENDER_BACKEND_URL}/api/bedtime-story/generate-scenes`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    prompts: pipelineProgressState.scenes.map(s => ({
+                        scene_number: s.scene_number,
+                        image_prompt: s.image_prompt
+                    })),
+                    visual_style: visualVal
+                })
+            });
+
+            if (!genResponse.ok) {
+                throw new Error(`Server returned image generation status: ${genResponse.status}`);
+            }
+
+            const genData = await genResponse.json();
+
+            if (genData.success && genData.scenes) {
+                // Merge generated image URLs back into our main state array
+                pipelineProgressState.scenes.forEach(mainScene => {
+                    const matchedGen = genData.scenes.find(gs => gs.scene_number === mainScene.scene_number);
+                    if (matchedGen) {
+                        mainScene.image_url = matchedGen.image_url;
+                    } else {
+                        mainScene.image_url = getCartoonPlaceholder(mainScene.scene_number);
+                    }
+                });
+
+                logToStudioConsole("Successfully completed Step 4: Parallel storyboard illustrations rendered.", "success");
+            } else {
+                throw new Error("Invalid image data returned from generator.");
+            }
+
+        } catch (genError) {
+            console.error("Parallel scene generation crashed:", genError);
+            logToStudioConsole(`Generation crashed: ${genError.message}. Appending illustrative cartoon vector placeholders instead of photos.`, "error");
+
+            // Cartoon vector placeholders fallback
+            pipelineProgressState.scenes.forEach(s => {
+                s.image_url = getCartoonPlaceholder(s.scene_number);
+            });
+        }
+
+        // Render fully complete scene cards dynamically into the grid viewport
+        renderStoryboardCards();
     }
 
     // Displays the empty loading cards inside the layout grid immediately
@@ -673,7 +836,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Handles sequential image generations one-by-one to avoid rate bounds and allow live UI hydration
     async function executeSequentialSceneGenerations() {
         statusBadgeText.innerText = "Rendering Art...";
-        logToStudioConsole("Initiating sequential image generations via gpt-image-1-mini ($0.005/img widescreen 1792x1024)...", "warning");
+        logToStudioConsole("Initiating sequential image generations via gpt-image-1-mini ($0.005/img widescreen 1536x1024)...", "warning");
 
         // Hydrate blank card containers with loading placeholders first
         renderLoadingStoryboardCards();
@@ -683,7 +846,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // Loop through each scene card one by one
         for (let i = 0; i < pipelineProgressState.scenes.length; i++) {
             const sc = pipelineProgressState.scenes[i];
-            logToStudioConsole(`Generating illustration for Scene ${sc.scene_number} of ${pipelineProgressState.scenes.length}...`, "warning");
+            logToStudioConsole("Generating illustration for Scene " + sc.scene_number + " of " + pipelineProgressState.scenes.length + "...", "warning");
             
             const cardEl = document.getElementById(`scene-card-${sc.scene_number}`);
             const imageContainer = cardEl ? cardEl.querySelector(".image-container") : null;
@@ -732,14 +895,14 @@ document.addEventListener("DOMContentLoaded", function () {
                         });
                     }
 
-                    logToStudioConsole(`Scene ${sc.scene_number} illustration rendered successfully.`, "success");
+                    logToStudioConsole("Scene " + sc.scene_number + " illustration rendered successfully.", "success");
                 } else {
                     throw new Error("Invalid image format returned.");
                 }
 
             } catch (err) {
-                console.error(`Generation failed for Scene ${sc.scene_number}:`, err);
-                logToStudioConsole(`Scene ${sc.scene_number} generation failed: ${err.message}`, "error");
+                console.error("Generation failed for Scene " + sc.scene_number + ":", err);
+                logToStudioConsole("Scene " + sc.scene_number + " generation failed: " + err.message, "error");
 
                 // Render red error visual warning inside the card's image layout block
                 if (imageContainer) {
