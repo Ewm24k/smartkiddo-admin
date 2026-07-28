@@ -1,0 +1,118 @@
+/* --- CapCut Story Timeline Layout Styling --- */
+#timeline-editor-container {
+    background-color: #0d0d11;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+
+/* Timeline Track Column Headers */
+.timeline-track-header {
+    min-width: 64px;
+    box-shadow: 4px 0 10px rgba(0,0,0,0.3);
+}
+
+/* Timeline clips container */
+.timeline-clips-container {
+    padding-left: 64px;
+}
+
+/* Transition tiny icon box sitting between adjacent clips */
+.timeline-transition-node {
+    width: 14px;
+    height: 14px;
+    background-color: #1f1f29;
+    border: 1px solid #3730a3;
+    border-radius: 3px;
+    color: #818cf8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 8px;
+    font-weight: bold;
+    font-family: monospace;
+    transition: all 0.2s ease-in-out;
+    margin: 0 -7px;
+    z-index: 30;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.timeline-transition-node:hover {
+    background-color: #312e81;
+    color: #fff;
+    transform: scale(1.15);
+    border-color: #4f46e5;
+}
+
+.timeline-transition-node.active-fade {
+    background-color: #4f46e5;
+    color: #fff;
+    border-color: #818cf8;
+}
+
+/* Draggable storyboard image clip block */
+.timeline-image-clip {
+    height: 40px;
+    background-color: #111115;
+    border: 1px solid #1f1f29;
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+    cursor: grab;
+    transition: all 0.2s ease;
+    user-select: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.timeline-image-clip:active {
+    cursor: grabbing;
+}
+
+.timeline-image-clip.drag-over {
+    border-color: #4f46e5;
+    background-color: #1c1c24;
+    transform: scale(0.97);
+}
+
+/* Red Playhead pointer bar marker line */
+#timeline-playhead {
+    width: 2px;
+    pointer-events: none;
+    transition: left 0.05s linear;
+}
+
+/* Time Ruler Ticks formatting */
+.ruler-tick {
+    position: absolute;
+    bottom: 0;
+    width: 1px;
+    height: 6px;
+    background-color: #1f1f29;
+}
+
+.ruler-tick-major {
+    height: 10px;
+    background-color: #4b5563;
+}
+
+.ruler-label {
+    position: absolute;
+    top: -2px;
+    font-size: 8px;
+    font-family: monospace;
+    color: #6b7280;
+    transform: translateX(-50%);
+}
+
+/* Zoom indicators on clip hover */
+.cursor-zoom-in {
+    cursor: zoom-in !important;
+}
+
+/* Waveform bar configurations inside drag block */
+.editor-audio-wave-sub {
+    width: 2px;
+    background-color: #818cf8;
+    border-radius: 1px;
+    margin: 0 1px;
+}
