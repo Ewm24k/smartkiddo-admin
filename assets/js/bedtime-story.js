@@ -21,6 +21,13 @@ document.addEventListener("DOMContentLoaded", function () {
     const statusBadgeIndicator = document.getElementById("story-status-indicator");
     const storyLogsContainer = document.getElementById("story-generation-logs");
 
+    // Lightbox viewer DOM elements references
+    const lightbox = document.getElementById("story-image-lightbox");
+    const lightboxImg = document.getElementById("lightbox-img");
+    const lightboxCaption = document.getElementById("lightbox-caption");
+    const lightboxSceneTag = document.getElementById("lightbox-scene-tag");
+    const lightboxClose = document.getElementById("lightbox-close");
+
     // UI Interactive Input References
     const inputAgeGroup = document.getElementById("setting-age-group");
     const inputVoiceStyle = document.getElementById("setting-voice-style");
@@ -107,7 +114,7 @@ document.addEventListener("DOMContentLoaded", function () {
         storyLogsContainer.scrollTop = storyLogsContainer.scrollHeight;
     }
 
-    // Generates a base64 sleepy cartoon vector illustration to prevent real landscape/portrait photos as fallbacks
+    // Generates completely unique vector cartoon compositions based on scene numbers so offline placeholders look different
     function getCartoonPlaceholder(sceneNumber) {
         const colors = [
             ["#4f46e5", "#1e1b4b", "#818cf8"], // Indigo twilight
@@ -116,6 +123,59 @@ document.addEventListener("DOMContentLoaded", function () {
             ["#ca8a04", "#713f12", "#fde047"], // Golden sky
         ];
         const c = colors[(sceneNumber - 1) % colors.length];
+        
+        let customVectorElements = "";
+        if (sceneNumber === 1) {
+            customVectorElements = `
+            <path d="M 310,30 A 25,25 0 1,0 350,60 A 20,20 0 1,1 310,30" fill="#fef08a" />
+            <circle cx="150" cy="50" r="3" fill="#fff" opacity="0.9" />
+            `;
+        } else if (sceneNumber === 2) {
+            customVectorElements = `
+            <path d="M 50,200 Q 80,100 70,50 Q 150,30 220,60 Q 210,120 350,200 Z" fill="#065f46" opacity="0.4" />
+            <path d="M 120,200 L 140,110 Q 160,80 150,50 L 190,50 Q 200,90 220,200" fill="#451a03" />
+            <circle cx="170" cy="130" r="12" fill="#172554" />
+            `;
+        } else if (sceneNumber === 3) {
+            customVectorElements = `
+            <path d="M 80,200 C 80,160 120,160 120,200" fill="#ef4444" />
+            <path d="M 280,200 C 280,150 330,150 330,200" fill="#f59e0b" />
+            <polygon points="180,150 183,158 191,158 185,163 187,171 180,166 173,171 175,163 169,158 177,158" fill="#fef08a" />
+            `;
+        } else if (sceneNumber === 4) {
+            customVectorElements = `
+            <circle cx="280" cy="100" r="22" fill="#78350f" />
+            <circle cx="272" cy="95" r="6" fill="#fff" />
+            <circle cx="272" cy="95" r="3" fill="#000" />
+            <circle cx="288" cy="95" r="6" fill="#fff" />
+            <circle cx="288" cy="95" r="3" fill="#000" />
+            <polygon points="280,102 277,108 283,108" fill="#f59e0b" />
+            `;
+        } else if (sceneNumber === 5) {
+            customVectorElements = `
+            <path d="M 60,200 Q 110,130 160,200 Z" fill="#1e3a8a" opacity="0.6" />
+            <circle cx="110" cy="160" r="14" fill="#3b82f6" />
+            <path d="M 110,160 Q 125,150 120,168" stroke="#1d4ed8" stroke-width="2" fill="none" />
+            <polygon points="120,158 126,160 120,162" fill="#f59e0b" />
+            `;
+        } else if (sceneNumber === 6) {
+            customVectorElements = `
+            <path d="M 0,200 C 100,160 200,210 400,180 L 400,200 L 0,200 Z" fill="#0284c7" opacity="0.8" />
+            <path d="M 0,190 C 120,170 180,195 400,170" stroke="#bae6fd" stroke-width="2" fill="none" opacity="0.5" />
+            `;
+        } else if (sceneNumber === 7) {
+            customVectorElements = `
+            <path d="M 50,180 Q 150,120 280,40" stroke="#fef08a" stroke-width="3" stroke-dasharray="5,5" fill="none" opacity="0.6" />
+            <polygon points="280,40 284,48 292,48 286,53 288,61 281,56 274,61 276,53 270,48 278,48" fill="#fef08a" />
+            `;
+        } else {
+            customVectorElements = `
+            <ellipse cx="200" cy="80" rx="40" ry="25" fill="#f8fafc" opacity="0.2" />
+            <circle cx="150" cy="100" r="8" fill="#f8fafc" opacity="0.2" />
+            <circle cx="135" cy="115" r="4" fill="#f8fafc" opacity="0.2" />
+            `;
+        }
+
         const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="100%" height="100%">
             <defs>
                 <linearGradient id="bg-${sceneNumber}" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -128,9 +188,11 @@ document.addEventListener("DOMContentLoaded", function () {
             <circle cx="120" cy="30" r="1" fill="#fff" opacity="0.5" />
             <circle cx="280" cy="50" r="2" fill="${c[2]}" opacity="0.9" />
             <circle cx="340" cy="25" r="1.5" fill="#fff" opacity="0.7" />
+            <circle cx="90" cy="75" r="1" fill="#fff" opacity="0.6" />
+            <circle cx="220" cy="20" r="1.5" fill="#fff" opacity="0.4" />
             <path d="M 0,200 L 0,150 Q 100,120 200,160 T 400,140 L 400,200 Z" fill="${c[1]}" opacity="0.7" />
             <path d="M 0,200 L 0,170 Q 150,140 300,180 T 400,175 L 400,200 Z" fill="${c[0]}" opacity="0.9" />
-            <path d="M 320,40 A 15,15 0 1,0 345,55 A 12,12 0 1,1 320,40" fill="#fef08a" />
+            ${customVectorElements}
             <g transform="translate(180, 140) scale(0.6)">
                 <ellipse cx="20" cy="25" rx="6" ry="20" fill="#f5f5f5" />
                 <ellipse cx="20" cy="25" rx="3" ry="15" fill="#fecdd3" />
@@ -147,6 +209,35 @@ document.addEventListener("DOMContentLoaded", function () {
         </svg>`;
         return "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
     }
+
+    // Opens the large immersive lightbox popup viewer
+    function openLightbox(imageUrl, sceneNumber, caption) {
+        if (lightbox && lightboxImg) {
+            lightboxImg.src = imageUrl;
+            if (lightboxCaption) lightboxCaption.innerText = caption;
+            if (lightboxSceneTag) lightboxSceneTag.innerText = `Scene ${sceneNumber}`;
+            lightbox.classList.remove("hidden");
+            lightbox.classList.add("flex");
+            logToStudioConsole(`Opened large lightbox zoom-in view for Scene ${sceneNumber}.`, "info");
+        }
+    }
+
+    if (lightboxClose) {
+        lightboxClose.addEventListener("click", function() {
+            if (lightbox) {
+                lightbox.classList.add("hidden");
+                lightbox.classList.remove("flex");
+            }
+        });
+    }
+
+    // Close on escape key
+    document.addEventListener("keydown", function(e) {
+        if (e.key === "Escape" && lightbox && !lightbox.classList.contains("hidden")) {
+            lightbox.classList.add("hidden");
+            lightbox.classList.remove("flex");
+        }
+    });
 
     // -----------------------------------------------------------------
     // 3. Navigation Controls
@@ -314,8 +405,8 @@ document.addEventListener("DOMContentLoaded", function () {
         steps.forEach(s => s.className = "step-item flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition-colors");
 
         logToStudioConsole("Kicking off bedtime story AI sequence...", "info");
-        logToStudioConsole(`Target age demographic: ${ageVal} | Theme direction: ${briefVal}`, "info");
-        logToStudioConsole(`Selected OpenAI Voice model character: ${openaiVoiceVal}`, "info");
+        logToStudioConsole("Target age demographic: " + ageVal + " | Theme direction: " + briefVal, "info");
+        logToStudioConsole("Selected OpenAI Voice model character: " + openaiVoiceVal, "info");
 
         // --- STEP 1: Story Brief & Concept Generation (LIVE API CALL) ---
         switchPipelineStepPanel(0);
@@ -355,20 +446,20 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (scriptEditorTextarea) scriptEditorTextarea.value = pipelineProgressState.script;
 
                 steps[0].classList.add("completed");
-                logToStudioConsole(`Successfully completed Step 1: Concept Brief generated. Title: "${pipelineProgressState.title}"`, "success");
+                logToStudioConsole("Successfully completed Step 1: Concept Brief generated. Title: \"" + pipelineProgressState.title + "\"", "success");
             } else {
                 throw new Error(apiData.error || "Failed to generate story details.");
             }
 
         } catch (apiError) {
             console.error("OpenAI API Bedtime Story Generator crashed:", apiError);
-            logToStudioConsole(`Generation crashed: ${apiError.message}`, "error");
-            alert(`AI Pipeline Failed: ${apiError.message}. Fallback simulation values will be used to protect the session.`);
+            logToStudioConsole("Generation crashed: " + apiError.message, "error");
+            alert("AI Pipeline Failed: " + apiError.message + ". Fallback simulation values will be used to protect the session.");
 
             // Fallback content in case API/Token credentials are empty on Render
-            pipelineProgressState.title = `The Whispering Star of ${musicVal}`;
-            pipelineProgressState.brief = `An adorable story about discovery and dreams for ages ${ageVal}.`;
-            pipelineProgressState.script = `Once upon a time, there lived a soft, little rabbit named Barnaby. Barnaby noticed a small, flickering light at the base of the old Oak Tree. He discovered a tiny star shining gently under the mushroom caps.`;
+            pipelineProgressState.title = "The Whispering Star of " + musicVal;
+            pipelineProgressState.brief = "An adorable story about discovery and dreams for ages " + ageVal + ".";
+            pipelineProgressState.script = "Once upon a time, there lived a soft, little rabbit named Barnaby. Barnaby noticed a small, flickering light at the base of the old Oak Tree. He discovered a tiny star shining gently under the mushroom caps.";
             
             if (storyTitleEl) storyTitleEl.innerText = pipelineProgressState.title;
             if (storyBriefEl) storyBriefEl.innerText = pipelineProgressState.brief;
@@ -434,7 +525,7 @@ document.addEventListener("DOMContentLoaded", function () {
         statusBadgeText.innerText = "Generating Voice...";
         statusBadgeIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
         switchPipelineStepPanel(2);
-        logToStudioConsole(`Requesting voice synthesis with OpenAI gpt-4o-mini-tts. Target Voice character: "${openaiVoiceVal}" | Tone style: "${voiceVal}"`, "warning");
+        logToStudioConsole("Requesting voice synthesis with OpenAI gpt-4o-mini-tts. Target Voice character: \"" + openaiVoiceVal + "\" | Tone style: \"" + voiceVal + "\"", "warning");
 
         // Render active animated voice waveform visualizer block
         if (voiceWaveformContainer) {
@@ -442,7 +533,7 @@ document.addEventListener("DOMContentLoaded", function () {
             for (let i = 0; i < 24; i++) {
                 const bar = document.createElement("div");
                 bar.className = "waveform-bar";
-                bar.style.animationDelay = `${i * 0.08}s`;
+                bar.style.animationDelay = (i * 0.08) + "s";
                 voiceWaveformContainer.appendChild(bar);
             }
         }
@@ -476,14 +567,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
                 pipelineProgressState.voiceUrl = voiceData.audio;
                 steps[2].className = "step-item flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition-colors completed";
-                logToStudioConsole(`Successfully completed Step 3: Audio narration voice generated. System verified voice character: "${openaiVoiceVal}"`, "success");
+                logToStudioConsole("Successfully completed Step 3: Audio narration voice generated. System verified voice character: \"" + openaiVoiceVal + "\"", "success");
             } else {
                 throw new Error(voiceData.error || "Voice response was invalid.");
             }
 
         } catch (voiceError) {
             console.error("OpenAI Voice synthesis failed:", voiceError);
-            logToStudioConsole(`Voice generation failed: ${voiceError.message}. Utilizing local simulation fallback.`, "error");
+            logToStudioConsole("Voice generation failed: " + voiceError.message + ". Utilizing local simulation fallback.", "error");
             
             // Fallback simulated file player if API/Token keys are missing
             if (voiceAudioPlayer) {
@@ -538,10 +629,10 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!duration || isNaN(duration) || duration <= 0) {
             const wordCount = pipelineProgressState.script.split(/\s+/).filter(w => w.length > 0).length;
             duration = Math.ceil((wordCount / 130) * 60);
-            logToStudioConsole(`Audio metadata not fully loaded yet. Calculated estimated pacing duration: ${duration}s`, "warning");
+            logToStudioConsole("Audio metadata not fully loaded yet. Calculated estimated pacing duration: " + duration + "s", "warning");
         } else {
             duration = Math.ceil(duration);
-            logToStudioConsole(`Voice audio duration confirmed: ${duration} seconds.`, "success");
+            logToStudioConsole("Voice audio duration confirmed: " + duration + " seconds.", "success");
         }
 
         const ageVal = inputAgeGroup.value;
@@ -582,7 +673,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (planData.success && planData.scenes && planData.scenes.length > 0) {
                 pipelineProgressState.scenes = planData.scenes;
-                logToStudioConsole(`Storyboard planned successfully. Partitioned story into ${planData.scenes.length} scenes.`, "success");
+                logToStudioConsole("Storyboard planned successfully. Partitioned story into " + planData.scenes.length + " scenes.", "success");
                 
                 // EXECUTE PARALLEL IMAGE GENERATIONS
                 await executeParallelSceneGenerations();
@@ -592,11 +683,46 @@ document.addEventListener("DOMContentLoaded", function () {
 
         } catch (planError) {
             console.error("Storyboard planning failed:", planError);
-            logToStudioConsole(`Planning failed: ${planError.message}. Utilizing simulation storyboard setup as backup.`, "error");
+            logToStudioConsole("Planning failed: " + planError.message + ". Utilizing sequential fallback plan to guarantee distinct prompts.", "error");
             
-            // Simulation Fallback in case of backend limits (Now using dynamic suggested image boundaries matching specifications)
-            // below 40s -> 4 scenes, 60s (1m) -> 6 scenes
+            // Sequential Fallback with 100% unique paragraphs and custom prompts telling Barnaby's adventure
             let suggestedCount = duration <= 40 ? 4 : (duration <= 60 ? 6 : 8);
+            
+            const uniqueFallbacks = [
+                {
+                    text: "Once upon a time, there lived a soft, little rabbit named Barnaby who loved watching the purple twilight sky.",
+                    prompt: "Watercolor cartoon illustration of cute fluffy baby rabbit Barnaby sitting on a soft grassy hill, looking up in wonder at a starry twilight sky with purple clouds, magical style"
+                },
+                {
+                    text: "Barnaby noticed a warm flickering light at the base of the ancient hollow Oak Tree.",
+                    prompt: "Watercolor cartoon illustration of baby rabbit Barnaby hopping cautiously towards a warm glowing lantern-like light radiating from the roots of a giant ancient hollow tree"
+                },
+                {
+                    text: "He crept closer and discovered a tiny fallen star shining gently under the mushroom caps.",
+                    prompt: "Watercolor cartoon illustration of cute rabbit Barnaby peering under a cluster of colorful forest mushrooms, discovering a small glittering yellow star shining with soft light"
+                },
+                {
+                    text: "Suddenly, a friendly wise owl swooped down from a branch and offered to help them find a home.",
+                    prompt: "Watercolor cartoon illustration of a friendly round owl with large glasses perched on a branch, smiling down at a cute fluffy rabbit, mystical magical forest"
+                },
+                {
+                    text: "Together, they walked past a group of sleepy bluebirds resting on a bed of glowing orchids.",
+                    prompt: "Watercolor cartoon illustration of a cute rabbit and a wise owl walking past three small sleeping bluebirds nestled in glowing teal orchids, serene"
+                },
+                {
+                    text: "They met a gentle forest deer who guided them safely across a shimmering shallow stream.",
+                    prompt: "Watercolor cartoon illustration of a graceful gentle deer guiding a cute rabbit across a small sparkling stream reflecting twinkling star lights"
+                },
+                {
+                    text: "As the moon rose high, the star floated gently back up into the velvety night sky.",
+                    prompt: "Watercolor cartoon illustration of a glowing yellow star floating gracefully upwards into a deep blue night sky, leaving a trail of sparkly stardust, cute rabbit watching from below"
+                },
+                {
+                    text: "Warm and content, Barnaby curled up inside his cozy hollow trunk bed, ready for sweet dreams.",
+                    prompt: "Watercolor cartoon illustration of cute fluffy baby rabbit Barnaby sleeping happily, curled up on a bed of soft leaves inside a safe hollow wooden log, stars shining outside"
+                }
+            ];
+
             pipelineProgressState.scenes = [];
             for (let i = 1; i <= suggestedCount; i++) {
                 const mark = Math.floor((duration / suggestedCount) * (i - 1));
@@ -604,11 +730,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 const sec = mark % 60;
                 const timestamp = `${min}:${sec < 10 ? '0' : ''}${sec}`;
                 
+                const template = uniqueFallbacks[(i - 1) % uniqueFallbacks.length];
+                
                 pipelineProgressState.scenes.push({
                     scene_number: i,
                     timestamp_marker: timestamp,
-                    narration_segment: `Part ${i} of Barnaby's exciting child story adventure. Details match visual style parameters.`,
-                    image_prompt: `Cute sleepy baby rabbit in a magical grassy forest, watercolor vector, ${visualVal}, cartoon style`
+                    narration_segment: template.text,
+                    image_prompt: template.prompt + `, ${visualVal} palette`
                 });
             }
             await executeParallelSceneGenerations();
@@ -618,7 +746,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // Coordinates concurrent generation calls utilizing gpt-image-1-mini low quality tier
     async function executeParallelSceneGenerations() {
         statusBadgeText.innerText = "Rendering Art...";
-        logToStudioConsole(`Requesting parallel image generations via gpt-image-1-mini ($0.005/img tier)...`, "warning");
+        logToStudioConsole("Requesting parallel image generations via gpt-image-1-mini ($0.005/img tier)...", "warning");
 
         if (storyboardGrid) {
             storyboardGrid.innerHTML = `
@@ -670,7 +798,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         } catch (genError) {
             console.error("Parallel scene generation crashed:", genError);
-            logToStudioConsole(`Generation crashed: ${genError.message}. Appending illustrative cartoon vector placeholders instead of photos.`, "error");
+            logToStudioConsole("Generation crashed: " + genError.message + ". Appending illustrative cartoon vector placeholders instead of photos.", "error");
 
             // Cartoon vector placeholders fallback
             pipelineProgressState.scenes.forEach(s => {
@@ -691,13 +819,22 @@ document.addEventListener("DOMContentLoaded", function () {
             const card = document.createElement("div");
             card.className = "bg-[#14141e] border border-[#1f1f29] rounded-lg overflow-hidden flex flex-col p-3";
             card.innerHTML = `
-                <div class="h-28 bg-neutral-800 flex items-center justify-center text-xs text-neutral-500 rounded relative overflow-hidden mb-2">
+                <div class="h-28 bg-neutral-800 flex items-center justify-center text-xs text-neutral-500 rounded relative overflow-hidden mb-2 cursor-zoom-in transition-all duration-200 hover:scale-[1.02] group">
                     <img src="${sc.image_url}" alt="Scene ${sc.scene_number}" class="w-full h-full object-cover">
                     <span class="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/60 text-[9px] font-mono font-bold text-white uppercase">Scene ${sc.scene_number} [${sc.timestamp_marker}]</span>
+                    <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
                 </div>
                 <p class="text-[11px] font-semibold text-white leading-relaxed mb-1 leading-relaxed line-clamp-2" title="${sc.narration_segment}">${sc.narration_segment}</p>
                 <textarea class="bg-[#0d0d11] border border-[#1f1f29] text-[9px] text-neutral-400 p-1.5 rounded outline-none font-mono h-12 leading-relaxed resize-none" readonly>${sc.image_prompt}</textarea>
             `;
+            
+            // Connect interactive click-to-zoom handler to opening the lightbox pop-up viewer
+            card.querySelector("img").parentElement.addEventListener("click", function() {
+                openLightbox(sc.image_url, sc.scene_number, sc.narration_segment);
+            });
+
             storyboardGrid.appendChild(card);
         });
 
@@ -780,7 +917,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 : getCartoonPlaceholder(1);
         }
         if (publishTitleInput) publishTitleInput.value = pipelineProgressState.title;
-        if (publishDescTextarea) publishDescTextarea.value = `Join Barnaby the Curious Rabbit in this delightful sleep-time story. Designed for children ages ${ageVal}.`;
+        if (publishDescTextarea) publishDescTextarea.value = "Join Barnaby the Curious Rabbit in this delightful sleep-time story. Designed for children ages " + ageVal + ".";
 
         steps[5].className = "step-item flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition-colors completed";
         logToStudioConsole("Successfully completed Step 6: Core pipeline complete! Validate metadata and click Publish.", "success");
@@ -809,7 +946,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 hideLoader();
                 window.logToTerminal(`Database updated: Published story '${pipelineProgressState.title}' into client application.`, "success");
                 logToStudioConsole("Successfully published story to student database!", "success");
-                alert(`Successfully published '${pipelineProgressState.title}' to the client app!`);
+                alert("Successfully published '" + pipelineProgressState.title + "' to the client app!");
                 returnToT1eraStudio();
             }, 2000);
         });
@@ -832,6 +969,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    // Hide loader overlay safely
     function hideLoader() {
         const overlay = document.getElementById('studio-loader-overlay');
         if (overlay) {
