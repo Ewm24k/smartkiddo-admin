@@ -191,8 +191,8 @@ document.addEventListener("DOMContentLoaded", function () {
             <circle cx="340" cy="25" r="1.5" fill="#fff" opacity="0.7" />
             <circle cx="90" cy="75" r="1" fill="#fff" opacity="0.6" />
             <circle cx="220" cy="20" r="1.5" fill="#fff" opacity="0.4" />
-            <path d="M 0,200 L 0,150 Q 100,120 200,160 T 400,140 L 400,200 Z" fill="${c[1]}" opacity="0.7" />
-            <path d="M 0,200 L 0,170 Q 150,140 300,180 T 400,175 L 400,200 Z" fill="${c[0]}" opacity="0.9" />
+            <path d="M 0,200 L 0,150 Q 100,120 200,160 T 400,140 L 400,200 Z" fill="{c[1]}" opacity="0.7" />
+            <path d="M 0,200 L 0,170 Q 150,140 300,180 T 400,175 L 400,200 Z" fill="{c[0]}" opacity="0.9" />
             ${customVectorElements}
             <g transform="translate(180, 140) scale(0.6)">
                 <ellipse cx="20" cy="25" rx="6" ry="20" fill="#f5f5f5" />
@@ -641,6 +641,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const ageVal = inputAgeGroup.value;
         const visualVal = inputVisualStyle.value;
+        const languageVal = inputStoryLanguage ? inputStoryLanguage.value : "en";
 
         logToStudioConsole("Contacting OpenAI to plan scene segments and visual prompt themes...", "warning");
 
@@ -665,7 +666,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     story_script: pipelineProgressState.script,
                     audio_duration: duration,
                     visual_style: visualVal,
-                    target_age: ageVal
+                    target_age: ageVal,
+                    story_language: languageVal // Enforce strict model selection in Step 4 planning as well [1, 2]
                 })
             });
 
