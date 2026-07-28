@@ -19,12 +19,16 @@
     <link rel="stylesheet" href="assets/css/style.css">
     <!-- Bedtime Story Studio styles integration -->
     <link rel="stylesheet" href="assets/css/bedtime-story.css">
+    <!-- CapCut Video Timeline Editor styles integration (New Addition) -->
+    <link rel="stylesheet" href="assets/css/video-editor.css">
     
     <!-- Custom external scripts -->
     <script src="assets/js/script.js" defer></script>
     <script src="assets/js/ai-chat.js" defer></script>
     <!-- Bedtime Story Workspace script integration -->
     <script src="assets/js/bedtime-story.js" defer></script>
+    <!-- CapCut Video Timeline Editor script integration (New Addition) -->
+    <script src="assets/js/video-editor.js" defer></script>
 </head>
 <body class="font-sans antialiased h-screen flex overflow-hidden bg-[#0f0f12] text-[#e5e7eb]">
 
@@ -371,14 +375,98 @@
                                     </div>
                                 </div>
 
-                                <!-- Screen 5: Video Compile -->
+                                <!-- Screen 5: Video Compile (Dynamic CapCut-style Story Editor Integration) -->
                                 <div class="pipeline-panel h-full w-full overflow-y-auto space-y-4 hidden" data-panel="4">
-                                    <div class="border-b border-[#1f1f29] pb-3">
-                                        <h2 class="text-sm font-bold text-white uppercase tracking-wider">Compiled Media Render</h2>
-                                        <p class="text-[11px] text-neutral-500 mt-0.5">Assembled story video with compiled graphics, transitions, and audio sync files.</p>
+                                    <div class="border-b border-[#1f1f29] pb-3 flex items-center justify-between">
+                                        <div>
+                                            <h2 class="text-sm font-bold text-white uppercase tracking-wider">T1ERA CapCut Story Video Editor</h2>
+                                            <p class="text-[11px] text-neutral-500 mt-0.5">Arrange storyboards, adjust voiceovers, and apply transition effects.</p>
+                                        </div>
                                     </div>
-                                    <div id="res-video-player-container" class="bg-[#111115] border border-[#1f1f29] rounded-lg p-4 flex items-center justify-center min-h-[220px]">
-                                        <p class="text-xs text-neutral-500 font-mono">No video has been rendered yet.</p>
+                                    
+                                    <!-- Interactive CapCut style interface -->
+                                    <div class="flex flex-col gap-4 bg-[#0d0d11] p-3 rounded-lg border border-[#1f1f29]" id="timeline-editor-container">
+                                        
+                                        <!-- Top Preview Row -->
+                                        <div class="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-4">
+                                            <!-- Video Player Viewport -->
+                                            <div class="aspect-video bg-black rounded-lg relative overflow-hidden flex items-center justify-center border border-[#1f1f29]" id="editor-video-viewport">
+                                                <img id="editor-preview-image" class="w-full h-full object-cover transition-opacity duration-300 opacity-0" src="" alt="Video Preview frame">
+                                                <div id="editor-preview-placeholder" class="text-xs text-neutral-500 font-mono">Ready to compile story elements...</div>
+                                                <div id="editor-fade-overlay" class="absolute inset-0 bg-black pointer-events-none opacity-0 transition-opacity duration-300"></div>
+                                            </div>
+                                            
+                                            <!-- Controls & Info Panel -->
+                                            <div class="flex flex-col justify-between bg-[#111115] p-3 rounded-lg border border-[#1f1f29] text-xs">
+                                                <div class="space-y-3">
+                                                    <span class="text-[9px] font-bold text-neutral-500 uppercase tracking-widest block">Transport Controls</span>
+                                                    <div class="flex items-center gap-2">
+                                                        <button id="editor-play-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-1.5 px-3 rounded flex items-center justify-center gap-1">
+                                                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                                            <span>Play</span>
+                                                        </button>
+                                                        <button id="editor-pause-btn" class="flex-1 bg-[#17171e] hover:bg-neutral-800 text-white font-semibold py-1.5 px-3 rounded flex items-center justify-center gap-1 border border-[#1f1f29]">
+                                                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                                                            <span>Pause</span>
+                                                        </button>
+                                                    </div>
+                                                    <div class="bg-[#09090c] border border-[#1f1f29] rounded p-2 text-center font-mono">
+                                                        <span id="editor-current-time" class="text-indigo-400">00:00.0</span>
+                                                        <span class="text-neutral-600">/</span>
+                                                        <span id="editor-total-time" class="text-neutral-500">00:00.0</span>
+                                                    </div>
+                                                </div>
+                                                <div class="text-[10px] text-neutral-500 leading-normal font-mono mt-3">
+                                                    Drag generated elements below to re-arrange scenes and match the narration. Click [+] to add transitions.
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Timeline Multi-Track Editor Panel -->
+                                        <div class="relative bg-[#09090c] rounded-lg border border-[#1f1f29] p-2 overflow-x-auto min-h-[160px] no-scrollbar flex flex-col gap-2 select-none" id="editor-timeline-tracks">
+                                            
+                                            <!-- Ruler / Time Indicator -->
+                                            <div class="h-6 relative border-b border-[#1f1f29] flex-shrink-0" id="timeline-ruler">
+                                                <!-- Ticks generated dynamically by video-editor.js -->
+                                            </div>
+
+                                            <!-- Draggable playhead pointer bar -->
+                                            <div class="absolute top-0 bottom-0 w-0.5 bg-red-500 z-40 pointer-events-none transition-all" id="timeline-playhead" style="left: 0px;">
+                                                <div class="w-3 h-3 bg-red-500 rounded-full absolute -top-1.5 -left-1.25 border border-white shadow shadow-red-500/50"></div>
+                                            </div>
+
+                                            <!-- Row 1: Draggable Storyboard Images Track -->
+                                            <div class="flex items-center gap-0 min-h-[48px] border-b border-[#1f1f29]/30 pb-2 relative" id="track-image-row">
+                                                <div class="timeline-track-header absolute left-0 top-0 bottom-0 w-16 bg-[#111115]/95 border-r border-[#1f1f29] z-20 flex items-center justify-center text-[10px] font-bold text-neutral-400 font-mono shadow">IMAGES</div>
+                                                <div class="flex items-center gap-0 pl-16 w-full h-full min-w-max timeline-clips-container" id="timeline-images-track">
+                                                    <!-- Clips populated dynamically by video-editor.js -->
+                                                </div>
+                                            </div>
+
+                                            <!-- Row 2: Draggable Voice Narration Audio Track -->
+                                            <div class="flex items-center min-h-[40px] relative" id="track-audio-row">
+                                                <div class="timeline-track-header absolute left-0 top-0 bottom-0 w-16 bg-[#111115]/95 border-r border-[#1f1f29] z-20 flex items-center justify-center text-[10px] font-bold text-neutral-400 font-mono shadow">VOICE</div>
+                                                <div class="flex items-center pl-16 w-full h-full min-w-max relative" id="timeline-audio-track" style="height: 36px;">
+                                                    <!-- Draggable audio segment clip -->
+                                                    <div id="timeline-audio-clip" class="absolute top-0.5 h-7 bg-indigo-500/20 border border-indigo-500/50 rounded flex items-center px-3 font-mono text-[9px] text-indigo-300 cursor-grab active:cursor-grabbing select-none shadow-md shadow-indigo-500/10 z-10" style="left: 0px; width: 0px;">
+                                                        <svg class="w-3.5 h-3.5 text-indigo-400 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+                                                        <span id="audio-clip-label">Audio voiceover clip</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+                                    
+                                    <!-- Continue to next step option -->
+                                    <div class="flex justify-end mt-2">
+                                        <button id="btn-story-compile-finish" class="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500 text-xs text-white font-semibold transition-colors flex items-center gap-1.5 shadow-md shadow-indigo-600/20">
+                                            <span>Continue to Metadata</span>
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                                            </svg>
+                                        </button>
                                     </div>
                                 </div>
 
@@ -885,6 +973,28 @@
         <div class="text-center mt-3 px-6 max-w-xl">
             <span id="lightbox-scene-tag" class="text-xs font-bold text-indigo-400 font-mono tracking-widest uppercase">Scene 1</span>
             <p id="lightbox-caption" class="text-xs text-neutral-300 mt-1 leading-relaxed"></p>
+        </div>
+    </div>
+
+    <!-- TIMELINE TRANSITION MODAL (New Addition) -->
+    <div id="timeline-transition-modal" class="absolute bg-[#111115] border border-[#1f1f29] rounded-lg shadow-2xl p-3 z-50 hidden select-none w-56">
+        <div class="flex items-center justify-between border-b border-[#1f1f29] pb-1.5 mb-2.5">
+            <span class="text-[10px] font-bold text-neutral-400 font-mono tracking-wider uppercase">Set Transition</span>
+            <button id="transition-modal-close" class="text-neutral-500 hover:text-white transition-colors">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        
+        <!-- Tabs header -->
+        <div class="flex border-b border-[#1f1f29] mb-2.5">
+            <button id="tab-transition-in" class="flex-1 py-1 text-[10px] font-bold text-center border-b border-indigo-500 text-white select-none focus:outline-none">IN</button>
+            <button id="tab-transition-out" class="flex-1 py-1 text-[10px] font-bold text-center border-b border-transparent text-neutral-500 hover:text-neutral-300 select-none focus:outline-none">OUT</button>
+        </div>
+        
+        <!-- Options area -->
+        <div class="space-y-1.5" id="transition-options-container">
+            <button class="w-full text-left text-[11px] py-1 px-2 rounded hover:bg-white/5 text-neutral-300 font-mono select-none" data-transition="none">None</button>
+            <button class="w-full text-left text-[11px] py-1 px-2 rounded hover:bg-white/5 text-neutral-300 font-mono select-none" data-transition="fade">Fade (Dissolve)</button>
         </div>
     </div>
 
