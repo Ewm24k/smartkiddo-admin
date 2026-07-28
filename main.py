@@ -238,6 +238,31 @@ def get_cartoon_placeholder(scene_number: int) -> str:
     </svg>"""
     return f"data:image/svg+xml;base64,{base64.b64encode(svg.encode('utf-8')).decode('utf-8')}"
 
+# Helper dynamic prompt style locked sanitizer [1, 2]
+def sanitize_and_inject_style(image_prompt: str, selected_style: str) -> str:
+    prompt = image_prompt.lower()
+    style = selected_style.lower().strip()
+    
+    # Strip contradictory keywords to prevent confusion in the neural network layers
+    style_keywords = [
+        "watercolor", "water-colour", "3d-pixar", "3d pixar", "pixar style", 
+        "classic-sketch", "classic sketch", "hand-drawn sketch", "sketching", "sketch"
+    ]
+    for kw in style_keywords:
+        prompt = prompt.replace(kw, "")
+        
+    prompt = re.sub(r"\s+", " ", prompt).strip(", ")
+    
+    # Apply specific, premium descriptive prompts matching the selected style
+    if "3d-pixar" in style:
+        style_expansion = "3D animated Pixar style cartoon illustration, cute stylized 3D claymation, smooth rounded surfaces, vibrant bright playful lighting, highly detailed 3D rendering"
+    elif "classic-sketch" in style:
+        style_expansion = "Classic hand-drawn pencil sketch storybook illustration, soft detailed crosshatching, clean hand-inked lineart with cozy monochrome pencil shading"
+    else:
+        style_expansion = "Whimsical watercolor painting illustration, soft magical color washes, dreamy fluid ink outlines, cozy childhood fairytale storybook art"
+        
+    return f"{style_expansion}, {prompt}"
+
 # -----------------------------------------------------------------
 # Endpoint 1: Sync (GET) - Pull repository structure
 # -----------------------------------------------------------------
@@ -848,12 +873,8 @@ async def generate_single_scene(req: SingleSceneGenerationRequest):
     if not openai_client:
         raise HTTPException(status_code=500, detail="OpenAI Client is not initialized on backend.")
     try:
-        full_prompt = req.image_prompt
-        if req.visual_style.lower() not in full_prompt.lower():
-            full_prompt = f"{req.image_prompt}, painted in {req.visual_style} style"
-
-        if "photo" in full_prompt.lower() or "realistic" in full_prompt.lower() or "portrait" in full_prompt.lower():
-            full_prompt = re.sub(r"(?i)photo|realistic|portrait|camera", "cute cartoon vector", full_prompt)
+        # Surgically sanitize and inject the selected visual style to prevent contradictory prompts
+        full_prompt = sanitize_and_inject_style(req.image_prompt, req.visual_style)
         
         print(f"[Storyboard Art Debug] Generating Scene {req.scene_number} | Prompt: {full_prompt[:70]}...")
 
