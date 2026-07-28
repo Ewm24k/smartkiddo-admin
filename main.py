@@ -213,16 +213,12 @@ def get_cartoon_placeholder(scene_number: int) -> str:
             </linearGradient>
         </defs>
         <rect width="400" height="200" fill="url(#bg-{scene_number})" />
-        
-        <!-- Standard ambient starry dots -->
         <circle cx="50" cy="40" r="1.5" fill="#fff" opacity="0.8" />
         <circle cx="120" cy="30" r="1" fill="#fff" opacity="0.5" />
         <circle cx="280" cy="50" r="2" fill="{c[2]}" opacity="0.9" />
         <circle cx="340" cy="25" r="1.5" fill="#fff" opacity="0.7" />
         <circle cx="90" cy="75" r="1" fill="#fff" opacity="0.6" />
         <circle cx="220" cy="20" r="1.5" fill="#fff" opacity="0.4" />
-        
-        <!-- Background Mountain / Hills silhouettes -->
         <path d="M 0,200 L 0,150 Q 100,120 200,160 T 400,140 L 400,200 Z" fill="{c[1]}" opacity="0.7" />
         <path d="M 0,200 L 0,170 Q 150,140 300,180 T 400,175 L 400,200 Z" fill="{c[0]}" opacity="0.9" />
         {custom_vector_elements}
@@ -800,6 +796,7 @@ async def plan_storyboard(req: StoryboardPlanRequest):
             f"}}\n"
         )
 
+        # Dynamic Route for Storyboard planning based on language (avoids reasoning-template 400 parameters errors) [2]
         if req.story_language == "ms":
             response = openai_client.chat.completions.create(
                 model="gpt-4o",
@@ -865,8 +862,8 @@ async def generate_single_scene(req: SingleSceneGenerationRequest):
             return openai_client.images.generate(
                 model="gpt-image-1-mini",
                 prompt=full_prompt,
-                quality="low",
-                size="1536x1024"
+                quality="low",  # Cost-saving $0.005 tier
+                size="1536x1024"  # Webapp Widescreen Aspect-Video Size
             )
         response = await loop.run_in_executor(None, sync_call)
         
@@ -886,6 +883,7 @@ async def generate_single_scene(req: SingleSceneGenerationRequest):
         }
     except Exception as e:
         print(f"Error generating scene {req.scene_number} illustration: {str(e)}")
+        # Return fallback cartoon vector to make sure execution continues cleanly
         fallback_url = get_cartoon_placeholder(req.scene_number)
         return {
             "success": True,
