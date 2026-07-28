@@ -525,12 +525,19 @@ document.addEventListener("DOMContentLoaded", function () {
         const voiceVal = voiceStyleEl ? voiceStyleEl.value : "animated";
         const openaiVoiceVal = openaiVoiceEl ? openaiVoiceEl.value.trim().toLowerCase() : "nova";
         const languageVal = inputStoryLanguage ? inputStoryLanguage.value : "en";
+        const isMalay = (languageVal === "ms");
 
-        // --- STEP 3: Narration Audio Generation (LIVE OPENAI TTS API CALL) ---
+        // --- STEP 3: Narration Audio Generation (LIVE OPENAI OR ELEVENLABS TTS CALL) ---
         statusBadgeText.innerText = "Generating Voice...";
         statusBadgeIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse";
         switchPipelineStepPanel(2);
-        logToStudioConsole("Requesting voice synthesis with OpenAI gpt-4o-mini-tts. Target Voice character: \"" + openaiVoiceVal + "\" | Tone style: \"" + voiceVal + "\"", "warning");
+
+        // Dynamically update the logging console output based on the user's selected language [1, 2]
+        if (isMalay) {
+            logToStudioConsole("Requesting voice synthesis with ElevenLabs Multilingual V2. Voice ID: \"BeIxObt4dYBRJLYoe1hU\" | Style: \"" + voiceVal + "\"", "warning");
+        } else {
+            logToStudioConsole("Requesting voice synthesis with OpenAI gpt-4o-mini-tts. Target Voice character: \"" + openaiVoiceVal + "\" | Tone style: \"" + voiceVal + "\"", "warning");
+        }
 
         // Render active animated voice waveform visualizer block
         if (voiceWaveformContainer) {
@@ -556,7 +563,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     voice_style: voiceVal,
                     response_format: "wav",
                     speed: 1.0,
-                    story_language: languageVal // Synchronize language routing to Step 3TTS accent generator as well [1, 2]
+                    story_language: languageVal // Synchronize language routing to Step 3TTS accent generator [1, 2]
                 })
             });
 
@@ -573,7 +580,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
                 pipelineProgressState.voiceUrl = voiceData.audio;
                 steps[2].className = "step-item flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition-colors completed";
-                logToStudioConsole("Successfully completed Step 3: Audio narration voice generated. System verified voice character: \"" + openaiVoiceVal + "\"", "success");
+                
+                if (isMalay) {
+                    logToStudioConsole("Successfully completed Step 3: Audio narration voice generated live via ElevenLabs.", "success");
+                } else {
+                    logToStudioConsole("Successfully completed Step 3: Audio narration voice generated. System verified OpenAI voice character: \"" + openaiVoiceVal + "\"", "success");
+                }
             } else {
                 throw new Error(voiceData.error || "Voice response was invalid.");
             }
