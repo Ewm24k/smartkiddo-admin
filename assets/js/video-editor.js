@@ -1,7 +1,7 @@
 /**
  * T1ERA Studio CapCut Video Editor Timeline Engine
  * Orchestrates re-ordering of image clips, audio dragging offsets,
- * transition modals, and playhead timeline synchronizations.
+ * transition modals, dynamic audio playback, and playhead timeline synchronizations.
  */
 document.addEventListener("DOMContentLoaded", function () {
     // 1. DOM Elements Query
@@ -16,6 +16,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const playBtn = document.getElementById("editor-play-btn");
     const pauseBtn = document.getElementById("editor-pause-btn");
+    const muteBtn = document.getElementById("editor-mute-btn");
+    const muteIconMuted = document.getElementById("mute-icon-muted");
+    const muteIconUnmuted = document.getElementById("mute-icon-unmuted");
     const currentTimeEl = document.getElementById("editor-current-time");
     const totalTimeEl = document.getElementById("editor-total-time");
 
@@ -33,8 +36,9 @@ document.addEventListener("DOMContentLoaded", function () {
         duration: 30.0, // calculated total duration
         currentTime: 0.0,
         isPlaying: false,
+        isMuted: false,
         audioOffset: 0.0, // horizontal start offset in seconds
-        clipDuration: 5.0, // default seconds allocated per image clip
+        audioElement: null, // live audio playback element
     };
 
     let animationFrameId = null;
@@ -53,11 +57,9 @@ document.addEventListener("DOMContentLoaded", function () {
         timelineRuler.innerHTML = "";
         
         const totalDuration = editorProgressState.duration;
-        const totalTicks = Math.ceil(totalDuration);
 
-        for (let s = 0; i = s; s += 2) {
-            if (s > totalDuration) break;
-            
+        // Fixed reference error by replacing 'i = s' with 's <= totalDuration' [2]
+        for (let s = 0; s <= totalDuration; s += 2) {
             const pxLeft = TIMELINE_PADDING_LEFT + ((s / totalDuration) * TRACK_WIDTH_PX);
             
             // Major tick bar
@@ -83,6 +85,10 @@ document.addEventListener("DOMContentLoaded", function () {
         
         clips.forEach(clip => {
             clip.addEventListener("dragstart", function(e) {
+                if (e.target.classList.contains("clip-resize-handle")) {
+                    e.preventDefault();
+                    return;
+                }
                 dragSourceElement = this;
                 e.dataTransfer.effectAllowed = "move";
                 e.dataTransfer.setData("text/html", this.innerHTML);
@@ -132,7 +138,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 5. Dynamic Clip & Transition Rendering
+    // 5. Dynamic Clip & Transition Rendering (With Handles)
     // -----------------------------------------------------------------
     function renderTimelineClips() {
         if (!timelineImagesTrack) return;
@@ -143,22 +149,83 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const totalClips = scenes.length;
         const totalDuration = editorProgressState.duration;
-        const allocatedWidthPerClip = TRACK_WIDTH_PX / totalClips;
 
         scenes.forEach((sc, idx) => {
+            // Determine dynamic width proportional to its calculated duration
+            const duration = sc.duration || (totalDuration / totalClips);
+            sc.duration = duration; // Ensure populated
+            const allocatedWidth = (duration / totalDuration) * TRACK_WIDTH_PX;
+
             // Clip element container
             const clip = document.createElement("div");
             clip.className = "timeline-image-clip flex items-center p-0.5";
             clip.dataset.index = idx;
             clip.setAttribute("draggable", "true");
-            clip.style.width = `${allocatedWidthPerClip}px`;
+            clip.style.width = `${allocatedWidth}px`;
 
             clip.innerHTML = `
                 <div class="w-full h-full relative rounded overflow-hidden select-none pointer-events-none">
                     <img class="w-full h-full object-cover" src="${sc.image_url}" alt="Scene ${sc.scene_number}">
                     <span class="absolute bottom-0.5 right-1 px-1 py-0.5 bg-black/60 rounded text-[7px] font-mono text-white">Scene ${sc.scene_number}</span>
                 </div>
+                <!-- Interactive duration resize handle bars [New Addition] -->
+                <div class="clip-resize-handle clip-resize-handle-left" data-handle="left"></div>
+                <div class="clip-resize-handle clip-resize-handle-right" data-handle="right"></div>
             `;
+
+            // Select clip on click and display handlebars
+            clip.addEventListener("click", function(e) {
+                if (e.target.classList.contains("clip-resize-handle")) return;
+                timelineImagesTrack.querySelectorAll(".timeline-image-clip").forEach(c => c.classList.remove("selected"));
+                clip.classList.add("selected");
+                window.logToStudioConsole(`Selected Scene ${idx + 1} for duration scaling. Drag the blue left/right edges to adjust.`, "info");
+            });
+
+            // Connect resizing pointer dragging logic to handlebars [New Addition]
+            const leftHandle = clip.querySelector(".clip-resize-handle-left");
+            const rightHandle = clip.querySelector(".clip-resize-handle-right");
+
+            [leftHandle, rightHandle].forEach(handle => {
+                handle.addEventListener("pointerdown", function(pe) {
+                    pe.stopPropagation();
+                    handle.setPointerCapture(pe.pointerId);
+
+                    const side = this.dataset.handle;
+                    const initialWidth = parseFloat(clip.style.width);
+                    const startX = pe.clientX;
+
+                    const onPointerMove = function(moveEvent) {
+                        const deltaX = moveEvent.clientX - startX;
+                        let newWidth = initialWidth;
+
+                        if (side === "right") {
+                            newWidth = initialWidth + deltaX;
+                        } else {
+                            newWidth = initialWidth - deltaX;
+                        }
+
+                        // Enforce minimum visual threshold safety limit (30px)
+                        if (newWidth < 30) newWidth = 30;
+
+                        clip.style.width = `${newWidth}px`;
+
+                        // Re-proportion remaining widths among adjacent siblings
+                        recalculateClipWidthsProportionally(idx, newWidth);
+                    };
+
+                    const onPointerUp = function(upEvent) {
+                        handle.releasePointerCapture(upEvent.pointerId);
+                        handle.removeEventListener("pointermove", onPointerMove);
+                        handle.removeEventListener("pointerup", onPointerUp);
+
+                        saveClipWidthsToState();
+                    };
+
+                    handle.addEventListener("pointermove", onPointerMove);
+                    handle.addEventListener("pointerup", onPointerUp);
+                });
+            });
+
             timelineImagesTrack.appendChild(clip);
 
             // Append intermediate transition box [+] if not the final item
@@ -169,7 +236,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 transNode.dataset.transitionIn = sc.transitionIn || "none";
                 transNode.dataset.transitionOut = sc.transitionOut || "none";
                 
-                // Set highlight color active indicator if a fade transition is enabled
                 if (transNode.dataset.transitionIn === "fade" || transNode.dataset.transitionOut === "fade") {
                     transNode.classList.add("active-fade");
                 }
@@ -185,6 +251,54 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         attachDragAndDropClips();
+    }
+
+    // Recalculates other clips proportionally so total width remains TRACK_WIDTH_PX
+    function recalculateClipWidthsProportionally(resizedIdx, newWidth) {
+        const clips = Array.from(timelineImagesTrack.querySelectorAll(".timeline-image-clip"));
+        
+        let otherWidthSum = 0;
+        clips.forEach((c, i) => {
+            if (i !== resizedIdx) {
+                otherWidthSum += parseFloat(c.style.width) || (TRACK_WIDTH_PX / clips.length);
+            }
+        });
+
+        const remainingWidthToDistribute = TRACK_WIDTH_PX - newWidth;
+
+        clips.forEach((c, i) => {
+            if (i !== resizedIdx) {
+                const currentOtherWidth = parseFloat(c.style.width) || (TRACK_WIDTH_PX / clips.length);
+                const ratio = currentOtherWidth / otherWidthSum;
+                const distributedWidth = ratio * remainingWidthToDistribute;
+                c.style.width = `${Math.max(30, distributedWidth)}px`; // minimum width limit
+            }
+        });
+    }
+
+    // Commits calculated visual width pixels back to duration data states
+    function saveClipWidthsToState() {
+        const clips = Array.from(timelineImagesTrack.querySelectorAll(".timeline-image-clip"));
+        const totalDuration = editorProgressState.duration;
+
+        let accumulatedTime = 0.0;
+        clips.forEach((c, i) => {
+            const width = parseFloat(c.style.width);
+            const duration = (width / TRACK_WIDTH_PX) * totalDuration;
+
+            editorProgressState.scenes[i].duration = duration;
+
+            const min = Math.floor(accumulatedTime / 60);
+            const sec = Math.floor(accumulatedTime % 60);
+            editorProgressState.scenes[i].timestamp_marker = `${min}:${sec < 10 ? '0' : ''}${sec}`;
+
+            accumulatedTime += duration;
+        });
+
+        // Re-render to update the draggable transition nodes positions accurately
+        renderTimelineClips();
+        updateVideoFramePreview();
+        window.logToStudioConsole("Updated storyboard duration markers and transition pacing offsets.", "success");
     }
 
     // -----------------------------------------------------------------
@@ -208,7 +322,6 @@ document.addEventListener("DOMContentLoaded", function () {
             const currentX = e.clientX;
             const deltaX = currentX - startDragX;
             
-            // Calculate pixel bounds constraints
             let newLeftPx = initialOffsetPx + deltaX;
             const maxLeftPx = TRACK_WIDTH_PX - parseFloat(timelineAudioClip.style.width);
             
@@ -217,9 +330,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
             timelineAudioClip.style.left = `${newLeftPx}px`;
 
-            // Convert pixels back to seconds offset
             const offsetSec = (newLeftPx / TRACK_WIDTH_PX) * editorProgressState.duration;
             editorProgressState.audioOffset = offsetSec;
+            
+            // Instantly sync audio playback cursor position if dragging offset during play
+            syncAudioPlaybackCursor();
         });
 
         timelineAudioClip.addEventListener("pointerup", function (e) {
@@ -242,7 +357,6 @@ document.addEventListener("DOMContentLoaded", function () {
         tabIn.className = "flex-1 py-1 text-[10px] font-bold text-center border-b border-indigo-500 text-white select-none focus:outline-none";
         tabOut.className = "flex-1 py-1 text-[10px] font-bold text-center border-b border-transparent text-neutral-500 hover:text-neutral-300 select-none focus:outline-none";
 
-        // Position absolute menu adjacent to clicked node
         if (transModal) {
             transModal.style.left = `${clickX - 100}px`;
             transModal.style.top = `${window.scrollY + clientY - 140}px`;
@@ -302,7 +416,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (nextScene) nextScene.transitionOut = effect;
                 }
 
-                // Add active highlight state class to timeline node if a transition is active
                 if (selectedTransitionNode.dataset.transitionIn === "fade" || selectedTransitionNode.dataset.transitionOut === "fade") {
                     selectedTransitionNode.classList.add("active-fade");
                 } else {
@@ -310,7 +423,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 highlightActiveTransitionButton(effect);
-                window.logToStudioConsole(`Transition applied: Scene ${leftIdx + 1} ➔ Scene ${leftIdx + 2} set to [${effect.toUpperCase()}] during ${transitionDirection.toUpperCase()} phase.`, "success");
+                window.logToStudioConsole(`Transition applied: Scene ${leftIdx + 1} ➔ Scene ${leftIdx + 2} set to [${effect.toUpperCase()}].`, "success");
                 
                 if (transModal) transModal.classList.add("hidden");
             });
@@ -324,7 +437,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 8. Playback loop & Frame synchronizations (Transport controls)
+    // 8. Playback loop & Audio frame synchronizations [Upgraded Section]
     // -----------------------------------------------------------------
     function updatePlayheadPosition() {
         const pct = editorProgressState.currentTime / editorProgressState.duration;
@@ -341,20 +454,61 @@ document.addEventListener("DOMContentLoaded", function () {
         return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}.${ms}`;
     }
 
+    // Dynamic audio playback sync based on the playhead's current offset [New Addition]
+    function syncAudioPlaybackCursor() {
+        const audio = editorProgressState.audioElement;
+        if (!audio) return;
+
+        const currentPlayheadTime = editorProgressState.currentTime;
+        const audioOffset = editorProgressState.audioOffset;
+        const targetAudioTime = currentPlayheadTime - audioOffset;
+
+        if (editorProgressState.isPlaying) {
+            if (targetAudioTime >= 0 && targetAudioTime < audio.duration) {
+                // Play audio if it falls inside the playback window
+                if (audio.paused) {
+                    audio.currentTime = targetAudioTime;
+                    audio.play().catch(e => console.log("Audio play deferred:", e));
+                } else {
+                    // Sync timeline drift if discrepancy is greater than 0.1s
+                    if (Math.abs(audio.currentTime - targetAudioTime) > 0.1) {
+                        audio.currentTime = targetAudioTime;
+                    }
+                }
+            } else {
+                // Pause if the playhead falls outside the audio clip boundaries
+                if (!audio.paused) {
+                    audio.pause();
+                }
+            }
+        } else {
+            if (!audio.paused) {
+                audio.pause();
+            }
+        }
+    }
+
     function updateVideoFramePreview() {
         const scenes = editorProgressState.scenes;
         if (!scenes || scenes.length === 0) return;
 
         const totalDuration = editorProgressState.duration;
-        const totalClips = scenes.length;
-        const clipWindow = totalDuration / totalClips;
-
         const currentTime = editorProgressState.currentTime;
-        
-        // Find which clip matches the active timestamp window
-        let activeIdx = Math.floor(currentTime / clipWindow);
-        if (activeIdx >= totalClips) activeIdx = totalClips - 1;
-        if (activeIdx < 0) activeIdx = 0;
+
+        // Dynamically compute index boundaries based on variable durations [New Addition]
+        let accumulatedTime = 0.0;
+        let activeIdx = 0;
+
+        for (let i = 0; i < scenes.length; i++) {
+            accumulatedTime += scenes[i].duration;
+            if (currentTime <= accumulatedTime) {
+                activeIdx = i;
+                break;
+            }
+            if (i === scenes.length - 1) {
+                activeIdx = scenes.length - 1;
+            }
+        }
 
         const targetScene = scenes[activeIdx];
         if (previewImage && targetScene) {
@@ -362,15 +516,19 @@ document.addEventListener("DOMContentLoaded", function () {
             previewImage.classList.remove("opacity-0");
             previewImage.classList.add("opacity-100");
             
-            // If transition overlap exists, trigger soft visual fade transitions on canvas viewport
-            const localOffset = currentTime % clipWindow;
+            // Calculate relative offset within this specific scene clip duration boundaries
+            let precedingDurationSum = 0.0;
+            for (let i = 0; i < activeIdx; i++) {
+                precedingDurationSum += scenes[i].duration;
+            }
+            const localOffset = currentTime - precedingDurationSum;
             const threshold = 0.5; // transition overlaps within 0.5s window
             
             if (targetScene.transitionIn === "fade" && localOffset < threshold) {
                 const fadePct = (threshold - localOffset) / threshold;
                 if (fadeOverlay) fadeOverlay.style.opacity = fadePct;
-            } else if (targetScene.transitionOut === "fade" && (clipWindow - localOffset) < threshold) {
-                const fadePct = (threshold - (clipWindow - localOffset)) / threshold;
+            } else if (targetScene.transitionOut === "fade" && (targetScene.duration - localOffset) < threshold) {
+                const fadePct = (threshold - (targetScene.duration - localOffset)) / threshold;
                 if (fadeOverlay) fadeOverlay.style.opacity = fadePct;
             } else {
                 if (fadeOverlay) fadeOverlay.style.opacity = 0;
@@ -400,11 +558,15 @@ document.addEventListener("DOMContentLoaded", function () {
         if (editorProgressState.currentTime >= editorProgressState.duration) {
             editorProgressState.currentTime = editorProgressState.duration;
             editorProgressState.isPlaying = false;
+            if (editorProgressState.audioElement) {
+                editorProgressState.audioElement.pause();
+            }
             window.logToStudioConsole("Timeline reached end of program. Transport stopped.", "info");
         }
 
         updatePlayheadPosition();
         updateVideoFramePreview();
+        syncAudioPlaybackCursor(); // Real-time audio play/sync
 
         if (editorProgressState.isPlaying) {
             animationFrameId = requestAnimationFrame(runPlaybackTick);
@@ -415,7 +577,6 @@ document.addEventListener("DOMContentLoaded", function () {
         playBtn.addEventListener("click", function() {
             if (editorProgressState.isPlaying) return;
             
-            // Loop back cleanly if play is clicked at boundary limits
             if (editorProgressState.currentTime >= editorProgressState.duration) {
                 editorProgressState.currentTime = 0.0;
             }
@@ -424,7 +585,7 @@ document.addEventListener("DOMContentLoaded", function () {
             lastPlaybackTimestamp = performance.now();
             animationFrameId = requestAnimationFrame(runPlaybackTick);
             
-            window.logToStudioConsole("Transport initialized. Playing timeline render tracks...", "info");
+            window.logToStudioConsole("Transport initialized. Playing timeline render tracks with synced audio...", "info");
         });
     }
 
@@ -435,7 +596,31 @@ document.addEventListener("DOMContentLoaded", function () {
             if (animationFrameId) {
                 cancelAnimationFrame(animationFrameId);
             }
+            if (editorProgressState.audioElement) {
+                editorProgressState.audioElement.pause();
+            }
             window.logToStudioConsole("Transport paused.", "info");
+        });
+    }
+
+    // Real-time Mute / Unmute toggler [New Addition]
+    if (muteBtn) {
+        muteBtn.addEventListener("click", function() {
+            editorProgressState.isMuted = !editorProgressState.isMuted;
+            
+            if (editorProgressState.isMuted) {
+                muteIconUnmuted.classList.add("hidden");
+                muteIconMuted.classList.remove("hidden");
+                window.logToStudioConsole("Audio muted.", "info");
+            } else {
+                muteIconMuted.classList.add("hidden");
+                muteIconUnmuted.classList.remove("hidden");
+                window.logToStudioConsole("Audio unmuted.", "info");
+            }
+
+            if (editorProgressState.audioElement) {
+                editorProgressState.audioElement.muted = editorProgressState.isMuted;
+            }
         });
     }
 
@@ -449,7 +634,17 @@ document.addEventListener("DOMContentLoaded", function () {
         editorProgressState.scenes = [...storyState.scenes];
         editorProgressState.voiceUrl = storyState.voiceUrl;
         
-        // Secure calculated audio voice duration dynamically
+        // Reset playback coordinates
+        editorProgressState.currentTime = 0.0;
+        editorProgressState.isPlaying = false;
+
+        // Initialize dynamic Audio element layer
+        if (editorProgressState.audioElement) {
+            editorProgressState.audioElement.pause();
+        }
+        editorProgressState.audioElement = new Audio(storyState.voiceUrl);
+        editorProgressState.audioElement.muted = editorProgressState.isMuted;
+
         const testAudio = new Audio(storyState.voiceUrl);
         testAudio.addEventListener("loadedmetadata", function() {
             const calculatedDuration = Math.ceil(this.duration) || 30.0;
@@ -461,7 +656,6 @@ document.addEventListener("DOMContentLoaded", function () {
         // Fallback bounds checker to guarantee zero initialization hangs if loading metadata lags
         setTimeout(() => {
             if (editorProgressState.duration === 30.0) {
-                // Approximate word pacing fallback
                 const wordCount = storyState.script.split(/\s+/).filter(w => w.length > 0).length;
                 editorProgressState.duration = Math.ceil((wordCount / 130) * 60) || 30.0;
                 executeTimelineInitializationSequence();
@@ -483,8 +677,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Configure audio clip track block length based on its total duration
         if (timelineAudioClip) {
-            const scenesCount = editorProgressState.scenes.length;
-            const clipWidthPct = 0.85; // audio clip fits inside visual safe width percentage
+            const clipWidthPct = 0.85; 
             const elementWidthPx = TRACK_WIDTH_PX * clipWidthPct;
             
             timelineAudioClip.style.width = `${elementWidthPx}px`;
