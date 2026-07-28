@@ -401,13 +401,18 @@
                                                 <div class="space-y-3">
                                                     <span class="text-[9px] font-bold text-neutral-500 uppercase tracking-widest block">Transport Controls</span>
                                                     <div class="flex items-center gap-2">
-                                                        <button id="editor-play-btn" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-1.5 px-3 rounded flex items-center justify-center gap-1">
+                                                        <button id="editor-play-btn" class="flex bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-1.5 px-3 rounded flex-1 items-center justify-center gap-1">
                                                             <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                                                             <span>Play</span>
                                                         </button>
-                                                        <button id="editor-pause-btn" class="flex-1 bg-[#17171e] hover:bg-neutral-800 text-white font-semibold py-1.5 px-3 rounded flex items-center justify-center gap-1 border border-[#1f1f29]">
+                                                        <button id="editor-pause-btn" class="flex bg-[#17171e] hover:bg-neutral-800 text-white font-semibold py-1.5 px-3 rounded flex-1 items-center justify-center gap-1 border border-[#1f1f29]">
                                                             <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
                                                             <span>Pause</span>
+                                                        </button>
+                                                        <!-- Interactive Mute Toggle Button [New Addition] -->
+                                                        <button id="editor-mute-btn" class="p-1.5 text-neutral-400 hover:text-white hover:bg-neutral-800 rounded transition-colors" title="Mute/Unmute Audio">
+                                                            <svg id="mute-icon-unmuted" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+                                                            <svg id="mute-icon-muted" class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636M12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5z"/></svg>
                                                         </button>
                                                     </div>
                                                     <div class="bg-[#09090c] border border-[#1f1f29] rounded p-2 text-center font-mono">
