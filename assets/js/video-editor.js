@@ -58,7 +58,6 @@ document.addEventListener("DOMContentLoaded", function () {
         
         const totalDuration = editorProgressState.duration;
 
-        // Fixed reference error by replacing 'i = s' with 's <= totalDuration' [2]
         for (let s = 0; s <= totalDuration; s += 2) {
             const pxLeft = TIMELINE_PADDING_LEFT + ((s / totalDuration) * TRACK_WIDTH_PX);
             
@@ -168,7 +167,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     <img class="w-full h-full object-cover" src="${sc.image_url}" alt="Scene ${sc.scene_number}">
                     <span class="absolute bottom-0.5 right-1 px-1 py-0.5 bg-black/60 rounded text-[7px] font-mono text-white">Scene ${sc.scene_number}</span>
                 </div>
-                <!-- Interactive duration resize handle bars [New Addition] -->
+                <!-- Interactive duration resize handle bars -->
                 <div class="clip-resize-handle clip-resize-handle-left" data-handle="left"></div>
                 <div class="clip-resize-handle clip-resize-handle-right" data-handle="right"></div>
             `;
@@ -181,7 +180,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 window.logToStudioConsole(`Selected Scene ${idx + 1} for duration scaling. Drag the blue left/right edges to adjust.`, "info");
             });
 
-            // Connect resizing pointer dragging logic to handlebars [New Addition]
+            // Connect resizing pointer dragging logic to handlebars
             const leftHandle = clip.querySelector(".clip-resize-handle-left");
             const rightHandle = clip.querySelector(".clip-resize-handle-right");
 
@@ -454,7 +453,7 @@ document.addEventListener("DOMContentLoaded", function () {
         return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}.${ms}`;
     }
 
-    // Dynamic audio playback sync based on the playhead's current offset [New Addition]
+    // Dynamic audio playback sync based on the playhead's current offset
     function syncAudioPlaybackCursor() {
         const audio = editorProgressState.audioElement;
         if (!audio) return;
@@ -495,7 +494,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const totalDuration = editorProgressState.duration;
         const currentTime = editorProgressState.currentTime;
 
-        // Dynamically compute index boundaries based on variable durations [New Addition]
+        // Dynamically compute index boundaries based on variable durations
         let accumulatedTime = 0.0;
         let activeIdx = 0;
 
@@ -603,7 +602,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Real-time Mute / Unmute toggler [New Addition]
+    // Real-time Mute / Unmute toggler
     if (muteBtn) {
         muteBtn.addEventListener("click", function() {
             editorProgressState.isMuted = !editorProgressState.isMuted;
@@ -675,10 +674,14 @@ document.addEventListener("DOMContentLoaded", function () {
         // Render clip blocks
         renderTimelineClips();
 
-        // Configure audio clip track block length based on its total duration
+        // Configure audio clip track block length based on its exact decoded duration [Fixed Section]
         if (timelineAudioClip) {
-            const clipWidthPct = 0.85; 
-            const elementWidthPx = TRACK_WIDTH_PX * clipWidthPct;
+            const audioDuration = (editorProgressState.audioElement && editorProgressState.audioElement.duration) 
+                ? editorProgressState.audioElement.duration 
+                : editorProgressState.duration;
+            
+            // Calculate proportional width matching its true decoded runtime boundary
+            const elementWidthPx = (audioDuration / editorProgressState.duration) * TRACK_WIDTH_PX;
             
             timelineAudioClip.style.width = `${elementWidthPx}px`;
             timelineAudioClip.style.left = "0px";
