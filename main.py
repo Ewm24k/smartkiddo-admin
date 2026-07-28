@@ -709,7 +709,7 @@ async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
         return {"error": str(e), "success": False}
 
 # -----------------------------------------------------------------
-# Endpoint 7: Bedtime Storyboard Planner
+# Endpoint 7: Bedtime Storyboard Planner (Enforces strict visual character consistency sheets)
 # -----------------------------------------------------------------
 @app.post("/api/bedtime-story/plan-storyboard")
 async def plan_storyboard(req: StoryboardPlanRequest):
@@ -736,13 +736,15 @@ async def plan_storyboard(req: StoryboardPlanRequest):
             f"Suggested Scene Count: {suggested_scenes}\n"
             f"Visual Style Theme: {req.visual_style}\n"
             f"Target Age Demographic: {req.target_age} years old\n\n"
-            f"=== CORE INSTRUCTIONS ===\n"
-            f"Analyze the narrative pacing and partition the story script into exactly {suggested_scenes} distinct visual scenes.\n"
-            f"For each scene, provide:\n"
-            f"1. The scene_number (integer)\n"
-            f"2. A timestamp_marker (string showing when the scene should appear, e.g., '0:00', '0:10')\n"
-            f"3. The narration_segment (the exact portion of the script belonging to this scene)\n"
-            f"4. An image_prompt: A highly descriptive, detailed cartoon-style illustration prompt matching the scene's context and Visual Style Theme '{req.visual_style}'. Ensure the prompt is optimized for gpt-image-1-mini and starts with descriptive nouns. Strictly specify 'cartoon vector' or 'hand-drawn child illustration' to avoid realistic photos.\n\n"
+            f"=== STRICT CHARACTER CONSISTENCY & STYLE LOCK RULES ===\n"
+            f"To prevent generated story characters from morphing, changing species, colors, or transforming into different animals/humans between scene cards, you MUST strictly adhere to this planning algorithm:\n"
+            f"1. **Analyze Characters First**: Read the script and identify all main actors (e.g. Benny the Rabbit, a playful Tiger, etc.).\n"
+            f"2. **Design a Strict Style Sheet**: Create a detailed, static physical visual descriptive sheet for each character:\n"
+            f"   - Specify species (e.g. fluffy round-eared rabbit, large orange striped tiger).\n"
+            f"   - Specify fur coat/skin colors and eyes (e.g. snowy white fluffy fur, emerald round friendly eyes).\n"
+            f"   - Specify static clothing and specific accessories that must remain identical across ALL cards (e.g. a tiny knitted sky-blue vest with three small gold buttons, a little red neck-collar).\n"
+            f"3. **Incorporate Descriptions Consistently**: In every single generated 'image_prompt' from Scene 1 to Scene {suggested_scenes}, you must explicitly copy-paste and repeat these exact physical character descriptions. Do not simply write 'the rabbit' or 'Benny' - always write 'Benny, a fluffy white baby rabbit wearing a tiny sky-blue knitted vest with three gold buttons'. This anchors the generative model to produce highly consistent images.\n"
+            f"4. **Aesthetic Style Locks**: Always begin each prompt specifying the artistic style: 'Cartoon children book illustration, {req.visual_style} style, vector flat graphics, clean background'.\n\n"
             f"Respond strictly with a raw JSON conforming to this schema:\n"
             f"{{\n"
             f"  \"total_scenes_planned\": {suggested_scenes},\n"
