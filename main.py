@@ -27,6 +27,7 @@ GITHUB_OWNER = os.getenv("GITHUB_OWNER", "Ewm24k")
 GITHUB_REPO = os.getenv("GITHUB_REPO", "smartkiddo-verse")
 GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "main")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 
 # Initialize OpenAI client securely
 openai_client = None
@@ -212,16 +213,12 @@ def get_cartoon_placeholder(scene_number: int) -> str:
             </linearGradient>
         </defs>
         <rect width="400" height="200" fill="url(#bg-{scene_number})" />
-        
-        <!-- Standard ambient starry dots -->
         <circle cx="50" cy="40" r="1.5" fill="#fff" opacity="0.8" />
         <circle cx="120" cy="30" r="1" fill="#fff" opacity="0.5" />
         <circle cx="280" cy="50" r="2" fill="{c[2]}" opacity="0.9" />
         <circle cx="340" cy="25" r="1.5" fill="#fff" opacity="0.7" />
         <circle cx="90" cy="75" r="1" fill="#fff" opacity="0.6" />
         <circle cx="220" cy="20" r="1.5" fill="#fff" opacity="0.4" />
-        
-        <!-- Background Mountain / Hills silhouettes -->
         <path d="M 0,200 L 0,150 Q 100,120 200,160 T 400,140 L 400,200 Z" fill="{c[1]}" opacity="0.7" />
         <path d="M 0,200 L 0,170 Q 150,140 300,180 T 400,175 L 400,200 Z" fill="{c[0]}" opacity="0.9" />
         {custom_vector_elements}
@@ -637,12 +634,10 @@ async def generate_bedtime_story(story_req: BedtimeStoryRequest):
         return {"error": str(e), "success": False}
 
 # -----------------------------------------------------------------
-# Endpoint 6: Bedtime Story Voice Generator (OpenAI TTS - Error-Proof Version)
+# Endpoint 6: Bedtime Story Voice Generator (OpenAI TTS or ElevenLabs for BM)
 # -----------------------------------------------------------------
 @app.post("/api/bedtime-story/generate-voice")
 async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
-    if not openai_client:
-        return {"error": "OpenAI Client is not initialized on backend. Ensure OPENAI_API_KEY environment variable is active on Render.", "success": False}
     try:
         clean_text = voice_req.text.strip()
         if len(clean_text) > 3500:
@@ -659,45 +654,91 @@ async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
             print(f"[TTS Warning] Requested voice '{requested_voice}' is unsupported. Falling back to 'nova'.")
             requested_voice = "nova"
 
-        print(f"[TTS Debug] Request received | Text length: {len(clean_text)} | Voice: '{requested_voice}' | Style: '{voice_req.voice_style}'")
+        # Determine whether to use ElevenLabs (strictly for Bahasa Melayu) or OpenAI TTS (for English / fallback)
+        use_elevenlabs = (voice_req.story_language == "ms" and ELEVENLABS_API_KEY)
 
-        # Custom phonetic accent instructions designed to guide pronunciation toward Malaysian Melayu (soft schwa / 'e' pepet)
-        if voice_req.story_language == "ms":
-            instructions = (
-                "Sila baca teks naratif ini dengan dialek Bahasa Melayu Malaysia (Johor-Riau / Baku) yang tulen. "
-                "Jangan sebut dengan loghat Indonesia (sebutan huruf 'a' di hujung perkataan hendaklah berbunyi 'e' pepet / schwa, seperti menyebut 'saye', 'ape', 'kenape', 'bace', 'biasenye' - bukan sebutan keras 'ah' Indonesia). "
-                "Sebut dengan nada yang mesra, tenang, dan lembut untuk kanak-kanak."
-            )
-        else:
-            instructions = f"Deliver the following bedtime story. Style: {voice_req.voice_style}. Keep pacing slow and warm."
+        if use_elevenlabs:
+            try:
+                # User requested ElevenLabs voice ID: BeIxObt4dYBRJLYoe1hU
+                voice_id = "BeIxObt4dYBRJLYoe1hU"
+                print(f"[TTS Debug] Routing voice generation to ElevenLabs Multilingual V2 | Voice ID: '{voice_id}'")
 
-        try:
-            response = openai_client.audio.speech.create(
-                model="gpt-4o-mini-tts",
-                voice=requested_voice,
-                input=clean_text,
-                instructions=instructions,
-                response_format=voice_req.response_format,
-                speed=voice_req.speed
-            )
-        except TypeError as param_error:
-            print(f"[TTS Dynamic Fallback] Current library version lacks advanced TTS keyword support: {str(param_error)}. Retrying with 'tts-1' fallback...")
-            response = openai_client.audio.speech.create(
-                model="tts-1",
-                voice=requested_voice if requested_voice in ["alloy", "echo", "fable", "onyx", "nova", "shimmer"] else "nova",
-                input=clean_text,
-                response_format=voice_req.response_format,
-                speed=voice_req.speed
-            )
+                url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+                headers = {
+                    "xi-api-key": ELEVENLABS_API_KEY,
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "text": clean_text,
+                    "model_id": "eleven_multilingual_v2",  # Emotionally consistent 29-language model
+                    "voice_settings": {
+                        "stability": 0.5,
+                        "similarity_boost": 0.75,
+                        "style": 0.0,
+                        "use_speaker_boost": True
+                    }
+                }
+                
+                async with httpx.AsyncClient() as client:
+                    response = await client.post(url, headers=headers, json=payload, timeout=30.0)
+                    if response.status_code != 200:
+                        raise ValueError(f"ElevenLabs API returned error status: {response.status_code} - {response.text}")
+                    
+                    audio_content = response.content
+                    base64_audio = base64.b64encode(audio_content).decode("utf-8")
+                    
+                    return {
+                        "success": True,
+                        "audio": f"data:audio/mp3;base64,{base64_audio}"
+                    }
+            except Exception as el_err:
+                print(f"[TTS Warning] ElevenLabs synthesis failed: {str(el_err)}. Falling back to standard OpenAI TTS generator.")
+                # Force fallback to standard OpenAI generator below on any ElevenLabs quota bounds/fails
+                use_elevenlabs = False
 
-        import base64
-        audio_data = response.content
-        base64_audio = base64.b64encode(audio_data).decode("utf-8")
-        
-        return {
-            "success": True,
-            "audio": f"data:audio/{voice_req.response_format};base64,{base64_audio}"
-        }
+        if not use_elevenlabs:
+            if not openai_client:
+                return {"error": "OpenAI Client is not initialized on backend.", "success": False}
+                
+            print(f"[TTS Debug] Request received | Text length: {len(clean_text)} | Voice: '{requested_voice}' | Style: '{voice_req.voice_style}'")
+
+            # Custom phonetic instructions designed to force OpenAI to pronounce standard BM baku
+            if voice_req.story_language == "ms":
+                instructions = (
+                    "Sila baca teks naratif ini dengan dialek Bahasa Melayu Malaysia (Johor-Riau / Baku) yang tulen. "
+                    "Jangan sebut dengan loghat Indonesia (sebutan huruf 'a' di hujung perkataan hendaklah berbunyi 'e' pepet / schwa, seperti menyebut 'saye', 'ape', 'kenape', 'bace', 'biasenye' - bukan sebutan keras 'ah' Indonesia). "
+                    "Sebut dengan nada yang mesra, tenang, dan lembut untuk kanak-kanak."
+                )
+            else:
+                instructions = f"Deliver the following bedtime story. Style: {voice_req.voice_style}. Keep pacing slow and warm."
+
+            try:
+                response = openai_client.audio.speech.create(
+                    model="gpt-4o-mini-tts",
+                    voice=requested_voice,
+                    input=clean_text,
+                    instructions=instructions,
+                    response_format=voice_req.response_format,
+                    speed=voice_req.speed
+                )
+            except TypeError as param_error:
+                print(f"[TTS Dynamic Fallback] Current library version lacks advanced TTS keyword support: {str(param_error)}. Retrying with 'tts-1' fallback...")
+                response = openai_client.audio.speech.create(
+                    model="tts-1",
+                    voice=requested_voice if requested_voice in ["alloy", "echo", "fable", "onyx", "nova", "shimmer"] else "nova",
+                    input=clean_text,
+                    response_format=voice_req.response_format,
+                    speed=voice_req.speed
+                )
+
+            import base64
+            audio_data = response.content
+            base64_audio = base64.b64encode(audio_data).decode("utf-8")
+            
+            return {
+                "success": True,
+                "audio": f"data:audio/{voice_req.response_format};base64,{base64_audio}"
+            }
     except Exception as e:
         print("Bedtime Story Voice Generation Failure:", str(e))
         return {"error": str(e), "success": False}
