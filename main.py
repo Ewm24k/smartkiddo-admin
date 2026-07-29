@@ -78,6 +78,13 @@ class SingleSceneGenerationRequest(BaseModel):
     image_prompt: str
     visual_style: str
 
+# Request schema for generating a single storyboard scene video using Sora 2
+class VideoGenerationRequest(BaseModel):
+    scene_number: int
+    image_url: str
+    prompt: str
+    duration: int
+
 # -----------------------------------------------------------------
 # Helper Utilities
 # -----------------------------------------------------------------
@@ -154,6 +161,7 @@ def get_cartoon_placeholder(scene_number: int) -> str:
     ]
     c = colors[(scene_number - 1) % len(colors)]
     
+    # Render different vector paths and characters based on scene numbers to guarantee visual uniqueness
     custom_vector_elements = ""
     if scene_number == 1:
         custom_vector_elements = """
@@ -873,8 +881,12 @@ async def generate_single_scene(req: SingleSceneGenerationRequest):
     if not openai_client:
         raise HTTPException(status_code=500, detail="OpenAI Client is not initialized on backend.")
     try:
-        # Surgically sanitize and inject the selected visual style to prevent contradictory prompts
-        full_prompt = sanitize_and_inject_style(req.image_prompt, req.visual_style)
+        full_prompt = req.image_prompt
+        if req.visual_style.lower() not in full_prompt.lower():
+            full_prompt = f"{req.image_prompt}, painted in {req.visual_style} style"
+
+        if "photo" in full_prompt.lower() or "realistic" in full_prompt.lower() or "portrait" in full_prompt.lower():
+            full_prompt = re.sub(r"(?i)photo|realistic|portrait|camera", "cute cartoon vector", full_prompt)
         
         print(f"[Storyboard Art Debug] Generating Scene {req.scene_number} | Prompt: {full_prompt[:70]}...")
 
@@ -912,3 +924,63 @@ async def generate_single_scene(req: SingleSceneGenerationRequest):
             "image_url": fallback_url,
             "warning": str(e)
         }
+
+# -----------------------------------------------------------------
+# Endpoint 9: Sora 2 Image-to-Video Compiler (One-by-One, Real API) [New Addition]
+# -----------------------------------------------------------------
+@app.post("/api/bedtime-story/generate-video")
+async def generate_scene_video(video_req: VideoGenerationRequest):
+    if not openai_client:
+        raise HTTPException(status_code=500, detail="OpenAI Client is not initialized on backend.")
+    try:
+        # standard Sora 2 request format parameters configuration
+        # model parameter is "sora-2" with per-second billing rate
+        # input_image can receive base64 webp or raw URLs directly
+        print(f"[Sora 2 Debug] Animating Scene {video_req.scene_number} into a {video_req.duration}s video. Prompt: {video_req.prompt[:50]}...")
+        
+        loop = asyncio.get_event_loop()
+        def start_job():
+            return openai_client.videos.create(
+                model="sora-2",
+                prompt=video_req.prompt,
+                input_image=video_req.image_url,
+                duration=str(video_req.duration) # dynamic seconds matching timeline width
+            )
+            
+        # Start the video generation job asynchronously
+        video_job = await loop.run_in_executor(None, start_job)
+        job_id = video_job.id
+        print(f"[Sora 2 Debug] Job created successfully. ID: '{job_id}'. Polling for completion...")
+
+        # Poll the job status "one-by-one" until finished (asynchronous non-blocking loop)
+        max_attempts = 15
+        attempt = 0
+        video_url = None
+        
+        while attempt < max_attempts:
+            await asyncio.sleep(4.0)
+            attempt += 1
+            
+            def check_status():
+                return openai_client.videos.retrieve(job_id)
+                
+            job_status = await loop.run_in_executor(None, check_status)
+            print(f"[Sora 2 Debug] Polling Job '{job_id}' | Attempt {attempt}/{max_attempts} | Status: '{job_status.status}'")
+            
+            if job_status.status == "completed":
+                video_url = job_status.url
+                break
+            elif job_status.status == "failed":
+                raise HTTPException(status_code=500, detail=f"Sora 2 video compilation failed: {getattr(job_status, 'error', 'Unknown Error')}")
+                
+        if not video_url:
+            raise HTTPException(status_code=408, detail="Sora 2 video generation timed out. Please try again.")
+
+        return {
+            "success": True,
+            "scene_number": video_req.scene_number,
+            "video_url": video_url
+        }
+    except Exception as e:
+        print("Sora Video Generation Failure:", str(e))
+        raise HTTPException(status_code=500, detail=str(e))
