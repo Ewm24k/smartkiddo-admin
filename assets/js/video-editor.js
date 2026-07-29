@@ -46,7 +46,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let selectedTransitionNode = null;
     let transitionDirection = "in"; // 'in' or 'out' tab
 
-    const PIXELS_PER_SECOND = 15; // Dynamic scale: 1s = 15px. Supports horizontal scroll up to 6 minutes [2]
+    const TRACK_WIDTH_PX = 600; // Unified baseline width. Keeps all tracks 100% synced [1, 2]
     const TIMELINE_PADDING_LEFT = 64; // IMAGES track sidebar spacer width
 
     // -----------------------------------------------------------------
@@ -57,15 +57,14 @@ document.addEventListener("DOMContentLoaded", function () {
         timelineRuler.innerHTML = "";
         
         const totalDuration = editorProgressState.duration;
-        const trackWidthPx = totalDuration * PIXELS_PER_SECOND;
 
-        // Set dynamic width on ruler and track containers to allow horizontal scrolling
-        timelineRuler.style.width = `${TIMELINE_PADDING_LEFT + trackWidthPx}px`;
-        if (timelineImagesTrack) timelineImagesTrack.style.width = `${TIMELINE_PADDING_LEFT + trackWidthPx}px`;
-        if (timelineAudioTrack) timelineAudioTrack.style.width = `${TIMELINE_PADDING_LEFT + trackWidthPx}px`;
+        // Set baseline identical widths across the ruler and both tracks to ensure 100% sync [1, 2]
+        timelineRuler.style.width = `${TIMELINE_PADDING_LEFT + TRACK_WIDTH_PX}px`;
+        if (timelineImagesTrack) timelineImagesTrack.style.width = `${TIMELINE_PADDING_LEFT + TRACK_WIDTH_PX}px`;
+        if (timelineAudioTrack) timelineAudioTrack.style.width = `${TIMELINE_PADDING_LEFT + TRACK_WIDTH_PX}px`;
 
         for (let s = 0; s <= totalDuration; s += 2) {
-            const pxLeft = TIMELINE_PADDING_LEFT + (s * PIXELS_PER_SECOND);
+            const pxLeft = TIMELINE_PADDING_LEFT + ((s / totalDuration) * TRACK_WIDTH_PX);
             
             // Major tick bar
             const tick = document.createElement("div");
@@ -159,7 +158,7 @@ document.addEventListener("DOMContentLoaded", function () {
             // Determine dynamic width proportional to its calculated duration using pixels scale
             const duration = sc.duration || (totalDuration / totalClips);
             sc.duration = duration; // Ensure populated
-            const allocatedWidth = duration * PIXELS_PER_SECOND;
+            const allocatedWidth = (duration / totalDuration) * TRACK_WIDTH_PX;
 
             // Clip element container
             const clip = document.createElement("div");
@@ -256,16 +255,40 @@ document.addEventListener("DOMContentLoaded", function () {
         attachDragAndDropClips();
     }
 
+    // Recalculates other clips proportionally so total width remains TRACK_WIDTH_PX
+    function recalculateClipWidthsProportionally(resizedIdx, newWidth) {
+        const clips = Array.from(timelineImagesTrack.querySelectorAll(".timeline-image-clip"));
+        
+        let otherWidthSum = 0;
+        clips.forEach((c, i) => {
+            if (i !== resizedIdx) {
+                otherWidthSum += parseFloat(c.style.width) || (TRACK_WIDTH_PX / clips.length);
+            }
+        });
+
+        const remainingWidthToDistribute = TRACK_WIDTH_PX - newWidth;
+
+        clips.forEach((c, i) => {
+            if (i !== resizedIdx) {
+                const currentOtherWidth = parseFloat(c.style.width) || (TRACK_WIDTH_PX / clips.length);
+                const ratio = currentOtherWidth / otherWidthSum;
+                const distributedWidth = ratio * remainingWidthToDistribute;
+                c.style.width = `${Math.max(30, distributedWidth)}px`; // minimum width limit
+            }
+        });
+    }
+
     // Commits calculated visual width pixels back to duration data states
     function saveClipWidthsToState() {
         const clips = Array.from(timelineImagesTrack.querySelectorAll(".timeline-image-clip"));
-        
+        const totalDuration = editorProgressState.duration;
+
         let accumulatedTime = 0.0;
         let totalImageDurationSum = 0.0;
         
         clips.forEach((c, i) => {
             const width = parseFloat(c.style.width);
-            const duration = width / PIXELS_PER_SECOND; // Direct linear scaling [2]
+            const duration = (width / TRACK_WIDTH_PX) * totalDuration; // Sync duration directly to baseline track width [2]
 
             editorProgressState.scenes[i].duration = duration;
             totalImageDurationSum += duration;
@@ -277,18 +300,11 @@ document.addEventListener("DOMContentLoaded", function () {
             accumulatedTime += duration;
         });
 
-        // Update total timeline duration to match the new image tracks scale dynamically [2]
-        editorProgressState.duration = totalImageDurationSum;
-        
-        // Re-render ruler and clips with adjusted dimensions
+        // Re-render to update the draggable transition nodes positions accurately
         buildTimelineRuler();
         renderTimelineClips();
         updateVideoFramePreview();
-        
-        const totalDuration = editorProgressState.duration;
-        if (totalTimeEl) totalTimeEl.innerText = formatTimeDisplay(totalDuration);
-
-        window.logToStudioConsole(`Updated storyboard duration markers. Total timeline duration: ${totalDuration.toFixed(1)}s`, "success");
+        window.logToStudioConsole("Updated storyboard duration markers and transition pacing offsets.", "success");
     }
 
     // -----------------------------------------------------------------
@@ -313,15 +329,14 @@ document.addEventListener("DOMContentLoaded", function () {
             const deltaX = currentX - startDragX;
             
             let newLeftPx = initialOffsetPx + deltaX;
-            const trackWidthPx = editorProgressState.duration * PIXELS_PER_SECOND;
-            const maxLeftPx = trackWidthPx - parseFloat(timelineAudioClip.style.width);
+            const maxLeftPx = TRACK_WIDTH_PX - parseFloat(timelineAudioClip.style.width);
             
             if (newLeftPx < 0) newLeftPx = 0;
             if (newLeftPx > maxLeftPx) newLeftPx = maxLeftPx;
 
             timelineAudioClip.style.left = `${newLeftPx}px`;
 
-            const offsetSec = newLeftPx / PIXELS_PER_SECOND; // Convert pixels offset to seconds directly [2]
+            const offsetSec = (newLeftPx / TRACK_WIDTH_PX) * editorProgressState.duration; // Convert pixels offset to seconds directly [2]
             editorProgressState.audioOffset = offsetSec;
             
             // Instantly sync audio playback cursor position if dragging offset during play
@@ -431,7 +446,8 @@ document.addEventListener("DOMContentLoaded", function () {
     // 8. Playback loop & Audio frame synchronizations [Upgraded Section]
     // -----------------------------------------------------------------
     function updatePlayheadPosition() {
-        const leftOffsetPx = TIMELINE_PADDING_LEFT + (editorProgressState.currentTime * PIXELS_PER_SECOND);
+        const pct = editorProgressState.currentTime / editorProgressState.duration;
+        const leftOffsetPx = TIMELINE_PADDING_LEFT + (pct * TRACK_WIDTH_PX);
         if (timelinePlayhead) {
             timelinePlayhead.style.left = `${leftOffsetPx}px`;
         }
@@ -670,8 +686,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 ? editorProgressState.audioElement.duration 
                 : editorProgressState.duration;
             
-            // Map the exact audio duration to pixels so it matches the ruler precisely [2]
-            const elementWidthPx = audioDuration * PIXELS_PER_SECOND;
+            // Map the exact audio duration to pixels so it matches the ruler precisely [Fixed Section] [1, 2]
+            const elementWidthPx = (audioDuration / editorProgressState.duration) * TRACK_WIDTH_PX;
             
             timelineAudioClip.style.width = `${elementWidthPx}px`;
             timelineAudioClip.style.left = "0px";
