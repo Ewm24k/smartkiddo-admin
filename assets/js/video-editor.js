@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let editorProgressState = {
         scenes: [],
         voiceUrl: "",
-        duration: 30.0, // calculated total duration
+        duration: 30.0, // calculated total duration (overwritten dynamically on load)
         currentTime: 0.0,
         isPlaying: false,
         isMuted: false,
@@ -319,7 +319,7 @@ document.addEventListener("DOMContentLoaded", function () {
             isDraggingAudio = true;
             timelineAudioClip.setPointerCapture(e.pointerId);
             startDragX = e.clientX;
-            initialOffsetPx = parseFloat(timelineAudioClip.style.left) || 0;
+            initialOffsetPx = parseFloat(timelineAudioClip.style.left) || TIMELINE_PADDING_LEFT;
             timelineAudioClip.classList.replace("cursor-grab", "cursor-grabbing");
         });
 
@@ -329,14 +329,15 @@ document.addEventListener("DOMContentLoaded", function () {
             const deltaX = currentX - startDragX;
             
             let newLeftPx = initialOffsetPx + deltaX;
-            const maxLeftPx = TRACK_WIDTH_PX - parseFloat(timelineAudioClip.style.width);
+            const minLeftPx = TIMELINE_PADDING_LEFT; // Locked to spacer padding [1, 2]
+            const maxLeftPx = TIMELINE_PADDING_LEFT + TRACK_WIDTH_PX - parseFloat(timelineAudioClip.style.width);
             
-            if (newLeftPx < 0) newLeftPx = 0;
+            if (newLeftPx < minLeftPx) newLeftPx = minLeftPx;
             if (newLeftPx > maxLeftPx) newLeftPx = maxLeftPx;
 
             timelineAudioClip.style.left = `${newLeftPx}px`;
 
-            const offsetSec = (newLeftPx / TRACK_WIDTH_PX) * editorProgressState.duration; // Convert pixels offset to seconds directly [2]
+            const offsetSec = ((newLeftPx - TIMELINE_PADDING_LEFT) / TRACK_WIDTH_PX) * editorProgressState.duration; // Convert pixels offset to seconds directly [2]
             editorProgressState.audioOffset = offsetSec;
             
             // Instantly sync audio playback cursor position if dragging offset during play
@@ -652,8 +653,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const testAudio = new Audio(storyState.voiceUrl);
         testAudio.addEventListener("loadedmetadata", function() {
+            // Hot-reload synchronization to automatically snap and grow/shrink both the images track,
+            // the voiceover block, and the ruler ticks to perfectly match the true ElevenLabs audio duration! [1, 2]
             const calculatedDuration = Math.ceil(this.duration) || 30.0;
             editorProgressState.duration = calculatedDuration;
+
+            // Force-distribute the image clip durations equally to fit 100% of the true audio duration on first load! [2]
+            const totalClips = editorProgressState.scenes.length;
+            const equalClipDuration = calculatedDuration / totalClips;
+            editorProgressState.scenes.forEach(sc => {
+                sc.duration = equalClipDuration;
+            });
             
             executeTimelineInitializationSequence();
         });
@@ -662,7 +672,15 @@ document.addEventListener("DOMContentLoaded", function () {
         setTimeout(() => {
             if (editorProgressState.duration === 30.0) {
                 const wordCount = storyState.script.split(/\s+/).filter(w => w.length > 0).length;
-                editorProgressState.duration = Math.ceil((wordCount / 130) * 60) || 30.0;
+                const estimatedDuration = Math.ceil((wordCount / 130) * 60) || 30.0;
+                editorProgressState.duration = estimatedDuration;
+
+                const totalClips = editorProgressState.scenes.length;
+                const equalClipDuration = estimatedDuration / totalClips;
+                editorProgressState.scenes.forEach(sc => {
+                    sc.duration = equalClipDuration;
+                });
+
                 executeTimelineInitializationSequence();
             }
         }, 1500);
@@ -684,7 +702,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (timelineAudioClip) {
             // Unify: the audio clip visually represents the full vocal track, so its initial width must be exactly 100% of TRACK_WIDTH_PX [1, 2]
             timelineAudioClip.style.width = `${TRACK_WIDTH_PX}px`;
-            timelineAudioClip.style.left = "0px";
+            timelineAudioClip.style.left = `${TIMELINE_PADDING_LEFT}px`;
             editorProgressState.audioOffset = 0.0;
         }
 
