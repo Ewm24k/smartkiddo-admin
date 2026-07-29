@@ -13,25 +13,6 @@
     margin: 0 !important;
 }
 
-/* Centered outer wrappers aligning everything to the viewport center */
-.ai-studio-message-turn-container {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Reading Pane aligned exactly to match the 48rem/768px (max-w-3xl) width of the prompt bar */
-.ai-studio-reading-pane {
-    max-width: 48rem; 
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-    gap: 0.5rem;
-}
-
 /* Custom Message Box block styling */
 .ai-studio-msg-box {
     width: 100%;
