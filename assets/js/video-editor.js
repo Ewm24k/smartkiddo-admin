@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const timelinePlayhead = document.getElementById("timeline-playhead");
     const timelineRuler = document.getElementById("timeline-ruler");
     const previewImage = document.getElementById("editor-preview-image");
+    const previewVideo = document.getElementById("editor-preview-video");
     const previewPlaceholder = document.getElementById("editor-preview-placeholder");
     const fadeOverlay = document.getElementById("editor-fade-overlay");
 
@@ -33,7 +34,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let editorProgressState = {
         scenes: [],
         voiceUrl: "",
-        duration: 30.0, // calculated total duration (overwritten dynamically on load)
+        duration: 30.0, // calculated total duration
         currentTime: 0.0,
         isPlaying: false,
         isMuted: false,
@@ -48,6 +49,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const TRACK_WIDTH_PX = 600; // Unified baseline width. Keeps all tracks 100% synced [1, 2]
     const TIMELINE_PADDING_LEFT = 64; // IMAGES track sidebar spacer width
+
+    // Expose active state list globally to let video-generator.js access it seamlessly [2]
+    window.editorProgressState_bridge = editorProgressState.scenes;
 
     // -----------------------------------------------------------------
     // 3. Ruler & Grid Render Math
@@ -182,6 +186,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (e.target.classList.contains("clip-resize-handle")) return;
                 timelineImagesTrack.querySelectorAll(".timeline-image-clip").forEach(c => c.classList.remove("selected"));
                 clip.classList.add("selected");
+                
+                // Immediately swap the main view preview frame to display the selected scene
+                editorProgressState.currentTime = getAccumulatedDurationBeforeScene(idx);
+                updatePlayheadPosition();
+                updateVideoFramePreview();
+
                 window.logToStudioConsole(`Selected Scene ${idx + 1} for duration scaling. Drag the blue left/right edges to adjust.`, "info");
             });
 
@@ -253,6 +263,15 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         attachDragAndDropClips();
+    }
+
+    // Helper to calculate total aggregated duration before a specific scene index
+    function getAccumulatedDurationBeforeScene(sceneIdx) {
+        let total = 0.0;
+        for (let i = 0; i < sceneIdx; i++) {
+            total += editorProgressState.scenes[i].duration || 0.0;
+        }
+        return total;
     }
 
     // Recalculates other clips proportionally so total width remains TRACK_WIDTH_PX
@@ -444,7 +463,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 8. Playback loop & Audio frame synchronizations [Upgraded Section]
+    // 8. Playback loop & Audio frame/video synchronizations
     // -----------------------------------------------------------------
     function updatePlayheadPosition() {
         const pct = editorProgressState.currentTime / editorProgressState.duration;
@@ -495,6 +514,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    // Unifies and triggers precise rendering of standard video tracks or static image frames
     function updateVideoFramePreview() {
         const scenes = editorProgressState.scenes;
         if (!scenes || scenes.length === 0) return;
@@ -517,10 +537,8 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         const targetScene = scenes[activeIdx];
-        if (previewImage && targetScene) {
+        if (targetScene) {
             if (previewPlaceholder) previewPlaceholder.classList.add("hidden");
-            previewImage.classList.remove("opacity-0");
-            previewImage.classList.add("opacity-100");
             
             // Calculate relative offset within this specific scene clip duration boundaries
             let precedingDurationSum = 0.0;
@@ -530,6 +548,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const localOffset = currentTime - precedingDurationSum;
             const threshold = 0.5; // transition overlaps within 0.5s window
             
+            // Handle cross-scene fade overlays
             if (targetScene.transitionIn === "fade" && localOffset < threshold) {
                 const fadePct = (threshold - localOffset) / threshold;
                 if (fadeOverlay) fadeOverlay.style.opacity = fadePct;
@@ -540,8 +559,44 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (fadeOverlay) fadeOverlay.style.opacity = 0;
             }
 
-            if (previewImage.src !== targetScene.image_url) {
-                previewImage.src = targetScene.image_url;
+            // DYNAMIC DUAL-MEDIA SWAPPER: Route to HTML5 Video if Sora animated, otherwise use static Image
+            if (targetScene.video_url) {
+                if (previewImage) previewImage.classList.add("hidden");
+                if (previewVideo) {
+                    previewVideo.classList.remove("hidden");
+                    if (previewVideo.src !== targetScene.video_url) {
+                        previewVideo.src = targetScene.video_url;
+                        previewVideo.load();
+                    }
+                    
+                    // Sync video element's current playback frame directly to local timestamp offset [2]
+                    const targetVideoTime = localOffset;
+                    if (Math.abs(previewVideo.currentTime - targetVideoTime) > 0.1) {
+                        previewVideo.currentTime = targetVideoTime;
+                    }
+                    
+                    if (editorProgressState.isPlaying) {
+                        if (previewVideo.paused && previewVideo.readyState >= 2) {
+                            previewVideo.play().catch(ve => console.log("Video frame render deferred:", ve));
+                        }
+                    } else {
+                        if (!previewVideo.paused) {
+                            previewVideo.pause();
+                        }
+                    }
+                }
+            } else {
+                if (previewVideo) {
+                    previewVideo.pause();
+                    previewVideo.classList.add("hidden");
+                }
+                if (previewImage) {
+                    previewImage.classList.remove("hidden");
+                    previewImage.classList.add("opacity-100");
+                    if (previewImage.src !== targetScene.image_url) {
+                        previewImage.src = targetScene.image_url;
+                    }
+                }
             }
         }
 
@@ -566,6 +621,9 @@ document.addEventListener("DOMContentLoaded", function () {
             editorProgressState.isPlaying = false;
             if (editorProgressState.audioElement) {
                 editorProgressState.audioElement.pause();
+            }
+            if (previewVideo && !previewVideo.paused) {
+                previewVideo.pause();
             }
             window.logToStudioConsole("Timeline reached end of program. Transport stopped.", "info");
         }
@@ -604,6 +662,9 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             if (editorProgressState.audioElement) {
                 editorProgressState.audioElement.pause();
+            }
+            if (previewVideo && !previewVideo.paused) {
+                previewVideo.pause();
             }
             window.logToStudioConsole("Transport paused.", "info");
         });
@@ -653,8 +714,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const testAudio = new Audio(storyState.voiceUrl);
         testAudio.addEventListener("loadedmetadata", function() {
-            // Hot-reload synchronization to automatically snap and grow/shrink both the images track,
-            // the voiceover block, and the ruler ticks to perfectly match the true ElevenLabs audio duration! [1, 2]
             const calculatedDuration = Math.ceil(this.duration) || 30.0;
             editorProgressState.duration = calculatedDuration;
 
