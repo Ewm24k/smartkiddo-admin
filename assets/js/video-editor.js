@@ -45,7 +45,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const TRACK_WIDTH_PX = 600; // Unified baseline width. Keeps all tracks 100% synced [1, 2]
     const TIMELINE_PADDING_LEFT = 64; // IMAGES track sidebar spacer width
 
-    // Expose active state getter globally to let video-generator.js access it seamlessly [2]
+    // Expose active state getter globally to let video-generator.js access it seamlessly without reference-lag bugs [2]
     window.getActiveVideoEditorScenes = function() {
         return editorProgressState.scenes;
     };
@@ -215,7 +215,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             newWidth = initialWidth - deltaX;
                         }
 
-                        // Enforce minimum visual threshold safety limit (30px = 2s)
+                        // Enforce minimum visual threshold safety limit (30px)
                         if (newWidth < 30) newWidth = 30;
 
                         // Only modify the width of this specific dragged clip [2]
@@ -238,7 +238,7 @@ document.addEventListener("DOMContentLoaded", function () {
             timelineImagesTrack.appendChild(clip);
 
             // Append intermediate transition box [+] if not the final item
-            if (idx < scenes.length - 1) {
+            if (idx < totalClips - 1) {
                 const transNode = document.createElement("button");
                 transNode.className = "timeline-transition-node focus:outline-none";
                 transNode.dataset.leftIndex = idx;
@@ -316,15 +316,11 @@ document.addEventListener("DOMContentLoaded", function () {
             accumulatedTime += duration;
         });
 
-        // Re-render ruler and clips with adjusted dimensions
+        // Re-render to update the draggable transition nodes positions accurately
         buildTimelineRuler();
         renderTimelineClips();
         updateVideoFramePreview();
-        
-        const totalDuration = editorProgressState.duration;
-        if (totalTimeEl) totalTimeEl.innerText = formatTimeDisplay(totalDuration);
-
-        window.logToStudioConsole(`Updated storyboard duration markers and transition pacing offsets.`, "success");
+        window.logToStudioConsole("Updated storyboard duration markers and transition pacing offsets.", "success");
     }
 
     // -----------------------------------------------------------------
@@ -515,6 +511,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    // Unifies and triggers precise rendering of standard video tracks or static image frames
     function updateVideoFramePreview() {
         const scenes = editorProgressState.scenes;
         if (!scenes || scenes.length === 0) return;
@@ -537,7 +534,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         const targetScene = scenes[activeIdx];
-        if (previewImage && targetScene) {
+        if (targetScene) {
             if (previewPlaceholder) previewPlaceholder.classList.add("hidden");
             
             // Calculate relative offset within this specific scene clip duration boundaries
@@ -548,6 +545,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const localOffset = currentTime - precedingDurationSum;
             const threshold = 0.5; // transition overlaps within 0.5s window
             
+            // Handle cross-scene fade overlays
             if (targetScene.transitionIn === "fade" && localOffset < threshold) {
                 const fadePct = (threshold - localOffset) / threshold;
                 if (fadeOverlay) fadeOverlay.style.opacity = fadePct;
@@ -558,8 +556,44 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (fadeOverlay) fadeOverlay.style.opacity = 0;
             }
 
-            if (previewImage.src !== targetScene.image_url) {
-                previewImage.src = targetScene.image_url;
+            // DYNAMIC DUAL-MEDIA SWAPPER: Route to HTML5 Video if Sora animated, otherwise use static Image
+            if (targetScene.video_url) {
+                if (previewImage) previewImage.classList.add("hidden");
+                if (previewVideo) {
+                    previewVideo.classList.remove("hidden");
+                    if (previewVideo.src !== targetScene.video_url) {
+                        previewVideo.src = targetScene.video_url;
+                        previewVideo.load();
+                    }
+                    
+                    // Sync video element's current playback frame directly to local timestamp offset [2]
+                    const targetVideoTime = localOffset;
+                    if (Math.abs(previewVideo.currentTime - targetVideoTime) > 0.1) {
+                        previewVideo.currentTime = targetVideoTime;
+                    }
+                    
+                    if (editorProgressState.isPlaying) {
+                        if (previewVideo.paused && previewVideo.readyState >= 2) {
+                            previewVideo.play().catch(ve => console.log("Video frame render deferred:", ve));
+                        }
+                    } else {
+                        if (!previewVideo.paused) {
+                            previewVideo.pause();
+                        }
+                    }
+                }
+            } else {
+                if (previewVideo) {
+                    previewVideo.pause();
+                    previewVideo.classList.add("hidden");
+                }
+                if (previewImage) {
+                    previewImage.classList.remove("hidden");
+                    previewImage.classList.add("opacity-100");
+                    if (previewImage.src !== targetScene.image_url) {
+                        previewImage.src = targetScene.image_url;
+                    }
+                }
             }
         }
 
@@ -677,6 +711,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const testAudio = new Audio(storyState.voiceUrl);
         testAudio.addEventListener("loadedmetadata", function() {
+            // Hot-reload synchronization to automatically snap and grow/shrink both the images track,
+            // the voiceover block, and the ruler ticks to perfectly match the true ElevenLabs audio duration! [1, 2]
             const calculatedDuration = Math.ceil(this.duration) || 30.0;
             editorProgressState.duration = calculatedDuration;
 
@@ -723,8 +759,6 @@ document.addEventListener("DOMContentLoaded", function () {
         // Configure audio clip track block length based on its total duration
         if (timelineAudioClip) {
             // Unify: the audio clip visually represents the full vocal track, so its initial width must be exactly 100% of TRACK_WIDTH_PX [1, 2]
-            // We reverted the dynamic calculation and locked the initial width back to 100% of the track length (TRACK_WIDTH_PX) [1]
-            // This guarantees the blue-purple block perfectly fits the timeline ticks from 0s to totalDuration [1]
             timelineAudioClip.style.width = `${TRACK_WIDTH_PX}px`;
             timelineAudioClip.style.left = `${TIMELINE_PADDING_LEFT}px`;
             editorProgressState.audioOffset = 0.0;
