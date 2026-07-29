@@ -6,6 +6,7 @@ import asyncio
 import base64
 import tempfile
 import io
+import uuid
 from PIL import Image
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -224,12 +225,16 @@ def get_cartoon_placeholder(scene_number: int) -> str:
             </linearGradient>
         </defs>
         <rect width="400" height="200" fill="url(#bg-{scene_number})" />
+        
+        <!-- Standard ambient starry dots -->
         <circle cx="50" cy="40" r="1.5" fill="#fff" opacity="0.8" />
         <circle cx="120" cy="30" r="1" fill="#fff" opacity="0.5" />
         <circle cx="280" cy="50" r="2" fill="{c[2]}" opacity="0.9" />
         <circle cx="340" cy="25" r="1.5" fill="#fff" opacity="0.7" />
         <circle cx="90" cy="75" r="1" fill="#fff" opacity="0.6" />
         <circle cx="220" cy="20" r="1.5" fill="#fff" opacity="0.4" />
+        
+        <!-- Background Mountain / Hills silhouettes -->
         <path d="M 0,200 L 0,150 Q 100,120 200,160 T 400,140 L 400,200 Z" fill="{c[1]}" opacity="0.7" />
         <path d="M 0,200 L 0,170 Q 150,140 300,180 T 400,175 L 400,200 Z" fill="{c[0]}" opacity="0.9" />
         {custom_vector_elements}
@@ -947,7 +952,7 @@ async def generate_scene_video(video_req: VideoGenerationRequest):
 
         print(f"[Sora 2 Debug] Input: Scene {video_req.scene_number} | Original length {raw_dur}s mapped to Sora literal: '{sora_duration}' seconds.")
 
-        # Architectural Fix: Resolve Base64 payload data AND direct HTTP URL reference links securely [2]
+        # Architectural Resolution: Download remote URLs and decode local base64 payloads to raw bytes
         image_url_or_base64 = video_req.image_url.strip()
         img_bytes = b""
 
@@ -970,21 +975,22 @@ async def generate_scene_video(video_req: VideoGenerationRequest):
 
             # Load with PIL
             img = Image.open(io.BytesIO(img_bytes))
-            print(f"[Sora 2 Debug] Resizing reference image from original size {img.size} strictly to (1280, 720) to match Sora 2 constraints.")
             
             # Convert RGBA alpha channels to standard RGB to prevent save failures
             if img.mode in ("RGBA", "P"):
                 img = img.convert("RGB")
                 
-            # Perform high-fidelity Lanczos downscale to exactly 1280x720 pixels
+            # Perform high-fidelity Lanczos downscale to exactly 1280x720 pixels [1, 2]
             img_resized = img.resize((1280, 720), Image.Resampling.LANCZOS)
             
-            # Save strictly as PNG to a temporary file
-            temp_img = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-            img_resized.save(temp_img.name, format="PNG")
-            temp_img.flush()
-            temp_img.close()
-            print(f"[Sora 2 Debug] rescaled PNG reference file compiled successfully: '{temp_img.name}'")
+            # Discard any hidden EXIF or orientation metadata to prevent Sora 2 dimension checks failures [1]
+            pure_img = Image.new("RGB", (1280, 720))
+            pure_img.paste(img_resized)
+            
+            # Save strictly as PNG to a unique path in the temporary directory to bypass system file descriptor write locks [1, 2]
+            temp_filename = os.path.join(tempfile.gettempdir(), f"sora_input_{uuid.uuid4().hex}.png")
+            pure_img.save(temp_filename, format="PNG")
+            print(f"[Sora 2 Debug] Rescaled standard reference image compiled on disk: '{temp_filename}'")
         except Exception as preprocess_err:
             print(f"[Sora 2 Error] PIL preprocessing failure: {str(preprocess_err)}")
             raise HTTPException(
@@ -994,10 +1000,9 @@ async def generate_scene_video(video_req: VideoGenerationRequest):
 
         loop = asyncio.get_event_loop()
         
-        # Open local resized PNG file stream directly to feed input_reference
+        # Open local resized PNG file stream directly in a read-only context to feed input_reference
         def start_job():
-            with open(temp_img.name, "rb") as image_file:
-                # Corrected parameter keys according to official Sora 2 API documentation
+            with open(temp_filename, "rb") as image_file:
                 return openai_client.videos.create(
                     model="sora-2",
                     prompt=video_req.prompt,
@@ -1014,7 +1019,7 @@ async def generate_scene_video(video_req: VideoGenerationRequest):
         except Exception as api_init_err:
             # Cleanup temp file on immediate API rejection
             try:
-                os.unlink(temp_img.name)
+                os.unlink(temp_filename)
             except:
                 pass
             print(f"[Sora 2 Error] API rejection: {str(api_init_err)}")
@@ -1043,10 +1048,10 @@ async def generate_scene_video(video_req: VideoGenerationRequest):
                     error_detail = getattr(job_status, "error", "Unknown Sora Error")
                     raise ValueError(f"Sora 2 rendering engine failed: {error_detail}")
         finally:
-            # Cleanup local temporary image file cleanly under any circumstances
+            # Cleanup local temporary image file cleanly under any circumstances [1, 2]
             try:
-                os.unlink(temp_img.name)
-                print(f"[Sora 2 Cleanup] Temporary reference file deleted: {temp_img.name}")
+                os.unlink(temp_filename)
+                print(f"[Sora 2 Cleanup] Temporary reference file deleted: {temp_filename}")
             except Exception as cleanup_err:
                 print(f"[Sora 2 Cleanup Warning] Temp file deletion error: {str(cleanup_err)}")
 
