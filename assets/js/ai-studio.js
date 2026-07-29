@@ -62,7 +62,6 @@ document.addEventListener("DOMContentLoaded", function () {
     // -----------------------------------------------------------------
     if (cardAiStudio) {
         cardAiStudio.addEventListener("click", function () {
-            // Unhide Playground view
             if (viewStudioSelector && viewAiStudioSelector) {
                 viewStudioSelector.classList.add("hidden");
                 viewStudioSelector.classList.remove("block");
@@ -70,10 +69,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 viewAiStudioSelector.classList.add("block");
             }
             
-            // Auto-collapse navigation sidebar for maximum playground clearance
             if (document.body && !document.body.classList.contains('sidebar-collapsed')) {
                 document.body.classList.add('sidebar-collapsed');
-                // Force sync hamburger toggle state
                 const sidebarToggleIcon = document.getElementById('sidebar-toggle-icon');
                 if (sidebarToggleIcon) {
                     sidebarToggleIcon.innerHTML = `
@@ -84,14 +81,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             }
 
-            // Sync main scroll styles to lock height
             const mainContentScroll = document.getElementById('main-content-scroll');
             if (mainContentScroll) {
                 mainContentScroll.classList.remove('overflow-y-auto');
                 mainContentScroll.classList.add('overflow-hidden');
             }
 
-            // Expand outer content wrapper fully (Remove max-width restrictions and side spaces)
             const mainContentInner = document.getElementById('main-content-inner');
             if (mainContentInner) {
                 mainContentInner.classList.remove('p-8', 'max-w-7xl', 'mx-auto', 'justify-between');
@@ -111,14 +106,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 viewStudioSelector.classList.add("block");
             }
 
-            // Restore scroll styles
             const mainContentScroll = document.getElementById('main-content-scroll');
             if (mainContentScroll) {
                 mainContentScroll.classList.add('overflow-y-auto');
                 mainContentScroll.classList.remove('overflow-hidden');
             }
 
-            // Restore default container layout metrics (Re-apply original spaces & limits)
             const mainContentInner = document.getElementById('main-content-inner');
             if (mainContentInner) {
                 mainContentInner.classList.remove('p-2', 'w-full', 'max-w-none', 'flex-1');
@@ -158,7 +151,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Bind Quick Select Prompt Template Cards
     document.querySelectorAll(".studio-template-card").forEach(card => {
         card.addEventListener("click", function () {
             const prompt = this.getAttribute("data-prompt");
@@ -232,7 +224,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (micActiveDot) micActiveDot.classList.remove("hidden");
                 logToTerminal("Speech recognition activated in prompt lab. Dictate now.", "system");
                 
-                // Set mock speech result text after a delay
                 setTimeout(() => {
                     if (isRecordingSpeech && promptInput) {
                         const dictationResult = "Write a standardized vocabulary checklist for primary age demographics.";
@@ -270,7 +261,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (extensionsMenu) {
         extensionsMenu.addEventListener("click", function (e) {
-            e.stopPropagation(); // Avoid closing dropdown when clicking elements inside
+            e.stopPropagation(); 
         });
     }
 
@@ -292,23 +283,24 @@ document.addEventListener("DOMContentLoaded", function () {
     syncActiveExtensionsBadge();
 
     // -----------------------------------------------------------------
-    // 8. Centered Chat Message Generation Layouts (Centered Box Block Structure)
+    // 8. EXACT MATCH Centered Box Generating Layouts
     // -----------------------------------------------------------------
     function createCenteredMessageBubble(sender, content, generationTimeSec = "0.0") {
         const now = new Date();
         const timestamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         const wrapper = document.createElement("div");
-        wrapper.className = "ai-studio-message-turn-container w-full py-4";
+        // Outer wrapper padding matches the prompt box area padding (`px-6`)
+        wrapper.className = "w-full px-6 py-4";
 
         const isUser = sender === "user";
         const speakerLabel = isUser ? "YOU" : (dropdownModel ? dropdownModel.options[dropdownModel.selectedIndex].text.toUpperCase() : "T1ERA AI");
         const headerClass = isUser ? "user" : "assistant";
 
-        // Structured inside standard centered reading viewport
+        // Structured inside reading viewport strictly locking to max-w-3xl, mx-auto, w-full
         wrapper.innerHTML = `
-            <div class="ai-studio-reading-pane mx-auto">
-                <div class="ai-studio-msg-box relative">
+            <div class="max-w-3xl w-full mx-auto flex flex-col gap-2">
+                <div class="ai-studio-msg-box relative w-full">
                     
                     <!-- HEADER SECTION (Centered Alignment with copy button on top-right) -->
                     <div class="ai-studio-box-header ${headerClass}">
@@ -321,7 +313,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     </div>
 
                     <!-- BODY SECTION (Message Text Content) -->
-                    <div class="ai-studio-box-body">
+                    <div class="ai-studio-box-body text-left">
                         ${content}
                     </div>
 
@@ -333,7 +325,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 </div>
                 
                 <!-- OUTSIDE BOTTOM LABEL (Below box outside on left corner) -->
-                <div class="ai-studio-outside-meta select-none flex items-center gap-1.5 font-mono">
+                <div class="ai-studio-outside-meta select-none flex items-center gap-1.5 font-mono w-full text-left">
                     <span>[${timestamp}]</span>
                     <span>•</span>
                     <span>${generationTimeSec}s response</span>
@@ -426,7 +418,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const endTime = performance.now();
             const totalSec = ((endTime - startTime) / 1000).toFixed(1);
 
-            const contentBody = assistantBubble.querySelector(".ai-studio-message-body");
+            const contentBody = assistantBubble.querySelector(".ai-studio-box-body");
             if (contentBody) {
                 contentBody.innerHTML = finalMockResponse;
             }
