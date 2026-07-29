@@ -165,6 +165,7 @@ def get_cartoon_placeholder(scene_number: int) -> str:
     ]
     c = colors[(scene_number - 1) % len(colors)]
     
+    # Render different vector paths and characters based on scene numbers to guarantee visual uniqueness
     custom_vector_elements = ""
     if scene_number == 1:
         custom_vector_elements = """
@@ -933,95 +934,130 @@ async def generate_single_scene(req: SingleSceneGenerationRequest):
         }
 
 # -----------------------------------------------------------------
-# Endpoint 9: Sora 2 Image-to-Video Compiler (One-by-One, Real API)
+# Endpoint 9: Sora 2 Image-to-Video Compiler (Self-Correcting Aspect Ratio & Probing Loop)
 # -----------------------------------------------------------------
 @app.post("/api/bedtime-story/generate-video")
 async def generate_scene_video(video_req: VideoGenerationRequest):
     if not openai_client:
         raise HTTPException(status_code=500, detail="OpenAI Client is not initialized on backend.")
     try:
-        # Force standard Sora 2 duration constraints strictly to 4 seconds maximum
+        # Force standard Sora 2 duration strictly to 4 seconds maximum.
+        # This provides a stable, budget-friendly 4s base layer matching Sora 2 requirements.
         sora_duration = "4"
-        print(f"[Sora 2 Debug] Input: Scene {video_req.scene_number} | Forcing sora duration to standard '4' seconds max.")
+        
+        # Append strict instructions to prompt to block sora-2 from synthesizing music or dialogue
+        prompt_with_silent_flags = f"{video_req.prompt}, strictly silent animation, no sound effects, no background music, no voiceover, purely motion-only video segment"
+        print(f"[Sora 2 Debug] Input: Scene {video_req.scene_number} | Forcing sora duration: '{sora_duration}' seconds | Prompt: {prompt_with_silent_flags[:50]}...")
 
-        # Decode base64 WebP image payload sent from Netlify dynamically to a local temp file
+        # Architectural Resolution: Download remote URLs and decode local base64 payloads to raw bytes
         image_url_or_base64 = video_req.image_url.strip()
         img_bytes = b""
 
-        try:
-            if image_url_or_base64.startswith("data:image/"):
-                # Base64 WebP/PNG data URI from local caches
-                base64_data = re.sub(r"^data:image/.+;base64,", "", image_url_or_base64)
-                img_bytes = base64.b64decode(base64_data)
-            elif image_url_or_base64.startswith("http://") or image_url_or_base64.startswith("https://"):
-                # Real OpenAI CDN remote HTTP URL. Must download raw bytes before PIL loading.
-                print(f"[Sora 2 Debug] Downloading remote reference image: {image_url_or_base64[:100]}...")
-                async with httpx.AsyncClient() as client:
-                    download_response = await client.get(image_url_or_base64, timeout=25.0)
-                    if download_response.status_code != 200:
-                        raise ValueError(f"HTTP download request failed with status: {download_response.status_code}")
-                    img_bytes = download_response.content
-            else:
-                # Raw base64 string fallback
-                img_bytes = base64.b64decode(image_url_or_base64)
+        if image_url_or_base64.startswith("data:image/"):
+            # Base64 WebP/PNG data URI from local caches
+            base64_data = re.sub(r"^data:image/.+;base64,", "", image_url_or_base64)
+            img_bytes = base64.b64decode(base64_data)
+        elif image_url_or_base64.startswith("http://") or image_url_or_base64.startswith("https://"):
+            # Real OpenAI CDN remote HTTP URL. Download raw bytes.
+            print(f"[Sora 2 Debug] Downloading remote reference image: {image_url_or_base64[:100]}...")
+            async with httpx.AsyncClient() as client:
+                download_response = await client.get(image_url_or_base64, timeout=25.0)
+                if download_response.status_code != 200:
+                    raise HTTPException(status_code=400, detail=f"HTTP download request failed with status: {download_response.status_code}")
+                img_bytes = download_response.content
+        else:
+            # Raw base64 string fallback
+            img_bytes = base64.b64decode(image_url_or_base64)
 
-            # Load with PIL
-            img = Image.open(io.BytesIO(img_bytes))
-            
-            # Convert RGBA alpha channels to standard RGB to prevent save failures
-            if img.mode in ("RGBA", "P"):
-                img = img.convert("RGB")
+        # Automated Resolution Probing Loop:
+        # Sequentially attempts standard landscape (1280x720), portrait (720x1280), or square (1024x1024)
+        # to self-correct and match the default aspect ratio forced by the API gateway/proxy [2]
+        size_probe_sequence = [
+            {"size": "1280x720", "width": 1280, "height": 720},
+            {"size": "720x1280", "width": 720, "height": 1280},
+            {"size": "1024x1024", "width": 1024, "height": 1024}
+        ]
+
+        video_job = None
+        temp_filename = None
+        api_error_detail = ""
+
+        for probe in size_probe_sequence:
+            target_size = probe["size"]
+            target_w = probe["width"]
+            target_h = probe["height"]
+
+            print(f"[Sora 2 Probing] Attempting model compilation with resolution target size: '{target_size}'")
+
+            try:
+                # Load with PIL from cached bytes to allow multiple re-processing runs cleanly [2]
+                img = Image.open(io.BytesIO(img_bytes))
                 
-            # Perform high-fidelity Lanczos downscale to exactly 1280x720 pixels [1, 2]
-            img_resized = img.resize((1280, 720), Image.Resampling.LANCZOS)
-            
-            # Discard any hidden EXIF or orientation metadata to prevent Sora 2 dimension checks failures [1]
-            pure_img = Image.new("RGB", (1280, 720))
-            pure_img.paste(img_resized)
-            
-            # Save strictly as JPEG to a unique path in the temporary directory to bypass system file descriptor write locks [1, 2]
-            temp_filename = os.path.join(tempfile.gettempdir(), f"sora_input_{uuid.uuid4().hex}.jpg")
-            pure_img.save(temp_filename, format="JPEG", quality=95)
-            print(f"[Sora 2 Debug] rescaled JPEG reference file compiled successfully: '{temp_filename}'")
-        except Exception as preprocess_err:
-            print(f"[Sora 2 Error] PIL preprocessing failure: {str(preprocess_err)}")
+                # Convert RGBA alpha channels to standard RGB
+                if img.mode in ("RGBA", "P"):
+                    img = img.convert("RGB")
+                    
+                # Perform high-fidelity Lanczos resize matching active target dimensions [2]
+                img_resized = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
+                
+                # Discard any hidden orientation headers
+                pure_img = Image.new("RGB", (target_w, target_h))
+                pure_img.paste(img_resized)
+                
+                # Save strictly as PNG to a unique path in the temporary directory to bypass lock contentions
+                temp_filename = os.path.join(tempfile.gettempdir(), f"sora_input_{uuid.uuid4().hex}.png")
+                pure_img.save(temp_filename, format="PNG")
+                
+                loop = asyncio.get_event_loop()
+                def start_job():
+                    with open(temp_filename, "rb") as image_file:
+                        return openai_client.videos.create(
+                            model="sora-2",
+                            prompt=prompt_with_silent_flags,
+                            input_reference=image_file, # Corrected parameter keyword
+                            seconds=sora_duration, # Corrected parameter keyword
+                            size=target_size # Dynamic target size parameter [2]
+                        )
+                
+                # Fire request to OpenAI SDK [2]
+                video_job = await loop.run_in_executor(None, start_job)
+                print(f"[Sora 2 Probing] Success! Resolution check passed for size '{target_size}'")
+                break # Exit the probe loop upon successful submission
+
+            except Exception as e:
+                # Clean up local temporary file descriptor safely
+                if temp_filename and os.path.exists(temp_filename):
+                    try:
+                        os.unlink(temp_filename)
+                    except:
+                        pass
+                
+                error_str = str(e)
+                print(f"[Sora 2 Probing Warning] Attempt failed for size '{target_size}': {error_str}")
+                
+                # If the error is a resolution mismatch, continue to the next size probe in sequence [2]
+                if "Inpaint image must match" in error_str:
+                    api_error_detail = error_str
+                    continue
+                else:
+                    # Terminate immediately on non-resolution errors (like unauthorized keys) to prevent redundant runs
+                    raise HTTPException(status_code=400, detail=f"OpenAI Sora 2 API rejected request: {error_str}")
+
+        if not video_job:
+            # Reached end of sequence without successful resolution matching
             raise HTTPException(
                 status_code=400,
-                detail=f"Failed to download and resize reference image to 1280x720: {str(preprocess_err)}"
+                detail=f"All aspect ratio size probing attempts failed. Final Sora 2 Error: {api_error_detail}"
             )
 
-        loop = asyncio.get_event_loop()
-        
-        # Open local resized JPEG file stream directly in a read-only context to feed input_reference
-        def start_job():
-            with open(temp_filename, "rb") as image_file:
-                # Corrected parameter keys according to official Sora 2 API documentation
-                return openai_client.videos.create(
-                    model="sora-2",
-                    prompt=video_req.prompt,
-                    input_reference=image_file, # Corrected parameter keyword
-                    seconds=sora_duration, # Corrected parameter keyword
-                    size="1280x720" # Landscape 720p aspect video size
-                )
-            
-        # Start the video generation job asynchronously
-        try:
-            video_job = await loop.run_in_executor(None, start_job)
-            job_id = video_job.id
-            print(f"[Sora 2 Debug] Job created successfully. ID: '{job_id}'. Polling for completion...")
-        except Exception as api_init_err:
-            # Cleanup temp file on immediate API rejection
-            try:
-                os.unlink(temp_filename)
-            except:
-                pass
-            print(f"[Sora 2 Error] API rejection: {str(api_init_err)}")
-            raise HTTPException(status_code=400, detail=f"OpenAI Sora 2 API rejected request: {str(api_init_err)}")
+        job_id = video_job.id
+        print(f"[Sora 2 Debug] Job submitted successfully. ID: '{job_id}'. Polling status...")
 
         # Poll the job status asynchronously
         max_attempts = 30
         attempt = 0
         video_url = None
+        loop = asyncio.get_event_loop()
         
         try:
             while attempt < max_attempts:
@@ -1043,11 +1079,12 @@ async def generate_scene_video(video_req: VideoGenerationRequest):
                     raise ValueError(f"Sora 2 rendering engine failed: {error_detail}")
         finally:
             # Cleanup local temporary image file cleanly under any circumstances [1, 2]
-            try:
-                os.unlink(temp_filename)
-                print(f"[Sora 2 Cleanup] Temporary reference file deleted: {temp_filename}")
-            except Exception as cleanup_err:
-                print(f"[Sora 2 Cleanup Warning] Temp file deletion error: {str(cleanup_err)}")
+            if temp_filename and os.path.exists(temp_filename):
+                try:
+                    os.unlink(temp_filename)
+                    print(f"[Sora 2 Cleanup] Rescaled reference file deleted: {temp_filename}")
+                except Exception as cleanup_err:
+                    print(f"[Sora 2 Cleanup Warning] Temp file deletion error: {str(cleanup_err)}")
 
         if not video_url:
             raise HTTPException(status_code=408, detail="Sora 2 video generation timed out. Please try again.")
@@ -1064,7 +1101,7 @@ async def generate_scene_video(video_req: VideoGenerationRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 # -----------------------------------------------------------------
-# Endpoint 10: Secure Video Stream Proxy (New Addition)
+# Endpoint 10: Secure Video Stream Proxy
 # -----------------------------------------------------------------
 @app.get("/api/videos/{video_id}/content")
 async def get_video_content(video_id: str):
