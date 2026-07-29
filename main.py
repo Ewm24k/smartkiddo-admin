@@ -990,7 +990,7 @@ async def generate_scene_video(video_req: VideoGenerationRequest):
             # Save strictly as PNG to a unique path in the temporary directory to bypass system file descriptor write locks [1, 2]
             temp_filename = os.path.join(tempfile.gettempdir(), f"sora_input_{uuid.uuid4().hex}.png")
             pure_img.save(temp_filename, format="PNG")
-            print(f"[Sora 2 Debug] Rescaled standard reference image compiled on disk: '{temp_filename}'")
+            print(f"[Sora 2 Debug] rescaled PNG reference file compiled successfully: '{temp_filename}'")
         except Exception as preprocess_err:
             print(f"[Sora 2 Error] PIL preprocessing failure: {str(preprocess_err)}")
             raise HTTPException(
@@ -1003,6 +1003,7 @@ async def generate_scene_video(video_req: VideoGenerationRequest):
         # Open local resized PNG file stream directly in a read-only context to feed input_reference
         def start_job():
             with open(temp_filename, "rb") as image_file:
+                # Corrected parameter keys according to official Sora 2 API documentation
                 return openai_client.videos.create(
                     model="sora-2",
                     prompt=video_req.prompt,
