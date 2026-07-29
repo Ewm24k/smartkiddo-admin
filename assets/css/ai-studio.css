@@ -1,76 +1,138 @@
 /* T1ERA AI Studio Workspace Stylesheets */
 
-/* Wide Centered Messages Container layout */
-.ai-studio-message-wrapper {
+/* Full-Screen dynamic container adjustments */
+#view-t1era-ai-studio {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+/* Force main-content-inner to be fluid if the AI studio view is active */
+:has(> #view-t1era-ai-studio:not(.hidden)) {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+/* Centered outer wrappers aligning everything to the viewport center */
+.ai-studio-message-turn-container {
     width: 100%;
-    border-bottom: 1px solid rgba(31, 31, 41, 0.3);
-    padding: 1.5rem 1rem;
-}
-
-.ai-studio-message-wrapper.user-msg-type {
-    background-color: rgba(99, 102, 241, 0.02);
-}
-
-.ai-studio-message-wrapper.assistant-msg-type {
-    background-color: transparent;
-}
-
-/* Wide centered text box aligning both User and Assistant elements similarly to Google AI Studio */
-.ai-studio-reading-pane {
-    max-w-3xl: 48rem; /* Equivalent of tailwind max-w-3xl */
-    width: 100%;
-    margin-left: auto;
-    margin-right: auto;
     display: flex;
     flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Reading Pane ensuring standard comfortably centered text width */
+.ai-studio-reading-pane {
+    max-width: 36rem; /* Comfortable readable column width (576px) */
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: start;
     gap: 0.5rem;
 }
 
-/* Metadata tag headers for message source tracing */
-.ai-studio-speaker-header {
+/* Custom Message Box block styling */
+.ai-studio-msg-box {
+    width: 100%;
+    background-color: #111115;
+    border: 1px solid #1f1f29;
+    border-radius: 0.75rem;
+    padding: 1.25rem;
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    flex-direction: column;
+    position: relative;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.ai-studio-msg-box:hover {
+    border-color: rgba(99, 102, 241, 0.3);
+    box-shadow: 0 4px 24px rgba(99, 102, 241, 0.05);
+}
+
+/* Header design matching centered rules */
+.ai-studio-box-header {
+    width: 100%;
+    text-align: center;
     font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
+    padding-bottom: 0.625rem;
+    border-bottom: 1px solid rgba(31, 31, 41, 0.5);
     user-select: none;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.ai-studio-speaker-header.user {
-    color: #818cf8; /* Indigo accent */
+.ai-studio-box-header.user {
+    color: #818cf8; /* Light Indigo */
 }
 
-.ai-studio-speaker-header.assistant {
-    color: #f59e0b; /* Amber/Yellow accent */
+.ai-studio-box-header.assistant {
+    color: #fbbf24; /* Light Amber */
 }
 
-/* Message text style formatting constraints */
-.ai-studio-message-body {
+/* Absolute copy button anchored specifically to header right margin */
+.btn-copy-msg {
+    position: absolute;
+    right: 0;
+    top: -2px;
+    cursor: pointer;
+    transition: color 0.1s ease-in-out;
+}
+
+/* Message content body formatting */
+.ai-studio-box-body {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
     font-size: 13px;
     color: #d1d5db;
     line-height: 1.625;
     word-break: break-word;
 }
 
-/* Custom design modifications for quick template buttons */
+/* Centered small footer section */
+.ai-studio-box-footer {
+    width: 100%;
+    text-align: center;
+    font-size: 9px;
+    color: #4b5563;
+    padding-top: 0.625rem;
+    border-top: 1px solid rgba(31, 31, 41, 0.5);
+    user-select: none;
+    letter-spacing: 0.05em;
+}
+
+/* Outside bottom metadata label aligned directly below the left edge */
+.ai-studio-outside-meta {
+    font-size: 10px;
+    color: #52525b;
+    user-select: none;
+    padding-left: 0.25rem;
+}
+
+/* Quick Select presets enhancements */
 .studio-template-card {
     transition: transform 0.15s ease-in-out, border-color 0.15s ease-in-out;
 }
+
 .studio-template-card:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(99, 102, 241, 0.05);
 }
 
-/* Hidden animation transition states for the collapsible configurations dock */
+/* Configuration panel transitions */
 #ai-studio-settings-dock.collapsed {
     width: 0px !important;
     border-left-width: 0px !important;
     overflow: hidden;
 }
 
-/* Recording Pulse styles for voice speech buttons */
+/* Recording Pulse styles for microphone dictations */
 .recording-pulse {
     background-color: rgba(239, 68, 68, 0.1) !important;
     color: #ef4444 !important;
