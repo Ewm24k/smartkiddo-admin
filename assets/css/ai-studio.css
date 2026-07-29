@@ -22,9 +22,9 @@
     justify-content: center;
 }
 
-/* Reading Pane ensuring standard comfortably centered text width */
+/* Reading Pane aligned exactly to match the 48rem/768px (max-w-3xl) width of the prompt bar */
 .ai-studio-reading-pane {
-    max-width: 36rem; /* Comfortable readable column width (576px) */
+    max-width: 48rem; 
     width: 100%;
     display: flex;
     flex-direction: column;
