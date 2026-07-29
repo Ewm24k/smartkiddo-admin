@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const RENDER_BACKEND_URL = "https://smartkiddo-admin.onrender.com";
 
-    // Monitor timeline track selection to toggle the Generator UI Panel
+    // Monitor timeline track selection to toggle the Generator UI Panel [Fixed reference assignment]
     if (timelineImagesTrack) {
         timelineImagesTrack.addEventListener("click", function (e) {
             // Find parent clip container that was clicked
@@ -24,7 +24,9 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!clipEl) return;
 
             const sceneIdx = parseInt(clipEl.dataset.index);
-            const activeScenesList = window.initializeVideoEditorTimeline ? getActiveScenesState() : null;
+            
+            // Query dynamic global getter function to secure live scenes list [2]
+            const activeScenesList = window.getActiveVideoEditorScenes ? window.getActiveVideoEditorScenes() : null;
 
             if (activeScenesList && activeScenesList[sceneIdx]) {
                 const selectedScene = activeScenesList[sceneIdx];
@@ -48,7 +50,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (generateVideoBtn) {
         generateVideoBtn.addEventListener("click", async function () {
             const activeIdx = parseInt(videoPromptInput.dataset.activeIndex);
-            const activeScenesList = getActiveScenesState();
+            const activeScenesList = window.getActiveVideoEditorScenes ? window.getActiveVideoEditorScenes() : null;
 
             if (isNaN(activeIdx) || !activeScenesList || !activeScenesList[activeIdx]) {
                 alert("Please select a storyboard image clip on the timeline first.");
@@ -136,12 +138,5 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             }
         });
-    }
-
-    // Helper accessor to fetch active scenes list inside the parent closure
-    function getActiveScenesState() {
-        const DOM_editorState_bridge = timelineImagesTrack ? timelineImagesTrack.parentElement : null;
-        // Search globally inside the timeline workspace tracker state variables
-        return window.editorProgressState_bridge || null;
     }
 });
