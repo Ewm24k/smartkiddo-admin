@@ -58,7 +58,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 2. Navigation Control States
+    // 2. Navigation Control States (Stretching Container to Fullscreen Width)
     // -----------------------------------------------------------------
     if (cardAiStudio) {
         cardAiStudio.addEventListener("click", function () {
@@ -84,20 +84,21 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             }
 
-            // Sync main scroll styles
+            // Sync main scroll styles to lock height
             const mainContentScroll = document.getElementById('main-content-scroll');
             if (mainContentScroll) {
                 mainContentScroll.classList.remove('overflow-y-auto');
                 mainContentScroll.classList.add('overflow-hidden');
             }
 
+            // Expand outer content wrapper fully (Remove max-width restrictions and side spaces)
             const mainContentInner = document.getElementById('main-content-inner');
             if (mainContentInner) {
-                mainContentInner.classList.remove('p-8');
-                mainContentInner.classList.add('p-4', 'h-full');
+                mainContentInner.classList.remove('p-8', 'max-w-7xl', 'mx-auto', 'justify-between');
+                mainContentInner.classList.add('p-2', 'h-full', 'w-full', 'max-w-none', 'flex-1');
             }
 
-            logToTerminal("Opened T1ERA AI Studio Playground.", "system");
+            logToTerminal("Opened T1ERA AI Studio Playground in Fullscreen mode.", "system");
         });
     }
 
@@ -117,13 +118,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 mainContentScroll.classList.remove('overflow-hidden');
             }
 
+            // Restore default container layout metrics (Re-apply original spaces & limits)
             const mainContentInner = document.getElementById('main-content-inner');
             if (mainContentInner) {
-                mainContentInner.classList.add('p-8');
-                mainContentInner.classList.remove('p-4', 'h-full');
+                mainContentInner.classList.remove('p-2', 'w-full', 'max-w-none', 'flex-1');
+                mainContentInner.classList.add('p-8', 'max-w-7xl', 'mx-auto', 'justify-between');
             }
 
-            logToTerminal("Exited AI Studio. Restored main layout parameters.", "system");
+            logToTerminal("Exited AI Studio. Restored main dashboard limits.", "system");
         });
     }
 
