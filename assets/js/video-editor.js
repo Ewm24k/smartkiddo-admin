@@ -682,14 +682,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Configure audio clip track block length based on its total duration
         if (timelineAudioClip) {
-            const audioDuration = (editorProgressState.audioElement && editorProgressState.audioElement.duration) 
-                ? editorProgressState.audioElement.duration 
-                : editorProgressState.duration;
-            
-            // Map the exact audio duration to pixels so it matches the ruler precisely [Fixed Section] [1, 2]
-            const elementWidthPx = (audioDuration / editorProgressState.duration) * TRACK_WIDTH_PX;
-            
-            timelineAudioClip.style.width = `${elementWidthPx}px`;
+            // Unify: the audio clip visually represents the full vocal track, so its initial width must be exactly 100% of TRACK_WIDTH_PX [1, 2]
+            timelineAudioClip.style.width = `${TRACK_WIDTH_PX}px`;
             timelineAudioClip.style.left = "0px";
             editorProgressState.audioOffset = 0.0;
         }
