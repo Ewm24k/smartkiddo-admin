@@ -21,6 +21,8 @@
     <link rel="stylesheet" href="assets/css/bedtime-story.css">
     <!-- CapCut Video Timeline Editor styles integration (New Addition) -->
     <link rel="stylesheet" href="assets/css/video-editor.css">
+    <!-- T1ERA AI Studio styles integration (New Addition) -->
+    <link rel="stylesheet" href="assets/css/ai-studio.css">
     
     <!-- Custom external scripts -->
     <script src="assets/js/script.js" defer></script>
@@ -31,6 +33,8 @@
     <script src="assets/js/video-editor.js" defer></script>
     <!-- Sora 2 Image-to-Video Generator script integration (New Addition) -->
     <script src="assets/js/video-generator.js" defer></script>
+    <!-- T1ERA AI Studio playground script integration (New Addition) -->
+    <script src="assets/js/ai-studio.js" defer></script>
 </head>
 <body class="font-sans antialiased h-screen flex overflow-hidden bg-[#0f0f12] text-[#e5e7eb]">
 
@@ -631,6 +635,220 @@
                     </div>
                 </section>
 
+                <!-- VIEW: T1ERA AI STUDIO (ChatGPT + Gemini + Claude Hybrid Viewport) -->
+                <section id="view-t1era-ai-studio" class="hidden h-full">
+                    <div class="studio-layout flex border border-[#1f1f29] rounded-xl overflow-hidden bg-[#0d0d11] h-[580px] w-full relative flex-col font-sans">
+                        
+                        <!-- Top Navigation / Status Header Bar -->
+                        <div class="h-14 bg-[#111115] border-b border-[#1f1f29] px-4 flex items-center justify-between select-none flex-shrink-0">
+                            <div class="flex items-center gap-3">
+                                <button id="btn-ai-studio-back" class="p-1.5 text-neutral-400 hover:text-white rounded hover:bg-neutral-800 transition-colors" title="Back to T1ERA Studio">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                                    </svg>
+                                </button>
+                                <span class="text-xs font-bold text-white bg-amber-600/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded uppercase tracking-wider font-mono">T1ERA AI Studio</span>
+                                <span class="text-neutral-500">/</span>
+                                <span class="text-xs font-semibold text-neutral-200">Interactive Prompt Lab</span>
+                            </div>
+                            
+                            <!-- Middle: Active Model Selector Pill -->
+                            <div class="hidden md:flex items-center gap-2 px-3 py-1 bg-[#17171e] rounded-full border border-[#1f1f29]">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span id="active-model-badge" class="text-[11px] font-mono font-bold text-neutral-300">T1ERA-Ultra-v2 (Auto)</span>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <!-- Collapsible Settings Toggle Button -->
+                                <button id="btn-ai-studio-settings-toggle" class="p-1.5 text-neutral-400 hover:text-white hover:bg-[#1a1a22] rounded transition-all focus:outline-none" title="Toggle Configuration Panel">
+                                    <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    </svg>
+                                </button>
+                                <button id="btn-ai-studio-clear" class="px-3 py-1.5 rounded bg-[#17171e] hover:bg-neutral-800 border border-[#1f1f29] text-xs text-neutral-400 font-medium transition-colors">Clear Chat</button>
+                            </div>
+                        </div>
+
+                        <!-- Main Studio Content Splitter Panel -->
+                        <div class="flex-1 flex overflow-hidden relative">
+                            
+                            <!-- CENTER PLAYGROUND CHAT AREA -->
+                            <div class="flex-1 bg-[#09090c] flex flex-col h-full overflow-hidden relative">
+                                
+                                <!-- Central Scrollable Chat Feed -->
+                                <div id="ai-studio-chat-feed" class="flex-1 overflow-y-auto px-6 py-8 space-y-8 scroll-smooth">
+                                    
+                                    <!-- Welcome panel generated centered in the reading canvas -->
+                                    <div class="ai-studio-welcome-pane max-w-3xl mx-auto text-center py-10 space-y-4">
+                                        <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center mx-auto shadow-lg">
+                                            <span class="text-white text-base font-black tracking-wider">T1</span>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <h2 class="text-lg font-bold text-white">Welcome to T1ERA Prompt Lab</h2>
+                                            <p class="text-xs text-neutral-400 max-w-md mx-auto leading-relaxed">
+                                                A sandbox combining Claude's structured parameters, Gemini's wide-centered layouts, and ChatGPT's fast conversational flows.
+                                            </p>
+                                        </div>
+                                        
+                                        <!-- Quick Template Prompts Card Grid -->
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl mx-auto pt-4 text-left">
+                                            <div class="studio-template-card p-3 rounded-lg border border-[#1f1f29] bg-[#111115] hover:border-indigo-500/40 cursor-pointer transition-all" data-prompt="Analyze the educational system metrics for age groups 5-7.">
+                                                <h4 class="text-xs font-bold text-neutral-200">Review Demographics</h4>
+                                                <p class="text-[10px] text-neutral-500 mt-1 truncate">Analyze the educational system metrics for age groups...</p>
+                                            </div>
+                                            <div class="studio-template-card p-3 rounded-lg border border-[#1f1f29] bg-[#111115] hover:border-indigo-500/40 cursor-pointer transition-all" data-prompt="Write a standard system constraint rule to enforce standard Malaysian vocabulary.">
+                                                <h4 class="text-xs font-bold text-neutral-200">Vocabulary Constraints</h4>
+                                                <p class="text-[10px] text-neutral-500 mt-1 truncate">Write a standard system constraint rule to enforce...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                <!-- Floating File Attachment Pending Area -->
+                                <div class="max-w-3xl mx-auto w-full px-6 flex-shrink-0">
+                                    <div id="ai-studio-upload-preview" class="hidden flex items-center gap-2 p-2 bg-[#121216] border border-[#1f1f29] rounded-lg text-xs text-neutral-300 font-mono mb-2">
+                                        <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                                        <span id="ai-studio-uploaded-file-name" class="truncate flex-1 text-neutral-400">Attached file.txt</span>
+                                        <button id="btn-ai-studio-remove-upload" class="p-1 text-neutral-500 hover:text-red-400 rounded">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- CENTER FLOATING PROMPT ENTRY CONTAINER (ChatGPT / Claude / Gemini Hybrid layout) -->
+                                <div class="px-6 pb-6 pt-2 flex-shrink-0 relative">
+                                    <div class="max-w-3xl mx-auto w-full bg-[#111115] border border-[#1f1f29] focus-within:border-indigo-500/50 rounded-2xl p-2.5 transition-all shadow-xl shadow-black/30">
+                                        
+                                        <!-- Invisible file input -->
+                                        <input type="file" id="ai-studio-file-upload-input" class="hidden">
+                                        
+                                        <!-- Input Field Text Area -->
+                                        <textarea id="ai-studio-prompt-input" rows="1" placeholder="Type a message, attach custom constraints, or query system behavior..." class="w-full bg-transparent border-0 outline-none text-xs text-white max-h-24 resize-none py-1.5 px-2.5 leading-relaxed font-sans placeholder-neutral-500" style="height: auto;"></textarea>
+                                        
+                                        <!-- Action Utility Toolbar Panel inside the prompt box -->
+                                        <div class="flex items-center justify-between border-t border-[#1f1f29]/50 pt-2 px-1.5 mt-1 select-none">
+                                            <div class="flex items-center gap-2.5">
+                                                <!-- Upload File button -->
+                                                <button id="btn-ai-studio-attach" class="p-1.5 text-neutral-500 hover:text-indigo-400 hover:bg-neutral-800/40 rounded-lg transition-colors relative" title="Upload File context">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                                    </svg>
+                                                </button>
+                                                <!-- Extension tools/plugins selector button -->
+                                                <button id="btn-ai-studio-extensions" class="p-1.5 text-neutral-500 hover:text-indigo-400 hover:bg-neutral-800/40 rounded-lg transition-colors relative" title="Active Extensions & Tools">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"></path>
+                                                    </svg>
+                                                    <span id="extension-active-dot" class="absolute top-1 right-1 w-2 h-2 rounded-full bg-indigo-500 border border-[#111115] hidden"></span>
+                                                </button>
+                                                <!-- Speech Input mic button -->
+                                                <button id="btn-ai-studio-voice" class="p-1.5 text-neutral-500 hover:text-indigo-400 hover:bg-neutral-800/40 rounded-lg transition-colors relative" title="Microphone Dictation (Speech-to-Text)">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                                                    </svg>
+                                                    <span id="ai-studio-mic-active-dot" class="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 border border-[#111115] hidden"></span>
+                                                </button>
+                                            </div>
+                                            
+                                            <!-- Send Message button -->
+                                            <button id="btn-ai-studio-send" class="p-1.5 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white border border-indigo-500/25 hover:border-transparent rounded-lg transition-all flex items-center justify-center">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+
+                                        <!-- Hidden dropup options for extension toggle -->
+                                        <div id="ai-studio-extensions-menu" class="absolute bottom-[72px] left-6 bg-[#17171e] border border-[#1f1f29] rounded-xl shadow-2xl p-2 z-50 hidden w-52 select-none">
+                                            <p class="text-[9px] text-neutral-500 font-bold px-2 py-1 uppercase tracking-wider border-b border-[#252533] mb-1">Extensions & Tools</p>
+                                            <label class="flex items-center justify-between px-2 py-1.5 hover:bg-[#21212c] rounded cursor-pointer text-xs text-neutral-300">
+                                                <span>Grep Code Scanner</span>
+                                                <input type="checkbox" id="ext-toggle-grep" class="accent-indigo-600">
+                                            </label>
+                                            <label class="flex items-center justify-between px-2 py-1.5 hover:bg-[#21212c] rounded cursor-pointer text-xs text-neutral-300">
+                                                <span>Session LRU Memory</span>
+                                                <input type="checkbox" id="ext-toggle-lru" checked class="accent-indigo-600">
+                                            </label>
+                                        </div>
+
+                                    </div>
+                                    <div class="text-[10px] text-neutral-600 text-center mt-2.5 select-none font-mono">T1ERA AI Studio may produce inaccurate physical descriptions. Verify parameters.</div>
+                                </div>
+
+                            </div>
+
+                            <!-- RIGHT PARAMETER DOCK (Claude / Google AI Studio Hybrid) -->
+                            <div id="ai-studio-settings-dock" class="w-72 bg-[#121216] border-l border-[#1f1f29] flex flex-col h-full flex-shrink-0 select-none transition-all duration-300">
+                                <div class="px-4 py-3 bg-[#17171e] border-b border-[#1f1f29] flex-shrink-0 flex items-center justify-between">
+                                    <span class="text-xs font-bold text-neutral-200 tracking-wide">Studio Settings</span>
+                                    <span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">Parameters</span>
+                                </div>
+                                
+                                <div class="flex-1 overflow-y-auto p-4 space-y-5">
+                                    
+                                    <!-- Model Selection Dropdown -->
+                                    <div class="space-y-1.5">
+                                        <label class="text-[9px] font-bold text-neutral-500 uppercase tracking-wide block">Active Generative LLM</label>
+                                        <select id="setting-ai-studio-model" class="w-full bg-[#0d0d11] border border-[#1f1f29] rounded-lg px-2.5 py-2 text-xs text-white outline-none focus:border-indigo-500 transition-colors">
+                                            <option value="t1era-ultra">T1ERA Ultra v2 (Creative-First)</option>
+                                            <option value="t1era-pro">T1ERA Pro Standard</option>
+                                            <option value="gpt-5.4-mini">GPT-5.4 Mini</option>
+                                            <option value="claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- System instructions panel -->
+                                    <div class="space-y-1.5">
+                                        <label class="text-[9px] font-bold text-neutral-500 uppercase tracking-wide block">System Prompt / Instructions</label>
+                                        <textarea id="setting-ai-studio-system" rows="4" placeholder="e.g. You are a creative sandbox AI. Be concise, structure outputs cleanly, and respect standard Malaysian Malay constraints..." class="w-full bg-[#0d0d11] border border-[#1f1f29] rounded-lg p-2.5 text-xs text-white placeholder-neutral-600 outline-none focus:border-indigo-500 leading-relaxed resize-none font-sans"></textarea>
+                                    </div>
+
+                                    <hr class="border-[#1f1f29]">
+
+                                    <!-- Temperature parameter slide controls -->
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between items-center text-[9px] font-bold uppercase tracking-wide">
+                                            <span class="text-neutral-500">Temperature</span>
+                                            <span id="val-ai-studio-temp" class="text-indigo-400 font-mono">0.7</span>
+                                        </div>
+                                        <input type="range" id="range-ai-studio-temp" min="0" max="2" step="0.1" value="0.7" class="w-full h-1 bg-[#09090c] rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                                        <p class="text-[9.5px] text-neutral-600 leading-relaxed">Higher temperature yields increasingly random, highly creative concept drafts.</p>
+                                    </div>
+
+                                    <!-- Max tokens limit controls -->
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between items-center text-[9px] font-bold uppercase tracking-wide">
+                                            <span class="text-neutral-500">Max Tokens</span>
+                                            <span id="val-ai-studio-tokens" class="text-indigo-400 font-mono">2048</span>
+                                        </div>
+                                        <input type="range" id="range-ai-studio-tokens" min="256" max="4096" step="128" value="2048" class="w-full h-1 bg-[#09090c] rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                                    </div>
+
+                                    <!-- Constraint Safety Toggle Switch -->
+                                    <div class="flex items-center justify-between py-1 bg-[#17171e]/50 border border-[#1f1f29]/30 rounded-lg p-2.5">
+                                        <div>
+                                            <span class="text-[9px] font-bold text-neutral-400 uppercase tracking-wide block">Vocabulary Sanitizer</span>
+                                            <span class="text-[8.5px] text-neutral-600 block">Autofilter Indonesian drift</span>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer select-none">
+                                            <input type="checkbox" id="check-ai-studio-sanitizer" checked class="sr-only peer">
+                                            <div class="w-7 h-4 bg-neutral-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-neutral-400 after:border-neutral-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
+                                        </label>
+                                    </div>
+
+                                </div>
+                                <div class="p-3 border-t border-[#1f1f29] bg-[#17171e] flex-shrink-0">
+                                    <div class="text-[9px] text-neutral-500 text-center font-mono select-none">Changes take effect dynamically in real-time.</div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </section>
+
                 <!-- VIEW: LIST USER -->
                 <section id="view-list-user" class="space-y-8 hidden">
                     <div>
@@ -742,7 +960,7 @@
                                     </div>
                                     <span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">gpt-5.4-mini</span>
                                 </div>
-                                <!-- Token Tracker Display [2] -->
+                                <!-- Token Tracker Display -->
                                 <div class="flex items-center justify-between text-[10px] font-mono text-neutral-500 border-t border-[#252533] pt-1.5 pb-1">
                                     <span>Tokens: <span id="ai-token-count" class="text-neutral-400">0</span></span>
                                     <span class="text-neutral-600">|</span>
@@ -790,7 +1008,7 @@
                                 </div>
                             </div>
 
-                            <!-- AI Footer Input Box Section [2] -->
+                            <!-- AI Footer Input Box Section -->
                             <div class="p-3 border-t border-[#1f1f29] bg-[#17171e] flex flex-col gap-2 flex-shrink-0">
                                 <div class="flex items-center gap-2">
                                     <!-- Selected Context Indicator -->
@@ -809,7 +1027,7 @@
                                     </button>
                                     <!-- Text Input -->
                                     <textarea id="ai-chat-input" rows="1" placeholder="Ask AI..." class="flex-1 bg-transparent border-0 outline-none text-xs text-white max-h-24 resize-none py-1 leading-relaxed font-sans placeholder-neutral-500"></textarea>
-                                    <!-- Voice Recognition Button [2] -->
+                                    <!-- Voice Recognition Button -->
                                     <button id="ai-voice-btn" class="p-1.5 text-neutral-500 hover:text-indigo-400 rounded transition-colors relative" title="Speech to Text (English / Malay)">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
                                         <span id="ai-voice-active-indicator" class="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-red-500 border border-[#121216] hidden"></span>
@@ -844,7 +1062,7 @@
                                         </button>
                                     </div>
 
-                                    <!-- AI AGENT TOGGLE VIEW CONTROL [2] -->
+                                    <!-- AI AGENT TOGGLE VIEW CONTROL -->
                                     <button id="tab-ai-toggle-btn" class="p-1 text-neutral-500 hover:text-white hover:bg-[#1a1a22] rounded transition-all focus:outline-none" title="Toggle AI Agent Panel">
                                         <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 01-2 2h0a2 2 0 01-2-2v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
@@ -883,7 +1101,7 @@
                                         
                                         <!-- Unified Editor Container Layer -->
                                         <div class="flex-1 relative h-full" id="editor-container">
-                                            <!-- Synchronized Line Highlights Layer Behind Text [2] -->
+                                            <!-- Synchronized Line Highlights Layer Behind Text -->
                                             <div id="editor-highlight-lines-layer" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
                                             
                                             <textarea id="editor-textarea" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"></textarea>
@@ -954,7 +1172,7 @@
             <!-- Modal Body -->
             <div class="p-5 flex flex-col gap-4">
                 <p class="text-[11px] text-neutral-400 leading-relaxed">
-                    Select the repository database you wish to synchronize. Ensure your developer token possesses adequate scope clearance for the targeted resource [1].
+                    Select the repository database you wish to synchronize. Ensure your developer token possesses adequate scope clearance for the targeted resource.
                 </p>
                 
                 <!-- Preset Radio Selection Cards -->
@@ -991,7 +1209,7 @@
         </div>
     </div>
 
-    <!-- STORYBOARD IMAGE VIEWER LIGHTBOX POPUP [New Addition] -->
+    <!-- STORYBOARD IMAGE VIEWER LIGHTBOX POPUP -->
     <div id="story-image-lightbox" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[9999] flex flex-col items-center justify-center hidden select-none transition-all duration-300">
         <button id="lightbox-close" class="absolute top-5 right-5 text-neutral-400 hover:text-white transition-colors p-2 rounded-full hover:bg-white/10" title="Close Lightbox">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1007,7 +1225,7 @@
         </div>
     </div>
 
-    <!-- TIMELINE TRANSITION MODAL (New Addition) -->
+    <!-- TIMELINE TRANSITION MODAL -->
     <div id="timeline-transition-modal" class="absolute bg-[#111115] border border-[#1f1f29] rounded-lg shadow-2xl p-3 z-50 hidden select-none w-56">
         <div class="flex items-center justify-between border-b border-[#1f1f29] pb-1.5 mb-2.5">
             <span class="text-[10px] font-bold text-neutral-400 font-mono tracking-wider uppercase">Set Transition</span>
