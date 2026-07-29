@@ -165,7 +165,6 @@ def get_cartoon_placeholder(scene_number: int) -> str:
     ]
     c = colors[(scene_number - 1) % len(colors)]
     
-    # Render different vector paths and characters based on scene numbers to guarantee visual uniqueness
     custom_vector_elements = ""
     if scene_number == 1:
         custom_vector_elements = """
@@ -941,18 +940,11 @@ async def generate_scene_video(video_req: VideoGenerationRequest):
     if not openai_client:
         raise HTTPException(status_code=500, detail="OpenAI Client is not initialized on backend.")
     try:
-        # Scale actual timeline clips duration seconds to closest Sora 2 supported literal string values: "4", "8", or "12"
-        raw_dur = video_req.duration
-        if raw_dur <= 6:
-            sora_duration = "4"
-        elif raw_dur <= 10:
-            sora_duration = "8"
-        else:
-            sora_duration = "12"
+        # Force standard Sora 2 duration constraints strictly to 4 seconds maximum
+        sora_duration = "4"
+        print(f"[Sora 2 Debug] Input: Scene {video_req.scene_number} | Forcing sora duration to standard '4' seconds max.")
 
-        print(f"[Sora 2 Debug] Input: Scene {video_req.scene_number} | Original length {raw_dur}s mapped to Sora literal: '{sora_duration}' seconds.")
-
-        # Architectural Resolution: Download remote URLs and decode local base64 payloads to raw bytes
+        # Decode base64 WebP image payload sent from Netlify dynamically to a local temp file
         image_url_or_base64 = video_req.image_url.strip()
         img_bytes = b""
 
@@ -987,10 +979,10 @@ async def generate_scene_video(video_req: VideoGenerationRequest):
             pure_img = Image.new("RGB", (1280, 720))
             pure_img.paste(img_resized)
             
-            # Save strictly as PNG to a unique path in the temporary directory to bypass system file descriptor write locks [1, 2]
-            temp_filename = os.path.join(tempfile.gettempdir(), f"sora_input_{uuid.uuid4().hex}.png")
-            pure_img.save(temp_filename, format="PNG")
-            print(f"[Sora 2 Debug] rescaled PNG reference file compiled successfully: '{temp_filename}'")
+            # Save strictly as JPEG to a unique path in the temporary directory to bypass system file descriptor write locks [1, 2]
+            temp_filename = os.path.join(tempfile.gettempdir(), f"sora_input_{uuid.uuid4().hex}.jpg")
+            pure_img.save(temp_filename, format="JPEG", quality=95)
+            print(f"[Sora 2 Debug] rescaled JPEG reference file compiled successfully: '{temp_filename}'")
         except Exception as preprocess_err:
             print(f"[Sora 2 Error] PIL preprocessing failure: {str(preprocess_err)}")
             raise HTTPException(
@@ -1000,7 +992,7 @@ async def generate_scene_video(video_req: VideoGenerationRequest):
 
         loop = asyncio.get_event_loop()
         
-        # Open local resized PNG file stream directly in a read-only context to feed input_reference
+        # Open local resized JPEG file stream directly in a read-only context to feed input_reference
         def start_job():
             with open(temp_filename, "rb") as image_file:
                 # Corrected parameter keys according to official Sora 2 API documentation
@@ -1043,7 +1035,8 @@ async def generate_scene_video(video_req: VideoGenerationRequest):
                 print(f"[Sora 2 Debug] Polling Job '{job_id}' | Attempt {attempt}/{max_attempts} | Status: '{job_status.status}'")
                 
                 if job_status.status == "completed":
-                    video_url = job_status.url
+                    # Construct an unauthenticated local proxy URL to stream the binary MP4 content without auth header leaks
+                    video_url = f"https://smartkiddo-admin.onrender.com/api/videos/{job_id}/content"
                     break
                 elif job_status.status == "failed":
                     error_detail = getattr(job_status, "error", "Unknown Sora Error")
@@ -1068,4 +1061,25 @@ async def generate_scene_video(video_req: VideoGenerationRequest):
         raise he
     except Exception as e:
         print("Sora Video Generation Failure:", str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+# -----------------------------------------------------------------
+# Endpoint 10: Secure Video Stream Proxy (New Addition)
+# -----------------------------------------------------------------
+@app.get("/api/videos/{video_id}/content")
+async def get_video_content(video_id: str):
+    if not OPENAI_API_KEY:
+        raise HTTPException(status_code=500, detail="Missing OPENAI_API_KEY environment variable on Render.")
+    try:
+        url = f"https://api.openai.com/v1/videos/{video_id}/content"
+        headers = {"Authorization": f"Bearer {OPENAI_API_KEY}"}
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, headers=headers, timeout=60.0)
+            if response.status_code != 200:
+                raise HTTPException(status_code=response.status_code, detail=f"Failed to fetch video content from OpenAI: {response.text}")
+                
+            from fastapi.responses import Response
+            return Response(content=response.content, media_type="video/mp4")
+    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
