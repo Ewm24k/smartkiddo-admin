@@ -1,8 +1,3 @@
-/**
- * T1ERA Studio CapCut Video Editor Timeline Engine
- * Orchestrates re-ordering of image clips, audio dragging offsets,
- * transition modals, dynamic audio playback, and playhead timeline synchronizations.
- */
 document.addEventListener("DOMContentLoaded", function () {
     // 1. DOM Elements Query
     const timelineImagesTrack = document.getElementById("timeline-images-track");
@@ -50,8 +45,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const TRACK_WIDTH_PX = 600; // Unified baseline width. Keeps all tracks 100% synced [1, 2]
     const TIMELINE_PADDING_LEFT = 64; // IMAGES track sidebar spacer width
 
-    // Expose active state list globally to let video-generator.js access it seamlessly [2]
-    window.editorProgressState_bridge = editorProgressState.scenes;
+    // Expose active state getter globally to let video-generator.js access it seamlessly without reference-lag bugs [2]
+    window.getActiveVideoEditorScenes = function() {
+        return editorProgressState.scenes;
+    };
 
     // -----------------------------------------------------------------
     // 3. Ruler & Grid Render Math
@@ -714,6 +711,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const testAudio = new Audio(storyState.voiceUrl);
         testAudio.addEventListener("loadedmetadata", function() {
+            // Hot-reload synchronization to automatically snap and grow/shrink both the images track,
+            // the voiceover block, and the ruler ticks to perfectly match the true ElevenLabs audio duration! [1, 2]
             const calculatedDuration = Math.ceil(this.duration) || 30.0;
             editorProgressState.duration = calculatedDuration;
 
