@@ -292,27 +292,76 @@ document.addEventListener("DOMContentLoaded", function () {
     syncActiveExtensionsBadge();
 
     // -----------------------------------------------------------------
-    // 8. Centered Chat Message Generation Layouts
+    // 8. Centered Chat Message Generation Layouts (Centered Box Block Structure)
     // -----------------------------------------------------------------
-    function createCenteredMessageBubble(sender, content) {
+    function createCenteredMessageBubble(sender, content, generationTimeSec = "0.0") {
+        const now = new Date();
+        const timestamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
         const wrapper = document.createElement("div");
-        const typeClass = sender === "user" ? "user-msg-type" : "assistant-msg-type";
-        wrapper.className = `ai-studio-message-wrapper ${typeClass}`;
+        wrapper.className = "ai-studio-message-turn-container w-full py-4";
 
         const isUser = sender === "user";
-        const speakerLabel = isUser ? "You" : (dropdownModel ? dropdownModel.options[dropdownModel.selectedIndex].text : "T1ERA");
+        const speakerLabel = isUser ? "YOU" : (dropdownModel ? dropdownModel.options[dropdownModel.selectedIndex].text.toUpperCase() : "T1ERA AI");
         const headerClass = isUser ? "user" : "assistant";
 
-        // Build wide centered DOM elements inside the wrapper container
+        // Structured inside standard centered reading viewport
         wrapper.innerHTML = `
-            <div class="ai-studio-reading-pane">
-                <div class="ai-studio-speaker-header ${headerClass}">
-                    <span>${isUser ? '👤' : '✨'}</span>
-                    <span>${speakerLabel}</span>
+            <div class="ai-studio-reading-pane mx-auto">
+                <div class="ai-studio-msg-box relative">
+                    
+                    <!-- HEADER SECTION (Centered Alignment with copy button on top-right) -->
+                    <div class="ai-studio-box-header ${headerClass}">
+                        <span>${isUser ? '👤' : '✨'} ${speakerLabel}</span>
+                        <button class="btn-copy-msg text-neutral-500 hover:text-white transition-colors" title="Copy Message text">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- BODY SECTION (Message Text Content) -->
+                    <div class="ai-studio-box-body">
+                        ${content}
+                    </div>
+
+                    <!-- FOOTER SECTION (Centered Alignment, Small Font) -->
+                    <div class="ai-studio-box-footer">
+                        ${isUser ? 'CLIENT INFERENCE PIPELINE REQUEST' : 'PROMPT LAB CONTEXT INTERACTION LOG'}
+                    </div>
+
                 </div>
-                <div class="ai-studio-message-body">${content}</div>
+                
+                <!-- OUTSIDE BOTTOM LABEL (Below box outside on left corner) -->
+                <div class="ai-studio-outside-meta select-none flex items-center gap-1.5 font-mono">
+                    <span>[${timestamp}]</span>
+                    <span>•</span>
+                    <span>${generationTimeSec}s response</span>
+                </div>
             </div>
         `;
+
+        // Bind Copy Button Clipboard trigger
+        const copyBtn = wrapper.querySelector(".btn-copy-msg");
+        if (copyBtn) {
+            copyBtn.addEventListener("click", function() {
+                const textBody = wrapper.querySelector(".ai-studio-box-body");
+                if (textBody) {
+                    const textToCopy = textBody.innerText;
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        logToTerminal("Message copied to clipboard.", "success");
+                        copyBtn.classList.remove("text-neutral-500");
+                        copyBtn.classList.add("text-emerald-400");
+                        setTimeout(() => {
+                            copyBtn.classList.remove("text-emerald-400");
+                            copyBtn.classList.add("text-neutral-500");
+                        }, 1500);
+                    }).catch(err => {
+                        logToTerminal("Copy action failed: " + err, "error");
+                    });
+                }
+            });
+        }
 
         if (chatFeed) {
             chatFeed.appendChild(wrapper);
@@ -341,8 +390,10 @@ document.addEventListener("DOMContentLoaded", function () {
             </div>`;
         }
 
+        const startTime = performance.now();
+
         // Append User Prompts Centered
-        createCenteredMessageBubble("user", messageOutput);
+        createCenteredMessageBubble("user", messageOutput, "0.0");
 
         // Clear fields
         promptInput.value = "";
@@ -372,10 +423,26 @@ document.addEventListener("DOMContentLoaded", function () {
             <br><br>
             You can edit physical character traits and system constraints inside the parameter dock. What script element would you like to review next?`;
             
+            const endTime = performance.now();
+            const totalSec = ((endTime - startTime) / 1000).toFixed(1);
+
             const contentBody = assistantBubble.querySelector(".ai-studio-message-body");
             if (contentBody) {
                 contentBody.innerHTML = finalMockResponse;
             }
+
+            // Sync dynamic latency seconds to the outside meta label
+            const outsideMeta = assistantBubble.querySelector(".ai-studio-outside-meta");
+            if (outsideMeta) {
+                const now = new Date();
+                const timestamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                outsideMeta.innerHTML = `
+                    <span>[${timestamp}]</span>
+                    <span>•</span>
+                    <span>${totalSec}s response</span>
+                `;
+            }
+
             logToTerminal("AI Studio response completed successfully.", "success");
         }, 1500);
     }
