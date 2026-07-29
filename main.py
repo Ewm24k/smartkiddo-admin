@@ -5,6 +5,8 @@ import httpx
 import asyncio
 import base64
 import tempfile
+import io
+from PIL import Image
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -162,7 +164,6 @@ def get_cartoon_placeholder(scene_number: int) -> str:
     ]
     c = colors[(scene_number - 1) % len(colors)]
     
-    # Render different vector paths and characters based on scene numbers to guarantee visual uniqueness
     custom_vector_elements = ""
     if scene_number == 1:
         custom_vector_elements = """
@@ -222,16 +223,12 @@ def get_cartoon_placeholder(scene_number: int) -> str:
             </linearGradient>
         </defs>
         <rect width="400" height="200" fill="url(#bg-{scene_number})" />
-        
-        <!-- Standard ambient starry dots -->
         <circle cx="50" cy="40" r="1.5" fill="#fff" opacity="0.8" />
         <circle cx="120" cy="30" r="1" fill="#fff" opacity="0.5" />
         <circle cx="280" cy="50" r="2" fill="{c[2]}" opacity="0.9" />
         <circle cx="340" cy="25" r="1.5" fill="#fff" opacity="0.7" />
         <circle cx="90" cy="75" r="1" fill="#fff" opacity="0.6" />
         <circle cx="220" cy="20" r="1.5" fill="#fff" opacity="0.4" />
-        
-        <!-- Background Mountain / Hills silhouettes -->
         <path d="M 0,200 L 0,150 Q 100,120 200,160 T 400,140 L 400,200 Z" fill="{c[1]}" opacity="0.7" />
         <path d="M 0,200 L 0,170 Q 150,140 300,180 T 400,175 L 400,200 Z" fill="{c[0]}" opacity="0.9" />
         {custom_vector_elements}
@@ -953,11 +950,29 @@ async def generate_scene_video(video_req: VideoGenerationRequest):
         base64_data = re.sub(r"^data:image/.+;base64,", "", video_req.image_url)
         img_bytes = base64.b64decode(base64_data)
 
-        # Write bytes safely to temporary file to comply with OpenAI multipart file pointer streams
-        temp_img = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-        temp_img.write(img_bytes)
-        temp_img.flush()
-        temp_img.close()
+        # Architectural Fix: Dynamically resize the reference image to exactly 1280x720 using PIL
+        # This completely resolves the "Inpaint image must match the requested width and height" 400 error.
+        try:
+            img = Image.open(io.BytesIO(img_bytes))
+            # Convert to RGB mode if it has an alpha channel to ensure clean standard PNG/JPEG output
+            if img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+            # Downscale / scale up strictly to 1280x720 to pass Sora 2 dimension checks
+            img_resized = img.resize((1280, 720), Image.Resampling.LANCZOS)
+            
+            # Save the resized image directly to our temporary file path
+            temp_img = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+            img_resized.save(temp_img.name, format="PNG")
+            temp_img.flush()
+            temp_img.close()
+            print(f"[Sora 2 Debug] Reference image successfully resized from {img.size} to (1280, 720) to match Sora constraints.")
+        except Exception as resize_err:
+            print(f"[Sora 2 Warning] PIL image resizing failed: {str(resize_err)}. Attempting standard fallback write.")
+            # Fallback direct write
+            temp_img = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+            temp_img.write(img_bytes)
+            temp_img.flush()
+            temp_img.close()
 
         loop = asyncio.get_event_loop()
         
