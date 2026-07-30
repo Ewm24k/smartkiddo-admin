@@ -5,6 +5,11 @@
 document.addEventListener("DOMContentLoaded", function () {
     
     // -----------------------------------------------------------------
+    // 0. Base Configuration Setup
+    // -----------------------------------------------------------------
+    const RENDER_BACKEND_URL = "https://smartkiddo-admin.onrender.com";
+
+    // -----------------------------------------------------------------
     // 1. DOM Element Declarations
     // -----------------------------------------------------------------
     const cardAiStudio = document.querySelector("#view-t1era-studio .glow-card:nth-child(4)"); // Card 4 target element
@@ -44,9 +49,16 @@ document.addEventListener("DOMContentLoaded", function () {
     const valTemp = document.getElementById("val-ai-studio-temp");
     const rangeTokens = document.getElementById("range-ai-studio-tokens");
     const valTokens = document.getElementById("val-ai-studio-tokens");
+    const checkSanitizer = document.getElementById("check-ai-studio-sanitizer");
+
+    // Settings Wrappers for Disabling/Locking controls
+    const tempGroup = rangeTemp ? rangeTemp.closest(".space-y-2") : null;
+    const tokensGroup = rangeTokens ? rangeTokens.closest(".space-y-2") : null;
+    const sanitizerGroup = checkSanitizer ? checkSanitizer.closest(".flex") : null;
 
     let isRecordingSpeech = false;
     let attachedFileMetadata = null;
+    let chatHistory = []; // Local history log storage for T1ERA Studio playground
 
     // Helper to log actions to standard system terminal console
     function logToTerminal(message, type = 'info') {
@@ -93,6 +105,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 mainContentInner.classList.add('p-2', 'h-full', 'w-full', 'max-w-none', 'flex-1');
             }
 
+            // Trigger dynamic locked/unlocked state evaluation based on selected model
+            syncActiveModelSettingsLock();
+
             logToTerminal("Opened T1ERA AI Studio Playground in Fullscreen mode.", "system");
         });
     }
@@ -123,7 +138,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 3. UI Controls and Custom Sliders Binding
+    // 3. UI Controls and Custom Sliders Binding (Model Locks Handler)
     // -----------------------------------------------------------------
     if (btnSettingsToggle && settingsDock) {
         btnSettingsToggle.addEventListener("click", function () {
@@ -143,10 +158,42 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    // Evaluates selected model, locking temperature, token, and sanitizer configurations for gpt-5.4-mini
+    function syncActiveModelSettingsLock() {
+        if (!dropdownModel) return;
+        const selectedValue = dropdownModel.value;
+
+        const isMiniModel = (selectedValue === "gpt-5.4-mini");
+
+        if (isMiniModel) {
+            logToTerminal("Target 'gpt-5.4-mini' selected. Disabling unauthorized slide parameters.", "warning");
+            
+            // Set input nodes to disabled
+            if (rangeTemp) rangeTemp.disabled = true;
+            if (rangeTokens) rangeTokens.disabled = true;
+            if (checkSanitizer) checkSanitizer.disabled = true;
+
+            // Inject warning block styling rules
+            if (tempGroup) tempGroup.classList.add("locked-parameter-group");
+            if (tokensGroup) tokensGroup.classList.add("locked-parameter-group");
+            if (sanitizerGroup) sanitizerGroup.classList.add("locked-parameter-group");
+        } else {
+            // Restore default enabled settings for all other platforms
+            if (rangeTemp) rangeTemp.disabled = false;
+            if (rangeTokens) rangeTokens.disabled = false;
+            if (checkSanitizer) checkSanitizer.disabled = false;
+
+            if (tempGroup) tempGroup.classList.remove("locked-parameter-group");
+            if (tokensGroup) tokensGroup.classList.remove("locked-parameter-group");
+            if (sanitizerGroup) sanitizerGroup.classList.remove("locked-parameter-group");
+        }
+    }
+
     if (dropdownModel && activeModelBadge) {
         dropdownModel.addEventListener("change", function () {
             const selectedText = this.options[this.selectedIndex].text;
             activeModelBadge.innerText = `${selectedText} (Manual)`;
+            syncActiveModelSettingsLock();
             logToTerminal(`AI Studio active model swapped: ${this.value}`, "system");
         });
     }
@@ -174,12 +221,57 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 5. File Upload Simulation
+    // 5. File Context Flattening & Selection
     // -----------------------------------------------------------------
+    function flattenFilesList(nodes, pathPrefix = '') {
+        let files = [];
+        nodes.forEach(node => {
+            const absolutePath = pathPrefix ? `${pathPrefix}/${node.name}` : node.name;
+            if (node.type === 'file') {
+                files.push({
+                    id: node.id,
+                    name: node.name,
+                    path: absolutePath,
+                    content: node.content,
+                    isMedia: node.isMedia
+                });
+            } else if (node.type === 'folder' && Array.isArray(node.children)) {
+                files = files.concat(flattenFilesList(node.children, absolutePath));
+            }
+        });
+        return files;
+    }
+
     if (btnAttach && fileUploadInput) {
         btnAttach.addEventListener("click", function (e) {
             e.stopPropagation();
-            fileUploadInput.click();
+            
+            if (typeof window.getWorkspaceFileSystem !== 'function') {
+                logToTerminal("No workspace file tree connected to inject reference context.", "error");
+                fileUploadInput.click(); // Default local file backup prompt trigger
+                return;
+            }
+
+            const currentFileSystem = window.getWorkspaceFileSystem();
+            const textFiles = flattenFilesList(currentFileSystem).filter(f => !f.isMedia);
+
+            if (textFiles.length === 0) {
+                logToTerminal("No valid workspace text files available.", "warning");
+                fileUploadInput.click();
+            } else {
+                // Attach the first available workspace file as template reference
+                const targetFile = textFiles[0];
+                attachedFileMetadata = {
+                    name: targetFile.path,
+                    content: targetFile.content || "/* Workspace file source content */"
+                };
+
+                if (uploadedFileName && uploadPreview) {
+                    uploadedFileName.innerText = `${targetFile.path} (Workspace File)`;
+                    uploadPreview.classList.remove("hidden");
+                }
+                logToTerminal(`AI Studio attached workspace context: ${targetFile.path}`, "info");
+            }
         });
     }
 
@@ -188,16 +280,20 @@ document.addEventListener("DOMContentLoaded", function () {
             const file = e.target.files[0];
             if (!file) return;
 
-            attachedFileMetadata = {
-                name: file.name,
-                size: file.size
-            };
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                attachedFileMetadata = {
+                    name: file.name,
+                    content: evt.target.result
+                };
 
-            if (uploadedFileName && uploadPreview) {
-                uploadedFileName.innerText = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-                uploadPreview.classList.remove("hidden");
-            }
-            logToTerminal(`AI Studio attached reference context: ${file.name}`, "info");
+                if (uploadedFileName && uploadPreview) {
+                    uploadedFileName.innerText = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+                    uploadPreview.classList.remove("hidden");
+                }
+                logToTerminal(`AI Studio attached reference context: ${file.name}`, "info");
+            };
+            reader.readAsText(file);
         });
     }
 
@@ -283,14 +379,53 @@ document.addEventListener("DOMContentLoaded", function () {
     syncActiveExtensionsBadge();
 
     // -----------------------------------------------------------------
-    // 8. EXACT MATCH Centered Box Generating Layouts
+    // 8. Markdown Parsing Utility
+    // -----------------------------------------------------------------
+    function parseMarkdownToHTML(text) {
+        let html = text;
+
+        // Escape raw HTML tags to prevent formatting injection attacks
+        html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        // Highlight parsing syntax mapping ==highlight==
+        html = html.replace(/==([^==\n]+)==/g, '<mark class="bg-amber-500/15 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/20">$1</mark>');
+
+        // Code blocks formatting ```javascript ... ```
+        html = html.replace(/```([a-zA-Z0-9]*)\n([\s\S]*?)\n```/g, function (match, lang, code) {
+            return `<pre class="bg-[#07070a] border border-[#1f1f29] rounded p-3 my-2 overflow-x-auto"><code class="font-mono text-[11px] text-indigo-300 language-${lang}">${code}</code></pre>`;
+        });
+
+        // Inline code segment mapping `code`
+        html = html.replace(/`([^`\n]+)`/g, '<code class="bg-[#0b0b0f] border border-[#1f1f29] px-1 rounded text-[11px] text-pink-400 font-mono">$1</code>');
+
+        // Quote block mapping > quote
+        html = html.replace(/^&gt;\s+(.*)$/gm, '<blockquote class="border-l-3 border-indigo-500 bg-indigo-500/5 pl-3 py-1.5 italic text-neutral-400 rounded-r my-2">$1</blockquote>');
+
+        // Heading tags mapping #, ##, ###
+        html = html.replace(/^###\s+(.*)$/gm, '<h4 class="text-sm font-bold text-white mt-3 mb-1.5">$1</h4>');
+        html = html.replace(/^##\s+(.*)$/gm, '<h3 class="text-base font-extrabold text-white mt-4 mb-2">$1</h3>');
+        html = html.replace(/^#\s+(.*)$/gm, '<h2 class="text-lg font-black text-indigo-400 mt-5 mb-3 border-b border-[#1f1f29] pb-1">$1</h2>');
+
+        // Bold formatting mapping **bold**
+        html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-white font-bold">$1</strong>');
+
+        // Underline formatting mapping __underline__
+        html = html.replace(/__([^_]+)__/g, '<span class="underline decoration-indigo-500/50">$1</span>');
+
+        // Split text raw lines into paragraph blocks mapping double-newlines \n\n
+        html = html.replace(/\n\n/g, '</p><p class="mt-2.5">');
+
+        return `<p>${html}</p>`;
+    }
+
+    // -----------------------------------------------------------------
+    // 9. EXACT MATCH Centered Chat Message Generation Layouts
     // -----------------------------------------------------------------
     function createCenteredMessageBubble(sender, content, generationTimeSec = "0.0") {
         const now = new Date();
         const timestamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         const wrapper = document.createElement("div");
-        // Outer wrapper padding matches the prompt box area padding (`px-6`)
         wrapper.className = "w-full px-6 py-4";
 
         const isUser = sender === "user";
@@ -363,6 +498,9 @@ document.addEventListener("DOMContentLoaded", function () {
         return wrapper;
     }
 
+    // -----------------------------------------------------------------
+    // 10. Live Backend Prompt Lab Execution Loop
+    // -----------------------------------------------------------------
     async function handleSendPrompt() {
         if (!promptInput) return;
         const rawText = promptInput.value.trim();
@@ -374,9 +512,13 @@ document.addEventListener("DOMContentLoaded", function () {
             welcomePane.style.display = "none";
         }
 
+        const isMiniModel = dropdownModel && (dropdownModel.value === "gpt-5.4-mini");
+
         // Format message appending references if attached
         let messageOutput = rawText;
+        let attachmentSegment = "";
         if (attachedFileMetadata) {
+            attachmentSegment = `\n\n[Attached Reference Context: ${attachedFileMetadata.name}]\n\`\`\`\n${attachedFileMetadata.content}\n\`\`\``;
             messageOutput += `<div class="mt-2.5 flex items-center gap-1.5 px-2 py-1 bg-neutral-900 border border-[#1f1f29] rounded text-[10px] text-neutral-400 font-mono w-fit">
                 <span>📎 Reference Context: ${attachedFileMetadata.name}</span>
             </div>`;
@@ -387,40 +529,101 @@ document.addEventListener("DOMContentLoaded", function () {
         // Append User Prompts Centered
         createCenteredMessageBubble("user", messageOutput, "0.0");
 
-        // Clear fields
+        // Save into local history array for back-and-forth continuity
+        chatHistory.push({ role: "user", content: rawText + attachmentSegment });
+
+        // Clear inputs
         promptInput.value = "";
         promptInput.style.height = "auto";
         attachedFileMetadata = null;
         if (uploadPreview) uploadPreview.classList.add("hidden");
         if (fileUploadInput) fileUploadInput.value = "";
 
-        // Trigger loading mock streaming response centered
-        logToTerminal("AI Studio compiling parameters context...", "system");
-        
         // Setup empty assistant bubble placeholder
         const assistantBubble = createCenteredMessageBubble("assistant", `
             <div class="flex items-center gap-2 text-neutral-500 font-mono text-[11px] py-1">
                 <div class="w-1.5 h-1.5 bg-amber-400 rounded-full animate-ping"></div>
-                <span>Generating concepts...</span>
+                <span>Analyzing instructions & dispatching query...</span>
             </div>
         `);
 
-        // Simulate streaming response delay
-        setTimeout(() => {
-            const finalMockResponse = `I have updated your AI sandbox configurations in real-time. Here are the parameters applied:
-            <br><br>
-            1. <strong>Temperature</strong> is set to <code>${rangeTemp ? rangeTemp.value : '0.7'}</code>.
-            <br>
-            2. <strong>Lexical Sanitizer</strong> filters are active to prevent vocabulary leaks in Malaysian translations.
-            <br><br>
-            You can edit physical character traits and system constraints inside the parameter dock. What script element would you like to review next?`;
+        // If not mini-model (not live yet), return standard local mock response template
+        if (!isMiniModel) {
+            setTimeout(() => {
+                const totalSec = "1.2";
+                const contentBody = assistantBubble.querySelector(".ai-studio-message-body");
+                if (contentBody) {
+                    contentBody.innerHTML = parseMarkdownToHTML("==T1ERA-Ultra-v2== is currently inactive. Select the live **gpt-5.4-mini** model option inside the settings panel to initiate real backend transactions.");
+                }
+                const outsideMeta = assistantBubble.querySelector(".ai-studio-outside-meta");
+                if (outsideMeta) {
+                    const now = new Date();
+                    const timestamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    outsideMeta.innerHTML = `
+                        <span>[${timestamp}]</span>
+                        <span>•</span>
+                        <span>${totalSec}s response</span>
+                    `;
+                }
+                logToTerminal("Mock model executed.", "success");
+            }, 1000);
+            return;
+        }
+
+        try {
+            logToTerminal("Dispatching playground prompt packet to live backend...", "system");
+
+            // Compile system settings variables
+            const systemInstructions = document.getElementById("setting-ai-studio-system") ? document.getElementById("setting-ai-studio-system").value.trim() : "";
             
+            // Build lightweight directory context if LRU is enabled
+            let contextPayload = "";
+            const isLruActive = extToggleLru && extToggleLru.checked;
+            if (isLruActive && typeof window.getWorkspaceFileSystem === 'function') {
+                const currentFileSystem = window.getWorkspaceFileSystem();
+                const allFilesList = flattenFilesList(currentFileSystem);
+                contextPayload += "=== WORKSPACE DIRECTORY INDEX ===\n";
+                allFilesList.forEach(file => {
+                    contextPayload += `Path: ${file.name} | Type: ${file.isMedia ? 'Media' : 'Code'}\n`;
+                });
+            }
+
+            const payload = {
+                messages: chatHistory,
+                workspace_context: contextPayload,
+                system_prompt: systemInstructions || None
+            };
+
+            const response = await fetch(`${RENDER_BACKEND_URL}/api/chat`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server returned error status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            if (data.success === false || data.error) {
+                throw new Error(data.error || "Generation error.");
+            }
+
+            const aiText = data.content;
+            
+            // Save inside local log history
+            chatHistory.push({ role: "assistant", content: aiText });
+
             const endTime = performance.now();
             const totalSec = ((endTime - startTime) / 1000).toFixed(1);
 
-            const contentBody = assistantBubble.querySelector(".ai-studio-box-body");
+            // Print output inside bubble parsing markdown structures
+            const contentBody = assistantBubble.querySelector(".ai-studio-message-body");
             if (contentBody) {
-                contentBody.innerHTML = finalMockResponse;
+                contentBody.innerHTML = parseMarkdownToHTML(aiText);
             }
 
             // Sync dynamic latency seconds to the outside meta label
@@ -435,8 +638,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 `;
             }
 
-            logToTerminal("AI Studio response completed successfully.", "success");
-        }, 1500);
+            logToTerminal("Live backend response packets retrieved successfully.", "success");
+
+        } catch (err) {
+            console.error(err);
+            logToTerminal(`Prompt Lab execution crashed: ${err.message}`, "error");
+            
+            const contentBody = assistantBubble.querySelector(".ai-studio-message-body");
+            if (contentBody) {
+                contentBody.innerHTML = `<span class="text-red-400 font-mono">Inference Failure: ${err.message}</span>`;
+            }
+        }
     }
 
     if (btnSend) {
@@ -454,6 +666,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (btnClear) {
         btnClear.addEventListener("click", function () {
+            chatHistory = [];
             if (chatFeed) {
                 chatFeed.innerHTML = `
                     <div class="ai-studio-welcome-pane max-w-3xl mx-auto text-center py-10 space-y-4">
