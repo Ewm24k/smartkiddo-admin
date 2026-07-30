@@ -379,7 +379,7 @@ async def sync_github(repo: Optional[str] = None):
 async def send_sync_github(request: Request, repo: Optional[str] = None):
     try:
         file_system = await request.json()
-        if (!isinstance(file_system, list)):
+        if not isinstance(file_system, list):
             raise HTTPException(status_code=400, detail="Invalid payload. Array expected.")
 
         repo_name = repo if repo else GITHUB_REPO
