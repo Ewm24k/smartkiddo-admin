@@ -1101,7 +1101,7 @@ def ai_studio_generate_image(req: UniversalImageRequest):
         response = openai_client.images.generate(
             model="gpt-image-1-mini",
             prompt=req.prompt,
-            quality="standard",
+            quality="low",  # Fixed to "low" to match native GPT-Image token pricing tiers
             size=req.size or "1024x1024"
         )
         img_item = response.data[0]
