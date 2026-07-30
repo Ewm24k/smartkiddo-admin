@@ -919,7 +919,7 @@ async def generate_single_scene(req: SingleSceneGenerationRequest):
         elif hasattr(img_item, "url") and img_item.url:
             image_url = img_item.url
         else:
-            raise ValueError("No valid image payload found in OpenAI response data.")
+            raise ValueError("No valid image payload (b64_json or url) found in OpenAI response data.")
         
         return {
             "success": True,
