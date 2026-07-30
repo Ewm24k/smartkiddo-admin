@@ -221,7 +221,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 5. File Context Flattening & Selection
+    // 5. File Context Flattening & Selection (Universal Multimodal FileReader)
     // -----------------------------------------------------------------
     function flattenFilesList(nodes, pathPrefix = '') {
         let files = [];
@@ -245,33 +245,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (btnAttach && fileUploadInput) {
         btnAttach.addEventListener("click", function (e) {
             e.stopPropagation();
-            
-            if (typeof window.getWorkspaceFileSystem !== 'function') {
-                logToTerminal("No workspace file tree connected to inject reference context.", "error");
-                fileUploadInput.click(); // Default local file backup prompt trigger
-                return;
-            }
-
-            const currentFileSystem = window.getWorkspaceFileSystem();
-            const textFiles = flattenFilesList(currentFileSystem).filter(f => !f.isMedia);
-
-            if (textFiles.length === 0) {
-                logToTerminal("No valid workspace text files available.", "warning");
-                fileUploadInput.click();
-            } else {
-                // Attach the first available workspace file as template reference
-                const targetFile = textFiles[0];
-                attachedFileMetadata = {
-                    name: targetFile.path,
-                    content: targetFile.content || "/* Workspace file source content */"
-                };
-
-                if (uploadedFileName && uploadPreview) {
-                    uploadedFileName.innerText = `${targetFile.path} (Workspace File)`;
-                    uploadPreview.classList.remove("hidden");
-                }
-                logToTerminal(`AI Studio attached workspace context: ${targetFile.path}`, "info");
-            }
+            fileUploadInput.click(); // Trigger universal file input selection directly
         });
     }
 
@@ -281,19 +255,57 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!file) return;
 
             const reader = new FileReader();
+            const isTextType = file.type.startsWith("text/") || 
+                               /\.(json|js|ts|py|html|css|md|yaml|yml|txt)$/i.test(file.name);
+
             reader.onload = function(evt) {
                 attachedFileMetadata = {
                     name: file.name,
-                    content: evt.target.result
+                    type: file.type || "application/octet-stream",
+                    size: file.size,
+                    content: isTextType ? evt.target.result : null,
+                    dataUrl: isTextType ? null : evt.target.result
                 };
 
+                // Render dynamic visual preview depending on file MIME formats
                 if (uploadedFileName && uploadPreview) {
-                    uploadedFileName.innerText = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+                    let previewHTML = "";
+                    if (file.type.startsWith("image/")) {
+                        previewHTML = `<img src="${evt.target.result}" class="w-8 h-8 rounded object-cover border border-indigo-500/30 flex-shrink-0">`;
+                    } else if (file.type.startsWith("video/")) {
+                        previewHTML = `
+                            <div class="w-8 h-8 rounded bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            </div>
+                        `;
+                    } else {
+                        previewHTML = `
+                            <div class="w-8 h-8 rounded bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                            </div>
+                        `;
+                    }
+
+                    uploadedFileName.innerHTML = `
+                        <div class="flex items-center gap-2.5">
+                            ${previewHTML}
+                            <div class="flex flex-col min-w-0">
+                                <span class="truncate font-semibold text-white text-[11px] leading-snug">${file.name}</span>
+                                <span class="text-[9px] text-neutral-500 uppercase font-mono tracking-wider">${file.type || "BINARY DOC"} • ${(file.size / 1024).toFixed(1)} KB</span>
+                            </div>
+                        </div>
+                    `;
                     uploadPreview.classList.remove("hidden");
                 }
-                logToTerminal(`AI Studio attached reference context: ${file.name}`, "info");
+                logToTerminal(`Imported file context: ${file.name} (${file.type || "unknown"})`, "info");
             };
-            reader.readAsText(file);
+
+            // Read as text or Base64 data URL depending on evaluated layout
+            if (isTextType) {
+                reader.readAsText(file);
+            } else {
+                reader.readAsDataURL(file);
+            }
         });
     }
 
@@ -856,10 +868,39 @@ document.addEventListener("DOMContentLoaded", function () {
         let messageOutput = rawText;
         let attachmentSegment = "";
         if (attachedFileMetadata) {
-            attachmentSegment = `\n\n[Attached Reference Context: ${attachedFileMetadata.name}]\n\`\`\`\n${attachedFileMetadata.content}\n\`\`\``;
-            messageOutput += `<div class="mt-2.5 flex items-center gap-1.5 px-2 py-1 bg-neutral-900 border border-[#1f1f29] rounded text-[10px] text-neutral-400 font-mono w-fit">
-                <span>📎 Reference Context: ${attachedFileMetadata.name}</span>
-            </div>`;
+            // Support both Base64 inline segments and plain text code parsing beautifully
+            if (attachedFileMetadata.dataUrl) {
+                attachmentSegment = `\n\n=== ATTACHED MULTIMODAL MEDIA CONTEXT ===\nFilename: ${attachedFileMetadata.name}\nMIME Type: ${attachedFileMetadata.type}\nData URI Payload:\n${attachedFileMetadata.dataUrl}`;
+                
+                const isImageFile = attachedFileMetadata.type.startsWith("image/");
+                const isVideoFile = attachedFileMetadata.type.startsWith("video/");
+                
+                if (isImageFile) {
+                    messageOutput += `
+                        <div class="mt-3 rounded-lg overflow-hidden border border-[#1f1f29] max-w-sm bg-neutral-900 shadow-lg">
+                            <img src="${attachedFileMetadata.dataUrl}" class="w-full h-auto object-cover cursor-zoom-in" alt="Attached preview" onclick="zoomAIStudioImage(this.src)">
+                        </div>
+                    `;
+                } else if (isVideoFile) {
+                    messageOutput += `
+                        <div class="mt-3 rounded-lg overflow-hidden border border-[#1f1f29] max-w-sm bg-neutral-900 shadow-lg">
+                            <video src="${attachedFileMetadata.dataUrl}" controls class="w-full h-auto max-h-[240px]"></video>
+                        </div>
+                    `;
+                } else {
+                    messageOutput += `
+                        <div class="mt-2.5 flex items-center gap-2 p-2 bg-neutral-900 border border-[#1f1f29] rounded text-[10px] text-neutral-300 font-mono w-fit">
+                            <svg class="w-4 h-4 text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                            <span>📎 Document: ${attachedFileMetadata.name}</span>
+                        </div>
+                    `;
+                }
+            } else {
+                attachmentSegment = `\n\n[Attached Reference Context: ${attachedFileMetadata.name}]\n\`\`\`\n${attachedFileMetadata.content}\n\`\`\``;
+                messageOutput += `<div class="mt-2.5 flex items-center gap-1.5 px-2 py-1 bg-neutral-900 border border-[#1f1f29] rounded text-[10px] text-neutral-400 font-mono w-fit">
+                    <span>📎 Reference Context: ${attachedFileMetadata.name}</span>
+                </div>`;
+            }
         }
 
         const startTime = performance.now();
