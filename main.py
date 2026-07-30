@@ -1,4 +1,4 @@
-mport os
+import os
 import re
 import json
 import httpx
@@ -733,6 +733,7 @@ def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
                 }
             }
             
+            # Use synchronous HTTP client on the thread pool to prevent async locks
             with httpx.Client() as client:
                 response = client.post(url, headers=headers, json=payload, timeout=30.0)
                 if response.status_code != 200:
