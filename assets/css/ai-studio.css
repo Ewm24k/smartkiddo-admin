@@ -116,20 +116,18 @@
     color: #9ca3af;
 }
 
-/* Code blocks style rules */
-.ai-studio-box-body pre {
-    background-color: #07070a;
-    border: 1px solid #1f1f29;
-    border-radius: 0.5rem;
-    padding: 1rem;
-    margin: 1rem 0;
-    overflow-x: auto;
+/* Premium Structured Code Block Container */
+.ai-studio-code-container {
+    width: 100%;
 }
 
-.ai-studio-box-body code {
-    font-family: monospace;
-    font-size: 11px;
-    color: #818cf8;
+.ai-studio-code-header {
+    user-select: none;
+}
+
+.ai-studio-code-container pre {
+    border-radius: 0px 0px 0.5rem 0.75rem !important;
+    border-top: none !important;
 }
 
 /* Centered small footer section */
@@ -176,6 +174,12 @@
     border-radius: 4px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+}
+
+/* Glowing Toast Alert Notification System */
+.ai-studio-toast {
+    box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.35), 0 1px 1px rgba(99, 102, 241, 0.08);
+    transition: opacity 0.30s cubic-bezier(0.16, 1, 0.3, 1), transform 0.30s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Quick Select presets enhancements */
