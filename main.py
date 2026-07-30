@@ -379,7 +379,7 @@ async def sync_github(repo: Optional[str] = None):
 async def send_sync_github(request: Request, repo: Optional[str] = None):
     try:
         file_system = await request.json()
-        if not isinstance(file_system, list):
+        if (!isinstance(file_system, list)):
             raise HTTPException(status_code=400, detail="Invalid payload. Array expected.")
 
         repo_name = repo if repo else GITHUB_REPO
@@ -1101,7 +1101,7 @@ def ai_studio_generate_image(req: UniversalImageRequest):
         response = openai_client.images.generate(
             model="gpt-image-1-mini",
             prompt=req.prompt,
-            quality="low",  # Fixed to "low" to match native GPT-Image token pricing tiers
+            quality="medium",  # Set strictly to "medium" to match native GPT-Image token pricing tiers
             size=req.size or "1024x1024"
         )
         img_item = response.data[0]
