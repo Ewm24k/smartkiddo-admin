@@ -988,8 +988,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (loadingStatusEl) loadingStatusEl.innerText = "Awaiting container wake up (Render Free Tier cold start)...";
                 logToTerminal("No response packet yet. Render container might be booting up...", "warning");
             } else if (progressTicks === 15) {
+                if (loadingStatusEl) loadingStatusEl.innerText = "Still waiting for container boot (can take up to 75 seconds on first call)...";
+            } else if (progressTicks === 35) {
                 if (loadingStatusEl) loadingStatusEl.innerText = "Connecting to standard backend layers...";
-            } else if (progressTicks === 30) {
+            } else if (progressTicks === 55) {
                 if (loadingStatusEl) loadingStatusEl.innerText = "Compiling prompt context & calling inference core...";
             }
         }, 5000);
@@ -998,7 +1000,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const controller = new AbortController();
         const safetyTimeout = setTimeout(() => {
             controller.abort();
-        }, 45000); // 45-second fallback abort guard
+        }, 95000); // 95-second dynamic safety timeout for cold starts
 
         try {
             logToTerminal("Dispatching playground prompt packet to live backend...", "system");
@@ -1083,7 +1085,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             let displayError = err.message;
             if (err.name === "AbortError") {
-                displayError = "Request timed out (Render container took >45 seconds to respond. Check if the server is still sleeping).";
+                displayError = "Request timed out (Render container took >95 seconds to respond. Check if the server is still sleeping).";
                 logToTerminal("Downstream transaction aborted: Render server spin-up timed out.", "error");
             } else {
                 logToTerminal(`Prompt Lab execution crashed: ${err.message}`, "error");
