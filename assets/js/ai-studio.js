@@ -544,15 +544,17 @@ document.addEventListener("DOMContentLoaded", function () {
         const assistantBubble = createCenteredMessageBubble("assistant", `
             <div class="flex items-center gap-2 text-neutral-500 font-mono text-[11px] py-1">
                 <div class="w-1.5 h-1.5 bg-amber-400 rounded-full animate-ping"></div>
-                <span>Analyzing instructions & dispatching query...</span>
+                <span class="loading-status-text">Analyzing instructions & dispatching query...</span>
             </div>
         `);
+
+        const loadingStatusEl = assistantBubble.querySelector(".loading-status-text");
 
         // If not mini-model (not live yet), return standard local mock response template
         if (!isMiniModel) {
             setTimeout(() => {
                 const totalSec = "1.2";
-                const contentBody = assistantBubble.querySelector(".ai-studio-message-body");
+                const contentBody = assistantBubble.querySelector(".ai-studio-box-body");
                 if (contentBody) {
                     contentBody.innerHTML = parseMarkdownToHTML("==T1ERA-Ultra-v2== is currently inactive. Select the live **gpt-5.4-mini** model option inside the settings panel to initiate real backend transactions.");
                 }
@@ -570,6 +572,26 @@ document.addEventListener("DOMContentLoaded", function () {
             }, 1000);
             return;
         }
+
+        // Setup progressive status logging while request is pending
+        let progressTicks = 0;
+        const progressInterval = setInterval(() => {
+            progressTicks += 5;
+            if (progressTicks === 5) {
+                if (loadingStatusEl) loadingStatusEl.innerText = "Awaiting container wake up (Render Free Tier cold start)...";
+                logToTerminal("No response packet yet. Render container might be booting up...", "warning");
+            } else if (progressTicks === 15) {
+                if (loadingStatusEl) loadingStatusEl.innerText = "Connecting to standard backend layers...";
+            } else if (progressTicks === 30) {
+                if (loadingStatusEl) loadingStatusEl.innerText = "Compiling prompt context & calling inference core...";
+            }
+        }, 5000);
+
+        // AbortController setup to prevent infinite waiting
+        const controller = new AbortController();
+        const safetyTimeout = setTimeout(() => {
+            controller.abort();
+        }, 45000); // 45-second fallback abort guard
 
         try {
             logToTerminal("Dispatching playground prompt packet to live backend...", "system");
@@ -600,8 +622,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 headers: {
                     "Content-Type": "application/json"
                 },
+                signal: controller.signal,
                 body: JSON.stringify(payload)
             });
+
+            // Stop loading logging & safety timeout triggers
+            clearInterval(progressInterval);
+            clearTimeout(safetyTimeout);
 
             if (!response.ok) {
                 throw new Error(`Server returned error status: ${response.status}`);
@@ -622,7 +649,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const totalSec = ((endTime - startTime) / 1000).toFixed(1);
 
             // Print output inside bubble parsing markdown structures
-            const contentBody = assistantBubble.querySelector(".ai-studio-message-body");
+            const contentBody = assistantBubble.querySelector(".ai-studio-box-body");
             if (contentBody) {
                 contentBody.innerHTML = parseMarkdownToHTML(aiText);
             }
@@ -642,12 +669,21 @@ document.addEventListener("DOMContentLoaded", function () {
             logToTerminal("Live backend response packets retrieved successfully.", "success");
 
         } catch (err) {
+            clearInterval(progressInterval);
+            clearTimeout(safetyTimeout);
             console.error(err);
-            logToTerminal(`Prompt Lab execution crashed: ${err.message}`, "error");
+
+            let displayError = err.message;
+            if (err.name === "AbortError") {
+                displayError = "Request timed out (Render container took >45 seconds to respond. Check if the server is still sleeping).";
+                logToTerminal("Downstream transaction aborted: Render server spin-up timed out.", "error");
+            } else {
+                logToTerminal(`Prompt Lab execution crashed: ${err.message}`, "error");
+            }
             
-            const contentBody = assistantBubble.querySelector(".ai-studio-message-body");
+            const contentBody = assistantBubble.querySelector(".ai-studio-box-body");
             if (contentBody) {
-                contentBody.innerHTML = `<span class="text-red-400 font-mono">Inference Failure: ${err.message}</span>`;
+                contentBody.innerHTML = `<span class="text-red-400 font-mono">Inference Failure: ${displayError}</span>`;
             }
         }
     }
