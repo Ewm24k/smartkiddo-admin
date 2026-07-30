@@ -394,8 +394,11 @@ document.addEventListener("DOMContentLoaded", function () {
             return `<!--T1ERA_PLACEHOLDER_${id}-->`;
         }
 
-        // 1. Extract Code Blocks into placeholders (handles CRLF line-endings and trailing whitespaces)
-        html = html.replace(/```([a-zA-Z0-9_-]*)[ \t]*[\r\n]+([\s\S]*?)[\r\n]*```/g, function (match, lang, code) {
+        // 1. Extract Code Blocks into placeholders
+        // FIX: newline after the language tag is now optional ("\r?\n?" instead of "[\r\n]+"),
+        // so single-line fenced snippets (e.g. ```js const x = 1;```) are still caught as code
+        // blocks instead of falling through to the inline-code regex below.
+        html = html.replace(/```([a-zA-Z0-9_-]*)[ \t]*\r?\n?([\s\S]*?)```/g, function (match, lang, code) {
             const codeHTML = `<pre class="bg-[#07070a] border border-[#1f1f29] rounded p-3 my-2 overflow-x-auto"><code class="font-mono text-[11px] text-indigo-300 language-${lang || 'plaintext'}">${code.trim()}</code></pre>`;
             return addPlaceholder('code_block', codeHTML);
         });
@@ -423,14 +426,26 @@ document.addEventListener("DOMContentLoaded", function () {
         html = html.replace(/__([^_]+)__/g, '<span class="underline decoration-indigo-500/50">$1</span>');
 
         // 6. Convert Double Newlines to Paragraphs safely (skipping block containers and headings)
+        // FIX: previously only skipped <p>-wrapping when a placeholder sat at the very START of
+        // a block. If the model wrote text and a code fence separated by a single newline (no
+        // blank line), the whole chunk was one block that did NOT start with the placeholder, so
+        // the <pre> code block got nested inside a <p> — invalid HTML that many layouts render
+        // as a collapsed/invisible block instead of a styled code box.
+        // Now every block is split around ANY placeholder token wherever it appears, so block-level
+        // content (code blocks, blockquotes) is never wrapped inside a <p>, regardless of newlines.
         const parts = html.split(/[\r\n]{2,}/);
         const formattedParts = parts.map(part => {
             const trimmed = part.trim();
             if (!trimmed) return "";
-            if (trimmed.startsWith('<h') || trimmed.startsWith('<!--T1ERA_PLACEHOLDER_')) {
-                return trimmed;
-            }
-            return `<p class="mt-2.5 leading-relaxed">${trimmed}</p>`;
+            if (trimmed.startsWith('<h')) return trimmed;
+
+            const segments = trimmed.split(/(<!--T1ERA_PLACEHOLDER_\d+-->)/g);
+            return segments.map(seg => {
+                if (!seg) return "";
+                if (/^<!--T1ERA_PLACEHOLDER_\d+-->$/.test(seg)) return seg; // leave placeholder untouched
+                const segTrim = seg.trim();
+                return segTrim ? `<p class="mt-2.5 leading-relaxed">${segTrim}</p>` : "";
+            }).filter(Boolean).join('\n');
         });
         html = formattedParts.filter(p => p !== "").join('\n');
 
@@ -665,7 +680,18 @@ document.addEventListener("DOMContentLoaded", function () {
                 throw new Error(data.error || "Generation error.");
             }
 
-            const aiText = data.content;
+            // FIX: some backends forward the raw provider response shape (e.g. an array of
+            // content blocks like [{type:"text", text:"..."}]) instead of a plain string.
+            // Normalize here so parseMarkdownToHTML always receives a string.
+            let aiText = data.content;
+            if (Array.isArray(aiText)) {
+                aiText = aiText
+                    .filter(block => block && block.type === "text" && typeof block.text === "string")
+                    .map(block => block.text)
+                    .join("\n\n");
+            } else if (typeof aiText !== "string") {
+                aiText = String(aiText ?? "");
+            }
             
             // Save inside local log history
             chatHistory.push({ role: "assistant", content: aiText });
