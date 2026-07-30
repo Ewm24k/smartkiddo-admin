@@ -394,11 +394,8 @@ document.addEventListener("DOMContentLoaded", function () {
             return `<!--T1ERA_PLACEHOLDER_${id}-->`;
         }
 
-        // 1. Extract Code Blocks into placeholders
-        // FIX: newline after the language tag is now optional ("\r?\n?" instead of "[\r\n]+"),
-        // so single-line fenced snippets (e.g. ```js const x = 1;```) are still caught as code
-        // blocks instead of falling through to the inline-code regex below.
-        html = html.replace(/```([a-zA-Z0-9_-]*)[ \t]*\r?\n?([\s\S]*?)```/g, function (match, lang, code) {
+        // 1. Extract Code Blocks into placeholders (handles CRLF line-endings and trailing whitespaces)
+        html = html.replace(/```([a-zA-Z0-9_-]*)[ \t]*[\r\n]*([\s\S]*?)[\r\n]*```/g, function (match, lang, code) {
             const codeHTML = `<pre class="bg-[#07070a] border border-[#1f1f29] rounded p-3 my-2 overflow-x-auto"><code class="font-mono text-[11px] text-indigo-300 language-${lang || 'plaintext'}">${code.trim()}</code></pre>`;
             return addPlaceholder('code_block', codeHTML);
         });
@@ -426,26 +423,14 @@ document.addEventListener("DOMContentLoaded", function () {
         html = html.replace(/__([^_]+)__/g, '<span class="underline decoration-indigo-500/50">$1</span>');
 
         // 6. Convert Double Newlines to Paragraphs safely (skipping block containers and headings)
-        // FIX: previously only skipped <p>-wrapping when a placeholder sat at the very START of
-        // a block. If the model wrote text and a code fence separated by a single newline (no
-        // blank line), the whole chunk was one block that did NOT start with the placeholder, so
-        // the <pre> code block got nested inside a <p> — invalid HTML that many layouts render
-        // as a collapsed/invisible block instead of a styled code box.
-        // Now every block is split around ANY placeholder token wherever it appears, so block-level
-        // content (code blocks, blockquotes) is never wrapped inside a <p>, regardless of newlines.
         const parts = html.split(/[\r\n]{2,}/);
         const formattedParts = parts.map(part => {
             const trimmed = part.trim();
             if (!trimmed) return "";
-            if (trimmed.startsWith('<h')) return trimmed;
-
-            const segments = trimmed.split(/(<!--T1ERA_PLACEHOLDER_\d+-->)/g);
-            return segments.map(seg => {
-                if (!seg) return "";
-                if (/^<!--T1ERA_PLACEHOLDER_\d+-->$/.test(seg)) return seg; // leave placeholder untouched
-                const segTrim = seg.trim();
-                return segTrim ? `<p class="mt-2.5 leading-relaxed">${segTrim}</p>` : "";
-            }).filter(Boolean).join('\n');
+            if (trimmed.startsWith('<h') || trimmed.startsWith('<!--T1ERA_PLACEHOLDER_')) {
+                return trimmed;
+            }
+            return `<p class="mt-2.5 leading-relaxed">${trimmed}</p>`;
         });
         html = formattedParts.filter(p => p !== "").join('\n');
 
@@ -461,19 +446,17 @@ document.addEventListener("DOMContentLoaded", function () {
     // -----------------------------------------------------------------
     // 9. EXACT MATCH Centered Chat Message Generation Layouts
     // -----------------------------------------------------------------
-    function createCenteredMessageBubble(sender, content, generationTimeSec = "0.0") {
+    function createCenteredMessageBubble(sender, content, generationTimeSec = "0.0", persist = true) {
         const now = new Date();
         const timestamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         const wrapper = document.createElement("div");
-        // Outer wrapper padding matches the prompt box area padding (`px-6`)
         wrapper.className = "w-full px-6 py-4";
 
         const isUser = sender === "user";
         const speakerLabel = isUser ? "YOU" : (dropdownModel ? dropdownModel.options[dropdownModel.selectedIndex].text.toUpperCase() : "T1ERA AI");
         const headerClass = isUser ? "user" : "assistant";
 
-        // Structured inside reading viewport strictly locking to max-w-3xl, mx-auto, w-full
         wrapper.innerHTML = `
             <div class="max-w-3xl w-full mx-auto flex flex-col gap-2">
                 <div class="ai-studio-msg-box relative w-full">
@@ -536,15 +519,133 @@ document.addEventListener("DOMContentLoaded", function () {
             chatFeed.scrollTop = chatFeed.scrollHeight;
         }
 
+        if (persist) {
+            savePersistedHistory();
+        }
+
         return wrapper;
     }
 
     // -----------------------------------------------------------------
-    // 10. Live Backend Prompt Lab Execution Loop
+    // 10. Intelligent Context & Memory Infrastructure
+    // -----------------------------------------------------------------
+    
+    // Serializes active chatHistory stack straight to local browser storage
+    function savePersistedHistory() {
+        localStorage.setItem("t1era_ai_studio_chat_history", JSON.stringify(chatHistory));
+    }
+
+    // Deserializes and re-draws stored history blocks upon page hydration
+    function loadPersistedHistory() {
+        const saved = localStorage.getItem("t1era_ai_studio_chat_history");
+        if (!saved) return;
+        try {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                chatHistory = parsed;
+                
+                // Collapse welcome banner immediately since active history exists
+                const welcomePane = document.querySelector(".ai-studio-welcome-pane");
+                if (welcomePane) {
+                    welcomePane.style.display = "none";
+                }
+
+                chatHistory.forEach(turn => {
+                    if (turn.role === "user") {
+                        createCenteredMessageBubble("user", turn.content, "0.0", false);
+                    } else if (turn.role === "assistant") {
+                        createCenteredMessageBubble("assistant", parseMarkdownToHTML(turn.content), "0.0", false);
+                    }
+                });
+                logToTerminal(`Restored ${chatHistory.length} active discussion bubbles from LocalStorage thread memory.`, "success");
+            }
+        } catch (err) {
+            console.error("Context restore failure:", err);
+        }
+    }
+
+    // Resolves simple numerical selections (e.g. "5" -> "5 (Context Selection: Option 5 - 'Exit')")
+    function resolveOptionSelectionContext(userInput) {
+        const targetText = userInput.trim();
+        const numMatch = targetText.match(/^(\d+)$/);
+        const optMatch = targetText.match(/^option\s*(\d+)$/i);
+        const optionNumber = numMatch ? numMatch[1] : (optMatch ? optMatch[1] : null);
+
+        if (!optionNumber) return userInput;
+
+        // Traverse history backward to extract the last AI instruction list block
+        let lastAiContent = null;
+        for (let i = chatHistory.length - 1; i >= 0; i--) {
+            if (chatHistory[i].role === "assistant") {
+                lastAiContent = chatHistory[i].content;
+                break;
+            }
+        }
+
+        if (!lastAiContent) return userInput;
+
+        // Parse list formats matching `5.` or `5)`
+        const lines = lastAiContent.split(/[\r\n]+/);
+        const listPattern = new RegExp(`^\\s*${optionNumber}[\\.\\)]\\s*(.*)$`, 'i');
+        
+        for (const line of lines) {
+            const match = line.match(listPattern);
+            if (match) {
+                const resolvedLabel = match[1].trim();
+                logToTerminal(`Context Tracker: Resolved choice '${userInput}' -> option text: '${resolvedLabel}'`, "success");
+                return `${userInput} (Selection Reference Context: Option ${optionNumber} - "${resolvedLabel}")`;
+            }
+        }
+        return userInput;
+    }
+
+    // Tracks keyword topic overlap changes, warning of context shifts in the terminal
+    let activeTopicKeywords = [];
+    function trackTopicKeywordsShift(newPromptText) {
+        const stopWords = ["the", "and", "but", "for", "with", "this", "that", "you", "are", "have", "not", "make", "create", "write", "code"];
+        const cleanWords = newPromptText.toLowerCase()
+            .replace(/[^a-zA-Z0-9\s]/g, "")
+            .split(/\s+/)
+            .filter(w => w.length > 2 && !stopWords.includes(w));
+
+        if (cleanWords.length === 0) return; // Short message/continuation
+
+        if (activeTopicKeywords.length > 0) {
+            const intersection = cleanWords.filter(w => activeTopicKeywords.includes(w));
+            const overlapRatio = intersection.length / Math.min(cleanWords.length, activeTopicKeywords.length);
+            
+            if (overlapRatio < 0.15 && cleanWords.length > 2) {
+                logToTerminal("System Context Shift: User changed discussion focus area.", "warning");
+            }
+        }
+        activeTopicKeywords = cleanWords;
+    }
+
+    // Inspects user prompt for graphic drawing triggers
+    function detectImageGenerationIntent(promptText) {
+        const clean = promptText.trim().toLowerCase();
+        const triggers = [
+            "generate an image of", "generate image of", 
+            "create an image of", "create image of",
+            "draw a picture of", "draw an image of",
+            "paint a picture of", "make a drawing of",
+            "illustrate a", "/image"
+        ];
+        
+        for (const trigger of triggers) {
+            if (clean.startsWith(trigger)) {
+                return promptText.substring(trigger.length).trim();
+            }
+        }
+        return null;
+    }
+
+    // -----------------------------------------------------------------
+    // 11. Live Backend Prompt Lab Execution Loop
     // -----------------------------------------------------------------
     async function handleSendPrompt() {
         if (!promptInput) return;
-        const rawText = promptInput.value.trim();
+        const rawText = promptInput.value.strip ? promptInput.value.strip() : promptInput.value.trim();
         if (!rawText && !attachedFileMetadata) return;
 
         // Clear welcome helper splash block on first execution run
@@ -554,6 +655,15 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         const isMiniModel = dropdownModel && (dropdownModel.value === "gpt-5.4-mini");
+
+        // Step A: Parse user's selection context heuristics (Option tracking)
+        const resolvedText = resolveOptionSelectionContext(rawText);
+
+        // Step B: Evaluate discussion context shifts
+        trackTopicKeywordsShift(rawText);
+
+        // Step C: Check if intent is general image generation
+        const imagePrompt = detectImageGenerationIntent(rawText);
 
         // Format message appending references if attached
         let messageOutput = rawText;
@@ -571,7 +681,7 @@ document.addEventListener("DOMContentLoaded", function () {
         createCenteredMessageBubble("user", messageOutput, "0.0");
 
         // Save into local history array for back-and-forth continuity
-        chatHistory.push({ role: "user", content: rawText + attachmentSegment });
+        chatHistory.push({ role: "user", content: resolvedText + attachmentSegment });
 
         // Clear inputs
         promptInput.value = "";
@@ -586,11 +696,61 @@ document.addEventListener("DOMContentLoaded", function () {
                 <div class="w-1.5 h-1.5 bg-amber-400 rounded-full animate-ping"></div>
                 <span class="loading-status-text">Analyzing instructions & dispatching query...</span>
             </div>
-        `);
+        `, "0.0", false); // Do not persist the loading state
 
         const loadingStatusEl = assistantBubble.querySelector(".loading-status-text");
 
-        // If not mini-model (not live yet), return standard local mock response template
+        // Case 1: Handle live Image Generation Route
+        if (imagePrompt) {
+            if (loadingStatusEl) loadingStatusEl.innerText = "Connecting to universal graphic engine (DALL-E)...";
+            logToTerminal(`AI Studio Image: Requesting universal graphic model for prompt: "${imagePrompt}"`, "system");
+
+            try {
+                const imgResponse = await fetch(`${RENDER_BACKEND_URL}/api/ai-studio/generate-image`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ prompt: imagePrompt })
+                });
+
+                if (!imgResponse.ok) {
+                    throw new Error(`Server returned error status: ${imgResponse.status}`);
+                }
+
+                const imgData = await imgResponse.json();
+                if (imgData.success) {
+                    const duration = ((performance.now() - startTime) / 1000).toFixed(1);
+                    const htmlCard = `
+                        <div class="space-y-3">
+                            <p class="text-xs text-neutral-300">Here is your auto-generated drawing illustration:</p>
+                            <div class="rounded-lg overflow-hidden border border-[#1f1f29] shadow-2xl max-w-sm my-2 bg-neutral-900">
+                                <img src="${imgData.image_url}" class="w-full h-auto object-cover cursor-zoom-in" alt="Universal generated card" onclick="window.open(this.src)">
+                            </div>
+                        </div>
+                    `;
+                    
+                    const contentBody = assistantBubble.querySelector(".ai-studio-box-body");
+                    if (contentBody) contentBody.innerHTML = htmlCard;
+
+                    const outsideMeta = assistantBubble.querySelector(".ai-studio-outside-meta");
+                    if (outsideMeta) {
+                        const now = new Date();
+                        outsideMeta.innerHTML = `<span>[${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}]</span><span>•</span><span>${duration}s response</span>`;
+                    }
+
+                    // Save assistant message to chat history
+                    chatHistory.push({ role: "assistant", content: `Image generation: ${imagePrompt}` });
+                    savePersistedHistory();
+                    logToTerminal("AI Studio universal image retrieved.", "success");
+                }
+            } catch (err) {
+                logToTerminal(`AI Studio graphic process failed: ${err.message}`, "error");
+                const contentBody = assistantBubble.querySelector(".ai-studio-box-body");
+                if (contentBody) contentBody.innerHTML = `<span class="text-red-400 font-mono">Image Generation Failure: ${err.message}</span>`;
+            }
+            return;
+        }
+
+        // Case 2: Handle fallback mock model
         if (!isMiniModel) {
             setTimeout(() => {
                 const totalSec = "1.2";
@@ -608,6 +768,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         <span>${totalSec}s response</span>
                     `;
                 }
+                chatHistory.push({ role: "assistant", content: "==T1ERA-Ultra-v2== is currently inactive." });
+                savePersistedHistory();
                 logToTerminal("Mock model executed.", "success");
             }, 1000);
             return;
@@ -680,18 +842,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 throw new Error(data.error || "Generation error.");
             }
 
-            // FIX: some backends forward the raw provider response shape (e.g. an array of
-            // content blocks like [{type:"text", text:"..."}]) instead of a plain string.
-            // Normalize here so parseMarkdownToHTML always receives a string.
-            let aiText = data.content;
-            if (Array.isArray(aiText)) {
-                aiText = aiText
-                    .filter(block => block && block.type === "text" && typeof block.text === "string")
-                    .map(block => block.text)
-                    .join("\n\n");
-            } else if (typeof aiText !== "string") {
-                aiText = String(aiText ?? "");
-            }
+            const aiText = data.content;
             
             // Save inside local log history
             chatHistory.push({ role: "assistant", content: aiText });
@@ -717,6 +868,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 `;
             }
 
+            savePersistedHistory();
             logToTerminal("Live backend response packets retrieved successfully.", "success");
 
         } catch (err) {
@@ -755,6 +907,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (btnClear) {
         btnClear.addEventListener("click", function () {
             chatHistory = [];
+            localStorage.removeItem("t1era_ai_studio_chat_history");
             if (chatFeed) {
                 chatFeed.innerHTML = `
                     <div class="ai-studio-welcome-pane max-w-3xl mx-auto text-center py-10 space-y-4">
@@ -773,5 +926,8 @@ document.addEventListener("DOMContentLoaded", function () {
             logToTerminal("Clear prompt log feed.", "warning");
         });
     }
+
+    // Hydrate saved conversations straight out of storage on startup
+    loadPersistedHistory();
 
 });
