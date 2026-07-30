@@ -242,11 +242,72 @@ document.addEventListener("DOMContentLoaded", function () {
         return files;
     }
 
-    if (btnAttach && fileUploadInput) {
-        btnAttach.addEventListener("click", function (e) {
-            e.stopPropagation();
-            fileUploadInput.click(); // Trigger universal file input selection directly
-        });
+    // Downsamples and compresses high-resolution images down to standard vision-friendly 20KB-40KB sizes
+    function compressImageAndGetBase64(file, callback) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const img = new Image();
+            img.onload = function () {
+                const canvas = document.createElement("canvas");
+                let width = img.width;
+                let height = img.height;
+                const maxDimension = 600; // Standard vision model baseline width
+
+                if (width > maxDimension || height > maxDimension) {
+                    if (width > height) {
+                        height = Math.round((height * maxDimension) / width);
+                        width = maxDimension;
+                    } else {
+                        width = Math.round((width * maxDimension) / height);
+                        height = maxDimension;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Export as compressed standard JPEG to keep payload small
+                const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.7);
+                callback(compressedDataUrl);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // Helper to render dynamic previews inside the attachment bar
+    function renderUploadPreview(file, displayUrl) {
+        if (uploadedFileName && uploadPreview) {
+            let previewHTML = "";
+            if (file.type.startsWith("image/")) {
+                previewHTML = `<img src="${displayUrl || '#'}" class="w-8 h-8 rounded object-cover border border-indigo-500/30 flex-shrink-0">`;
+            } else if (file.type.startsWith("video/")) {
+                previewHTML = `
+                    <div class="w-8 h-8 rounded bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 flex-shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    </div>
+                `;
+            } else {
+                previewHTML = `
+                    <div class="w-8 h-8 rounded bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                    </div>
+                `;
+            }
+
+            uploadedFileName.innerHTML = `
+                <div class="flex items-center gap-2.5">
+                    ${previewHTML}
+                    <div class="flex flex-col min-w-0">
+                        <span class="truncate font-semibold text-white text-[11px] leading-snug">${file.name}</span>
+                        <span class="text-[9px] text-neutral-500 uppercase font-mono tracking-wider">${file.type || "BINARY DOC"} • ${(file.size / 1024).toFixed(1)} KB</span>
+                    </div>
+                </div>
+            `;
+            uploadPreview.classList.remove("hidden");
+        }
     }
 
     if (fileUploadInput) {
@@ -258,99 +319,53 @@ document.addEventListener("DOMContentLoaded", function () {
             const isTextType = file.type.startsWith("text/") || 
                                /\.(json|js|ts|py|html|css|md|yaml|yml|txt)$/i.test(file.name);
 
-            reader.onload = function(evt) {
-                attachedFileMetadata = {
-                    name: file.name,
-                    type: file.type || "application/octet-stream",
-                    size: file.size,
-                    content: isTextType ? evt.target.result : null,
-                    dataUrl: isTextType ? null : evt.target.result
-                };
+            const isImageType = file.type.startsWith("image/");
 
-                // Render dynamic visual preview depending on file MIME formats
-                if (uploadedFileName && uploadPreview) {
-                    let previewHTML = "";
-                    if (file.type.startsWith("image/")) {
-                        previewHTML = `<img src="${evt.target.result}" class="w-8 h-8 rounded object-cover border border-indigo-500/30 flex-shrink-0">`;
-                    } else if (file.type.startsWith("video/")) {
-                        previewHTML = `
-                            <div class="w-8 h-8 rounded bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 flex-shrink-0">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                            </div>
-                        `;
-                    } else {
-                        previewHTML = `
-                            <div class="w-8 h-8 rounded bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 flex-shrink-0">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-                            </div>
-                        `;
-                    }
+            logToTerminal(`Processing attached file: ${file.name}...`, "info");
 
-                    uploadedFileName.innerHTML = `
-                        <div class="flex items-center gap-2.5">
-                            ${previewHTML}
-                            <div class="flex flex-col min-w-0">
-                                <span class="truncate font-semibold text-white text-[11px] leading-snug">${file.name}</span>
-                                <span class="text-[9px] text-neutral-500 uppercase font-mono tracking-wider">${file.type || "BINARY DOC"} • ${(file.size / 1024).toFixed(1)} KB</span>
-                            </div>
-                        </div>
-                    `;
-                    uploadPreview.classList.remove("hidden");
-                }
-                logToTerminal(`Imported file context: ${file.name} (${file.type || "unknown"})`, "info");
-            };
-
-            // Read as text or Base64 data URL depending on evaluated layout
             if (isTextType) {
+                reader.onload = function(evt) {
+                    attachedFileMetadata = {
+                        name: file.name,
+                        type: file.type || "text/plain",
+                        size: file.size,
+                        content: evt.target.result,
+                        dataUrl: null,
+                        displayUrl: null
+                    };
+                    renderUploadPreview(file, null);
+                };
                 reader.readAsText(file);
+            } else if (isImageType) {
+                // Compress image asynchronously to protect the context window
+                const displayUrl = URL.createObjectURL(file); // Crisp fast local display URL
+                compressImageAndGetBase64(file, function(compressedBase64) {
+                    attachedFileMetadata = {
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        content: null,
+                        dataUrl: compressedBase64, // Small compressed payload (~30KB)
+                        displayUrl: displayUrl // Crisp high-res local preview
+                    };
+                    renderUploadPreview(file, displayUrl);
+                });
             } else {
+                // Standard binary file
+                reader.onload = function(evt) {
+                    attachedFileMetadata = {
+                        name: file.name,
+                        type: file.type || "application/octet-stream",
+                        size: file.size,
+                        content: null,
+                        dataUrl: evt.target.result,
+                        displayUrl: null
+                    };
+                    renderUploadPreview(file, null);
+                };
                 reader.readAsDataURL(file);
             }
         });
-    }
-
-    if (btnRemoveUpload) {
-        btnRemoveUpload.addEventListener("click", function (e) {
-            e.stopPropagation();
-            attachedFileMetadata = null;
-            if (fileUploadInput) fileUploadInput.value = "";
-            if (uploadPreview) uploadPreview.classList.add("hidden");
-            logToTerminal("AI Studio removed reference context.", "warning");
-        });
-    }
-
-    // -----------------------------------------------------------------
-    // 6. Voice Input Mock (Speech Recognition)
-    // -----------------------------------------------------------------
-    if (btnVoice) {
-        btnVoice.addEventListener("click", function (e) {
-            e.stopPropagation();
-            isRecordingSpeech = !isRecordingSpeech;
-            
-            if (isRecordingSpeech) {
-                btnVoice.classList.add("recording-pulse");
-                if (micActiveDot) micActiveDot.classList.remove("hidden");
-                logToTerminal("Speech recognition activated in prompt lab. Dictate now.", "system");
-                
-                setTimeout(() => {
-                    if (isRecordingSpeech && promptInput) {
-                        const dictationResult = "Write a standardized vocabulary checklist for primary age demographics.";
-                        promptInput.value = promptInput.value ? `${promptInput.value} ${dictationResult}` : dictationResult;
-                        promptInput.dispatchEvent(new Event('input'));
-                        stopRecordingMock();
-                    }
-                }, 3500);
-            } else {
-                stopRecordingMock();
-            }
-        });
-    }
-
-    function stopRecordingMock() {
-        isRecordingSpeech = false;
-        if (btnVoice) btnVoice.classList.remove("recording-pulse");
-        if (micActiveDot) micActiveDot.classList.add("hidden");
-        logToTerminal("Speech recognition closed.", "system");
     }
 
     // -----------------------------------------------------------------
@@ -870,24 +885,36 @@ document.addEventListener("DOMContentLoaded", function () {
         if (attachedFileMetadata) {
             // Support both Base64 inline segments and plain text code parsing beautifully
             if (attachedFileMetadata.dataUrl) {
-                attachmentSegment = `\n\n=== ATTACHED MULTIMODAL MEDIA CONTEXT ===\nFilename: ${attachedFileMetadata.name}\nMIME Type: ${attachedFileMetadata.type}\nData URI Payload:\n${attachedFileMetadata.dataUrl}`;
+                let safeDataUrl = attachedFileMetadata.dataUrl;
+                
+                // Safe context window truncation guard
+                if (safeDataUrl.length > 120000) {
+                    safeDataUrl = safeDataUrl.substring(0, 120000) + "\n... [Binary content truncated to protect model context window limits] ...";
+                }
                 
                 const isImageFile = attachedFileMetadata.type.startsWith("image/");
                 const isVideoFile = attachedFileMetadata.type.startsWith("video/");
                 
                 if (isImageFile) {
+                    // Send the highly compressed background dataUrl to the model, but render the high-res local image for display
+                    attachmentSegment = `\n\n=== ATTACHED IMAGE CONTEXT ===\nFilename: ${attachedFileMetadata.name}\nMIME Type: ${attachedFileMetadata.type}\nData URL (Compressed Payload):\n${attachedFileMetadata.dataUrl}`;
+                    
                     messageOutput += `
                         <div class="mt-3 rounded-lg overflow-hidden border border-[#1f1f29] max-w-sm bg-neutral-900 shadow-lg">
-                            <img src="${attachedFileMetadata.dataUrl}" class="w-full h-auto object-cover cursor-zoom-in" alt="Attached preview" onclick="zoomAIStudioImage(this.src)">
+                            <img src="${attachedFileMetadata.displayUrl}" class="w-full h-auto object-cover cursor-zoom-in" alt="Attached preview" onclick="zoomAIStudioImage(this.src)">
                         </div>
                     `;
                 } else if (isVideoFile) {
+                    attachmentSegment = `\n\n=== ATTACHED VIDEO CONTEXT ===\nFilename: ${attachedFileMetadata.name}\nMIME Type: ${attachedFileMetadata.type}\nData URL Payload:\n${safeDataUrl}`;
+                    
                     messageOutput += `
                         <div class="mt-3 rounded-lg overflow-hidden border border-[#1f1f29] max-w-sm bg-neutral-900 shadow-lg">
                             <video src="${attachedFileMetadata.dataUrl}" controls class="w-full h-auto max-h-[240px]"></video>
                         </div>
                     `;
                 } else {
+                    attachmentSegment = `\n\n=== ATTACHED FILE CONTEXT ===\nFilename: ${attachedFileMetadata.name}\nMIME Type: ${attachedFileMetadata.type}\nPayload:\n${safeDataUrl}`;
+                    
                     messageOutput += `
                         <div class="mt-2.5 flex items-center gap-2 p-2 bg-neutral-900 border border-[#1f1f29] rounded text-[10px] text-neutral-300 font-mono w-fit">
                             <svg class="w-4 h-4 text-indigo-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
