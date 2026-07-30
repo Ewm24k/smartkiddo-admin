@@ -426,6 +426,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const timestamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         const wrapper = document.createElement("div");
+        // Outer wrapper padding matches the prompt box area padding (`px-6`)
         wrapper.className = "w-full px-6 py-4";
 
         const isUser = sender === "user";
@@ -591,7 +592,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const payload = {
                 messages: chatHistory,
                 workspace_context: contextPayload,
-                system_prompt: systemInstructions || None
+                system_prompt: systemInstructions || null
             };
 
             const response = await fetch(`${RENDER_BACKEND_URL}/api/chat`, {
