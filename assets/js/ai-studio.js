@@ -379,7 +379,7 @@ document.addEventListener("DOMContentLoaded", function () {
     syncActiveExtensionsBadge();
 
     // -----------------------------------------------------------------
-    // 8. Markdown Parsing Utility
+    // 8. Markdown Parsing Utility (Protected Block Placeholder Token Pipeline)
     // -----------------------------------------------------------------
     function parseMarkdownToHTML(text) {
         let html = text;
@@ -387,35 +387,63 @@ document.addEventListener("DOMContentLoaded", function () {
         // Escape raw HTML tags to prevent formatting injection attacks
         html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-        // Highlight parsing syntax mapping ==highlight==
-        html = html.replace(/==([^==\n]+)==/g, '<mark class="bg-amber-500/15 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/20">$1</mark>');
-
-        // Code blocks formatting ```javascript ... ```
-        html = html.replace(/```([a-zA-Z0-9]*)\n([\s\S]*?)\n```/g, function (match, lang, code) {
-            return `<pre class="bg-[#07070a] border border-[#1f1f29] rounded p-3 my-2 overflow-x-auto"><code class="font-mono text-[11px] text-indigo-300 language-${lang}">${code}</code></pre>`;
+        // 1. Extract Code Blocks into placeholders to prevent paragraph or highlight corruption
+        const codeBlocks = [];
+        html = html.replace(/```([a-zA-Z0-9_-]*)\s*[\r\n]+([\s\S]*?)[\r\n]+```/g, function (match, lang, code) {
+            const placeholder = `<!--CODE_BLOCK_PLACEHOLDER_${codeBlocks.length}-->`;
+            codeBlocks.push({
+                lang: lang || 'plaintext',
+                code: code
+            });
+            return placeholder;
         });
 
-        // Inline code segment mapping `code`
-        html = html.replace(/`([^`\n]+)`/g, '<code class="bg-[#0b0b0f] border border-[#1f1f29] px-1 rounded text-[11px] text-pink-400 font-mono">$1</code>');
+        // 2. Extract Blockquotes
+        const blockquotes = [];
+        html = html.replace(/^&gt;\s+(.*)$/gm, function (match, content) {
+            const placeholder = `<!--BLOCKQUOTE_PLACEHOLDER_${blockquotes.length}-->`;
+            blockquotes.push(content);
+            return placeholder;
+        });
 
-        // Quote block mapping > quote
-        html = html.replace(/^&gt;\s+(.*)$/gm, '<blockquote class="border-l-3 border-indigo-500 bg-indigo-500/5 pl-3 py-1.5 italic text-neutral-400 rounded-r my-2">$1</blockquote>');
-
-        // Heading tags mapping #, ##, ###
+        // 3. Process Header elements (before splitting paragraphs)
         html = html.replace(/^###\s+(.*)$/gm, '<h4 class="text-sm font-bold text-white mt-3 mb-1.5">$1</h4>');
         html = html.replace(/^##\s+(.*)$/gm, '<h3 class="text-base font-extrabold text-white mt-4 mb-2">$1</h3>');
         html = html.replace(/^#\s+(.*)$/gm, '<h2 class="text-lg font-black text-indigo-400 mt-5 mb-3 border-b border-[#1f1f29] pb-1">$1</h2>');
 
-        // Bold formatting mapping **bold**
+        // 4. Process inline elements
+        html = html.replace(/==([^==\n]+)==/g, '<mark class="bg-amber-500/15 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/20">$1</mark>');
+        html = html.replace(/`([^`\n]+)`/g, '<code class="bg-[#0b0b0f] border border-[#1f1f29] px-1 rounded text-[11px] text-pink-400 font-mono">$1</code>');
         html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-white font-bold">$1</strong>');
-
-        // Underline formatting mapping __underline__
         html = html.replace(/__([^_]+)__/g, '<span class="underline decoration-indigo-500/50">$1</span>');
 
-        // Split text raw lines into paragraph blocks mapping double-newlines \n\n
-        html = html.replace(/\n\n/g, '</p><p class="mt-2.5">');
+        // 5. Convert Double Newlines to Paragraphs safely (skipping block containers)
+        const parts = html.split(/[\r\n]{2,}/);
+        const formattedParts = parts.map(part => {
+            const trimmed = part.trim();
+            if (!trimmed) return "";
+            if (trimmed.startsWith('<h') || trimmed.startsWith('<!--CODE_BLOCK_PLACEHOLDER') || trimmed.startsWith('<!--BLOCKQUOTE_PLACEHOLDER')) {
+                return trimmed;
+            }
+            return `<p class="mt-2.5 leading-relaxed">${trimmed}</p>`;
+        });
+        html = formattedParts.filter(p => p !== "").join('\n');
 
-        return `<p>${html}</p>`;
+        // 6. Restore Blockquotes
+        blockquotes.forEach((content, index) => {
+            const placeholder = `<!--BLOCKQUOTE_PLACEHOLDER_${index}-->`;
+            const blockquoteHTML = `<blockquote class="border-l-3 border-indigo-500 bg-indigo-500/5 pl-3 py-1.5 italic text-neutral-400 rounded-r my-2">${content}</blockquote>`;
+            html = html.replace(placeholder, blockquoteHTML);
+        });
+
+        // 7. Restore Code Blocks
+        codeBlocks.forEach((item, index) => {
+            const placeholder = `<!--CODE_BLOCK_PLACEHOLDER_${index}-->`;
+            const codeHTML = `<pre class="bg-[#07070a] border border-[#1f1f29] rounded p-3 my-2 overflow-x-auto"><code class="font-mono text-[11px] text-indigo-300 language-${item.lang}">${item.code}</code></pre>`;
+            html = html.replace(placeholder, codeHTML);
+        });
+
+        return html;
     }
 
     // -----------------------------------------------------------------
