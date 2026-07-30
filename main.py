@@ -281,7 +281,7 @@ def sanitize_and_inject_style(image_prompt: str, selected_style: str) -> str:
     return f"{style_expansion}, {prompt}"
 
 # -----------------------------------------------------------------
-# Endpoint 1: Sync (GET) - Pull repository structure
+# Endpoint 1: Sync (GET) - Pull repository structure (Non-blocking I/O)
 # -----------------------------------------------------------------
 @app.get("/api/sync")
 async def sync_github(repo: Optional[str] = None):
@@ -454,10 +454,10 @@ async def stream_media(path: str, repo: Optional[str] = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 # -----------------------------------------------------------------
-# Endpoint 4: AI Agent Chat Integration (With advanced memory parsing) [2]
+# Endpoint 4: AI Agent Chat Integration (Threaded Worker Pool)
 # -----------------------------------------------------------------
 @app.post("/api/chat")
-async def ai_chat_completion(chat_req: ChatRequest):
+def ai_chat_completion(chat_req: ChatRequest):
     if not openai_client:
         return {"error": "OpenAI Client is not initialized on backend. Please configure OPENAI_API_KEY environment variable on Render.", "success": False}
     try:
@@ -567,10 +567,10 @@ async def ai_chat_completion(chat_req: ChatRequest):
         return {"error": str(e), "success": False}
 
 # -----------------------------------------------------------------
-# Endpoint 5: Bedtime Story AI concept & script generator
+# Endpoint 5: Bedtime Story AI concept & script generator (Threaded Worker Pool)
 # -----------------------------------------------------------------
 @app.post("/api/bedtime-story/generate")
-async def generate_bedtime_story(story_req: BedtimeStoryRequest):
+def generate_bedtime_story(story_req: BedtimeStoryRequest):
     if not openai_client:
         return {"error": "OpenAI Client is not initialized on backend. Ensure OPENAI_API_KEY environment variable is active on Render.", "success": False}
     try:
@@ -679,10 +679,10 @@ async def generate_bedtime_story(story_req: BedtimeStoryRequest):
         return {"error": str(e), "success": False}
 
 # -----------------------------------------------------------------
-# Endpoint 6: Bedtime Story Voice Generator (OpenAI TTS or ElevenLabs for BM)
+# Endpoint 6: Bedtime Story Voice Generator (Threaded Worker Pool)
 # -----------------------------------------------------------------
 @app.post("/api/bedtime-story/generate-voice")
-async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
+def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
     try:
         clean_text = voice_req.text.strip()
         if len(clean_text) > 3500:
@@ -699,7 +699,6 @@ async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
             print(f"[TTS Warning] Requested voice '{requested_voice}' is unsupported. Falling back to 'nova'.")
             requested_voice = "nova"
 
-        # Determine whether to use ElevenLabs (strictly for Bahasa Melayu) or OpenAI TTS (for English / fallback)
         use_elevenlabs = (voice_req.story_language == "ms")
 
         if use_elevenlabs:
@@ -710,8 +709,6 @@ async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
                     detail="ELEVENLABS_API_KEY is missing on Render. Please configure it to enable Bahasa Melayu voice generation."
                 )
 
-            # Standard pre-made Free-Tier voice Rachel (21m00Tcm4TlvDq8ikWAM) to avoid 402 paid plan limits
-            # Rachel is whitelisted for free-tier API accounts and is fully multilingual.
             voice_id = "21m00Tcm4TlvDq8ikWAM"
             print(f"[TTS Debug] Executing ElevenLabs voice generation | Voice ID: '{voice_id}'")
 
@@ -722,7 +719,7 @@ async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
             }
             payload = {
                 "text": clean_text,
-                "model_id": "eleven_multilingual_v2",  # Best high-fidelity model fluent in Bahasa Melayu
+                "model_id": "eleven_multilingual_v2",
                 "voice_settings": {
                     "stability": 0.5,
                     "similarity_boost": 0.75,
@@ -731,8 +728,9 @@ async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
                 }
             }
             
-            async with httpx.AsyncClient() as client:
-                response = await client.post(url, headers=headers, json=payload, timeout=30.0)
+            # Use synchronous HTTP client on the thread pool to prevent async locks
+            with httpx.Client() as client:
+                response = client.post(url, headers=headers, json=payload, timeout=30.0)
                 if response.status_code != 200:
                     error_msg = response.text
                     print(f"[TTS Error] ElevenLabs API error response: {error_msg}")
@@ -747,7 +745,7 @@ async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
                 return {
                     "success": True,
                     "audio": f"data:audio/mp3;base64,{base64_audio}",
-                    "source": "elevenlabs"  # Explicitly report source so frontend is certain
+                    "source": "elevenlabs"
                 }
 
         else:
@@ -784,7 +782,7 @@ async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
             return {
                 "success": True,
                 "audio": f"data:audio/{voice_req.response_format};base64,{base64_audio}",
-                "source": "openai"  # Explicitly report source so frontend is certain
+                "source": "openai"
             }
             
     except HTTPException as he:
@@ -794,10 +792,10 @@ async def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 # -----------------------------------------------------------------
-# Endpoint 7: Bedtime Storyboard Planner (Enforces strict visual character consistency sheets)
+# Endpoint 7: Bedtime Storyboard Planner (Threaded Worker Pool)
 # -----------------------------------------------------------------
 @app.post("/api/bedtime-story/plan-storyboard")
-async def plan_storyboard(req: StoryboardPlanRequest):
+def plan_storyboard(req: StoryboardPlanRequest):
     if not openai_client:
         return {"error": "OpenAI Client is not initialized on backend.", "success": False}
     try:
@@ -841,7 +839,6 @@ async def plan_storyboard(req: StoryboardPlanRequest):
             f"}}\n"
         )
 
-        # Dynamic Route for Storyboard planning based on language (avoids reasoning-template 400 parameters errors) [2]
         if req.story_language == "ms":
             response = openai_client.chat.completions.create(
                 model="gpt-4o",
@@ -886,10 +883,10 @@ async def plan_storyboard(req: StoryboardPlanRequest):
         return {"error": str(e), "success": False}
 
 # -----------------------------------------------------------------
-# Endpoint 8: Sequential Storyboard Scene Image Generator (One-by-One, Real API)
+# Endpoint 8: Sequential Storyboard Scene Image Generator (Threaded Worker Pool)
 # -----------------------------------------------------------------
 @app.post("/api/bedtime-story/generate-scene")
-async def generate_single_scene(req: SingleSceneGenerationRequest):
+def generate_single_scene(req: SingleSceneGenerationRequest):
     if not openai_client:
         raise HTTPException(status_code=500, detail="OpenAI Client is not initialized on backend.")
     try:
@@ -902,15 +899,12 @@ async def generate_single_scene(req: SingleSceneGenerationRequest):
         
         print(f"[Storyboard Art Debug] Generating Scene {req.scene_number} | Prompt: {full_prompt[:70]}...")
 
-        loop = asyncio.get_event_loop()
-        def sync_call():
-            return openai_client.images.generate(
-                model="gpt-image-1-mini",
-                prompt=full_prompt,
-                quality="low",  # Cost-saving $0.005 tier
-                size="1536x1024"  # Webapp Widescreen Aspect-Video Size
-            )
-        response = await loop.run_in_executor(None, sync_call)
+        response = openai_client.images.generate(
+            model="gpt-image-1-mini",
+            prompt=full_prompt,
+            quality="low",  # Cost-saving $0.005 tier
+            size="1536x1024"  # Webapp Widescreen Aspect-Video Size
+        )
         
         img_item = response.data[0]
         if hasattr(img_item, "b64_json") and img_item.b64_json:
@@ -919,7 +913,7 @@ async def generate_single_scene(req: SingleSceneGenerationRequest):
         elif hasattr(img_item, "url") and img_item.url:
             image_url = img_item.url
         else:
-            raise ValueError("No valid image payload (b64_json or url) found in OpenAI response data.")
+            raise ValueError("No valid image payload found in OpenAI response data.")
         
         return {
             "success": True,
@@ -928,7 +922,6 @@ async def generate_single_scene(req: SingleSceneGenerationRequest):
         }
     except Exception as e:
         print(f"Error generating scene {req.scene_number} illustration: {str(e)}")
-        # Return fallback cartoon vector to make sure execution continues cleanly
         fallback_url = get_cartoon_placeholder(req.scene_number)
         return {
             "success": True,
@@ -938,44 +931,33 @@ async def generate_single_scene(req: SingleSceneGenerationRequest):
         }
 
 # -----------------------------------------------------------------
-# Endpoint 9: Sora 2 Image-to-Video Compiler (Self-Correcting Aspect Ratio & Probing Loop)
+# Endpoint 9: Sora 2 Image-to-Video Compiler (Threaded Worker Pool)
 # -----------------------------------------------------------------
 @app.post("/api/bedtime-story/generate-video")
-async def generate_scene_video(video_req: VideoGenerationRequest):
+def generate_scene_video(video_req: VideoGenerationRequest):
     if not openai_client:
         raise HTTPException(status_code=500, detail="OpenAI Client is not initialized on backend.")
     try:
-        # Force standard Sora 2 duration strictly to 4 seconds maximum.
-        # This provides a stable, budget-friendly 4s base layer matching Sora 2 requirements.
         sora_duration = "4"
-        
-        # Append strict instructions to prompt to block sora-2 from synthesizing music or dialogue
         prompt_with_silent_flags = f"{video_req.prompt}, strictly silent animation, no sound effects, no background music, no voiceover, purely motion-only video segment"
         print(f"[Sora 2 Debug] Input: Scene {video_req.scene_number} | Forcing sora duration: '{sora_duration}' seconds | Prompt: {prompt_with_silent_flags[:50]}...")
 
-        # Architectural Resolution: Download remote URLs and decode local base64 payloads to raw bytes
         image_url_or_base64 = video_req.image_url.strip()
         img_bytes = b""
 
         if image_url_or_base64.startswith("data:image/"):
-            # Base64 WebP/PNG data URI from local caches
             base64_data = re.sub(r"^data:image/.+;base64,", "", image_url_or_base64)
             img_bytes = base64.b64decode(base64_data)
         elif image_url_or_base64.startswith("http://") or image_url_or_base64.startswith("https://"):
-            # Real OpenAI CDN remote HTTP URL. Download raw bytes.
             print(f"[Sora 2 Debug] Downloading remote reference image: {image_url_or_base64[:100]}...")
-            async with httpx.AsyncClient() as client:
-                download_response = await client.get(image_url_or_base64, timeout=25.0)
+            with httpx.Client() as client:
+                download_response = client.get(image_url_or_base64, timeout=25.0)
                 if download_response.status_code != 200:
                     raise HTTPException(status_code=400, detail=f"HTTP download request failed with status: {download_response.status_code}")
                 img_bytes = download_response.content
         else:
-            # Raw base64 string fallback
             img_bytes = base64.b64decode(image_url_or_base64)
 
-        # Automated Resolution Probing Loop:
-        # Sequentially attempts standard landscape (1280x720), portrait (720x1280), or square (1024x1024)
-        # to self-correct and match the default aspect ratio forced by the API gateway/proxy [2]
         size_probe_sequence = [
             {"size": "1280x720", "width": 1280, "height": 720},
             {"size": "720x1280", "width": 720, "height": 1280},
@@ -994,42 +976,29 @@ async def generate_scene_video(video_req: VideoGenerationRequest):
             print(f"[Sora 2 Probing] Attempting model compilation with resolution target size: '{target_size}'")
 
             try:
-                # Load with PIL from cached bytes to allow multiple re-processing runs cleanly [2]
                 img = Image.open(io.BytesIO(img_bytes))
-                
-                # Convert RGBA alpha channels to standard RGB
                 if img.mode in ("RGBA", "P"):
                     img = img.convert("RGB")
                     
-                # Perform high-fidelity Lanczos resize matching active target dimensions [2]
                 img_resized = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
-                
-                # Discard any hidden orientation headers
                 pure_img = Image.new("RGB", (target_w, target_h))
                 pure_img.paste(img_resized)
                 
-                # Save strictly as PNG to a unique path in the temporary directory to bypass lock contentions
                 temp_filename = os.path.join(tempfile.gettempdir(), f"sora_input_{uuid.uuid4().hex}.png")
                 pure_img.save(temp_filename, format="PNG")
                 
-                loop = asyncio.get_event_loop()
-                def start_job():
-                    with open(temp_filename, "rb") as image_file:
-                        return openai_client.videos.create(
-                            model="sora-2",
-                            prompt=prompt_with_silent_flags,
-                            input_reference=image_file, # Corrected parameter keyword
-                            seconds=sora_duration, # Corrected parameter keyword
-                            size=target_size # Dynamic target size parameter [2]
-                        )
-                
-                # Fire request to OpenAI SDK [2]
-                video_job = await loop.run_in_executor(None, start_job)
+                with open(temp_filename, "rb") as image_file:
+                    video_job = openai_client.videos.create(
+                        model="sora-2",
+                        prompt=prompt_with_silent_flags,
+                        input_reference=image_file,
+                        seconds=sora_duration,
+                        size=target_size
+                    )
                 print(f"[Sora 2 Probing] Success! Resolution check passed for size '{target_size}'")
-                break # Exit the probe loop upon successful submission
+                break
 
             except Exception as e:
-                # Clean up local temporary file descriptor safely
                 if temp_filename and os.path.exists(temp_filename):
                     try:
                         os.unlink(temp_filename)
@@ -1038,17 +1007,13 @@ async def generate_scene_video(video_req: VideoGenerationRequest):
                 
                 error_str = str(e)
                 print(f"[Sora 2 Probing Warning] Attempt failed for size '{target_size}': {error_str}")
-                
-                # If the error is a resolution mismatch, continue to the next size probe in sequence [2]
                 if "Inpaint image must match" in error_str:
                     api_error_detail = error_str
                     continue
                 else:
-                    # Terminate immediately on non-resolution errors (like unauthorized keys) to prevent redundant runs
                     raise HTTPException(status_code=400, detail=f"OpenAI Sora 2 API rejected request: {error_str}")
 
         if not video_job:
-            # Reached end of sequence without successful resolution matching
             raise HTTPException(
                 status_code=400,
                 detail=f"All aspect ratio size probing attempts failed. Final Sora 2 Error: {api_error_detail}"
@@ -1057,32 +1022,26 @@ async def generate_scene_video(video_req: VideoGenerationRequest):
         job_id = video_job.id
         print(f"[Sora 2 Debug] Job submitted successfully. ID: '{job_id}'. Polling status...")
 
-        # Poll the job status asynchronously
         max_attempts = 30
         attempt = 0
         video_url = None
-        loop = asyncio.get_event_loop()
         
         try:
             while attempt < max_attempts:
-                await asyncio.sleep(5.0)
+                import time
+                time.sleep(5.0)  # Sleep on the worker thread synchronously
                 attempt += 1
                 
-                def check_status():
-                    return openai_client.videos.retrieve(job_id)
-                    
-                job_status = await loop.run_in_executor(None, check_status)
+                job_status = openai_client.videos.retrieve(job_id)
                 print(f"[Sora 2 Debug] Polling Job '{job_id}' | Attempt {attempt}/{max_attempts} | Status: '{job_status.status}'")
                 
                 if job_status.status == "completed":
-                    # Construct an unauthenticated local proxy URL to stream the binary MP4 content without auth header leaks
                     video_url = f"https://smartkiddo-admin.onrender.com/api/videos/{job_id}/content"
                     break
                 elif job_status.status == "failed":
                     error_detail = getattr(job_status, "error", "Unknown Sora Error")
                     raise ValueError(f"Sora 2 rendering engine failed: {error_detail}")
         finally:
-            # Cleanup local temporary image file cleanly under any circumstances [1, 2]
             if temp_filename and os.path.exists(temp_filename):
                 try:
                     os.unlink(temp_filename)
