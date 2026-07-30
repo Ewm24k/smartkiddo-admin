@@ -16,11 +16,11 @@ from openai import OpenAI
 
 app = FastAPI()
 
-# Enable CORS for frontend clients
+# Enable CORS safely for frontend clients
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,  # Set to False when using ["*"] to prevent FastAPI runtime crash
     allow_methods=["*"],
     allow_headers=["*"],
 )
