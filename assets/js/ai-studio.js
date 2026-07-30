@@ -396,7 +396,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // 1. Extract Code Blocks into placeholders (handles CRLF line-endings and trailing whitespaces)
         html = html.replace(/```([a-zA-Z0-9_-]*)[ \t]*[\r\n]*([\s\S]*?)[\r\n]*```/g, function (match, lang, code) {
-            const codeHTML = `<pre class="bg-[#07070a] border border-[#1f1f29] rounded p-3 my-2 overflow-x-auto"><code class="font-mono text-[11px] text-indigo-300 language-${lang || 'plaintext'}">${code.trim()}</code></pre>`;
+            const cleanLang = lang ? lang.toUpperCase() : "PLAINTEXT";
+            const codeHTML = `
+                <div class="ai-studio-code-container border border-[#1f1f29] rounded-lg overflow-hidden my-3 bg-[#07070a]">
+                    <!-- Code Header -->
+                    <div class="ai-studio-code-header flex items-center justify-between px-3 py-1.5 bg-[#111115] border-b border-[#1f1f29] text-[9px] font-bold text-neutral-400 font-mono select-none">
+                        <span>${cleanLang}</span>
+                        <button class="btn-copy-code flex items-center gap-1 hover:text-white transition-colors" title="Copy Code text">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                            <span>COPY CODE</span>
+                        </button>
+                    </div>
+                    <!-- Code Body -->
+                    <pre class="p-3 m-0 overflow-x-auto"><code class="font-mono text-[11px] text-indigo-300 language-${lang || 'plaintext'}">${code.trim()}</code></pre>
+                </div>
+            `;
             return addPlaceholder('code_block', codeHTML);
         });
 
@@ -451,6 +465,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const timestamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         const wrapper = document.createElement("div");
+        // Outer wrapper padding matches the prompt box area padding (`px-6`)
         wrapper.className = "w-full px-6 py-4";
 
         const isUser = sender === "user";
@@ -492,7 +507,7 @@ document.addEventListener("DOMContentLoaded", function () {
             </div>
         `;
 
-        // Bind Copy Button Clipboard trigger
+        // Bind Message Block copy to clipboard trigger
         const copyBtn = wrapper.querySelector(".btn-copy-msg");
         if (copyBtn) {
             copyBtn.addEventListener("click", function() {
@@ -500,7 +515,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (textBody) {
                     const textToCopy = textBody.innerText;
                     navigator.clipboard.writeText(textToCopy).then(() => {
-                        logToTerminal("Message copied to clipboard.", "success");
+                        showToastNotification("Message copied to clipboard!");
                         copyBtn.classList.remove("text-neutral-500");
                         copyBtn.classList.add("text-emerald-400");
                         setTimeout(() => {
@@ -513,6 +528,34 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             });
         }
+
+        // Bind individual code block copy triggers
+        const codeCopyBtns = wrapper.querySelectorAll(".btn-copy-code");
+        codeCopyBtns.forEach(btn => {
+            btn.addEventListener("click", function(e) {
+                e.stopPropagation();
+                const container = btn.closest(".ai-studio-code-container");
+                const codeEl = container ? container.querySelector("pre code") : null;
+                if (codeEl) {
+                    const codeText = codeEl.innerText;
+                    navigator.clipboard.writeText(codeText).then(() => {
+                        showToastNotification("Code copied to clipboard!");
+                        const label = btn.querySelector("span");
+                        if (label) {
+                            const originalLabel = label.innerText;
+                            label.innerText = "COPIED!";
+                            btn.classList.add("text-emerald-400");
+                            setTimeout(() => {
+                                label.innerText = originalLabel;
+                                btn.classList.remove("text-emerald-400");
+                            }, 1500);
+                        }
+                    }).catch(err => {
+                        logToTerminal("Failed to copy code: " + err, "error");
+                    });
+                }
+            });
+        });
 
         if (chatFeed) {
             chatFeed.appendChild(wrapper);
@@ -527,9 +570,52 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 10. Intelligent Context & Memory Infrastructure
+    // 10. Intelligent Context, Memory & Notification Infrastructure
     // -----------------------------------------------------------------
     
+    // Glassy floating transient notification toast popup
+    function showToastNotification(message) {
+        let container = document.getElementById("ai-studio-toast-container");
+        if (!container) {
+            container = document.createElement("div");
+            container.id = "ai-studio-toast-container";
+            container.className = "fixed top-5 left-1/2 transform -translate-x-1/2 z-[10000] flex flex-col gap-2 pointer-events-none select-none";
+            document.body.appendChild(container);
+        }
+
+        const toast = document.createElement("div");
+        toast.className = "ai-studio-toast flex items-center gap-2 bg-[#111115]/95 backdrop-blur-md border border-indigo-500/20 text-[11px] font-mono font-bold text-white px-4 py-2.5 rounded-lg shadow-2xl opacity-0 transform translate-y-[-10px] pointer-events-auto cursor-pointer";
+        toast.innerHTML = `
+            <svg class="w-4 h-4 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            <span>${message}</span>
+        `;
+
+        container.appendChild(toast);
+
+        // Animate In
+        requestAnimationFrame(() => {
+            toast.classList.remove("opacity-0", "translate-y-[-10px]");
+            toast.classList.add("opacity-100", "translate-y-0");
+        });
+
+        // Animate Out
+        const removeToast = () => {
+            toast.classList.remove("opacity-100", "translate-y-0");
+            toast.classList.add("opacity-0", "translate-y-[-10px]");
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        };
+
+        const autoTimeout = setTimeout(removeToast, 2500);
+
+        // Click to dismiss instantly
+        toast.addEventListener("click", () => {
+            clearTimeout(autoTimeout);
+            removeToast();
+        });
+    }
+
     // Serializes active chatHistory stack straight to local browser storage
     function savePersistedHistory() {
         localStorage.setItem("t1era_ai_studio_chat_history", JSON.stringify(chatHistory));
@@ -621,22 +707,38 @@ document.addEventListener("DOMContentLoaded", function () {
         activeTopicKeywords = cleanWords;
     }
 
-    // Inspects user prompt for graphic drawing triggers
+    // Inspects user prompt for graphic drawing triggers using advanced regex patterns
     function detectImageGenerationIntent(promptText) {
         const clean = promptText.trim().toLowerCase();
-        const triggers = [
-            "generate an image of", "generate image of", 
-            "create an image of", "create image of",
-            "draw a picture of", "draw an image of",
-            "paint a picture of", "make a drawing of",
-            "illustrate a", "/image"
+        
+        // 1. Slash Command parsing
+        if (clean.startsWith("/image")) {
+            return promptText.substring(6).trim();
+        }
+        
+        // 2. Semantic RegEx matching standard prompts
+        const patterns = [
+            /^(?:generate|create|draw|paint|illustrate|make)\s+(?:an?\s+)?(?:image|picture|drawing|painting|graphic|illustration)\s+(?:of\s+)?(.*)$/i,
+            /^(?:draw|paint|illustrate|make)\s+(?:an?\s+)?(.*)$/i,
+            /^(?:create|generate)\s+(?:an?\s+)?(.*)\s+(?:image|picture|drawing|illustration)$/i
         ];
         
-        for (const trigger of triggers) {
+        for (const regex of patterns) {
+            const match = clean.match(regex);
+            if (match && match[1]) {
+                const startIdx = clean.indexOf(match[1]);
+                return promptText.substring(startIdx).trim();
+            }
+        }
+        
+        // 3. Fallback: simple keyword prefix checks
+        const simpleTriggers = ["create image", "generate image", "draw", "paint", "illustrate"];
+        for (const trigger of simpleTriggers) {
             if (clean.startsWith(trigger)) {
                 return promptText.substring(trigger.length).trim();
             }
         }
+        
         return null;
     }
 
