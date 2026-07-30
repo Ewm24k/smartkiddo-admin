@@ -1,4 +1,4 @@
-import os
+mport os
 import re
 import json
 import httpx
@@ -89,6 +89,11 @@ class VideoGenerationRequest(BaseModel):
     image_url: str
     prompt: str
     duration: int
+
+# Request schema for Universal AI Studio image generation (New Addition)
+class UniversalImageRequest(BaseModel):
+    prompt: str
+    size: Optional[str] = "1024x1024"
 
 # -----------------------------------------------------------------
 # Helper Utilities
@@ -728,7 +733,6 @@ def generate_bedtime_story_voice(voice_req: VoiceGenerationRequest):
                 }
             }
             
-            # Use synchronous HTTP client on the thread pool to prevent async locks
             with httpx.Client() as client:
                 response = client.post(url, headers=headers, json=payload, timeout=30.0)
                 if response.status_code != 200:
@@ -1082,4 +1086,36 @@ async def get_video_content(video_id: str):
             from fastapi.responses import Response
             return Response(content=response.content, media_type="video/mp4")
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# -----------------------------------------------------------------
+# Endpoint 11: Universal Prompt Lab Image Generator (New Addition)
+# -----------------------------------------------------------------
+@app.post("/api/ai-studio/generate-image")
+def ai_studio_generate_image(req: UniversalImageRequest):
+    if not openai_client:
+        raise HTTPException(status_code=500, detail="OpenAI Client is not initialized on backend.")
+    try:
+        print(f"[AI Studio Image] Generating universal image for prompt: {req.prompt[:70]}...")
+        response = openai_client.images.generate(
+            model="gpt-image-1-mini",
+            prompt=req.prompt,
+            quality="standard",
+            size=req.size or "1024x1024"
+        )
+        img_item = response.data[0]
+        if hasattr(img_item, "b64_json") and img_item.b64_json:
+            b64_data = img_item.b64_json
+            image_url = f"data:image/webp;base64,{b64_data}"
+        elif hasattr(img_item, "url") and img_item.url:
+            image_url = img_item.url
+        else:
+            raise ValueError("No valid image payload found in OpenAI response data.")
+        
+        return {
+            "success": True,
+            "image_url": image_url
+        }
+    except Exception as e:
+        print(f"Error generating universal AI image: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
