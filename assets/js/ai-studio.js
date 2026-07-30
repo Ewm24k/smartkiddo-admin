@@ -471,6 +471,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const isUser = sender === "user";
         const speakerLabel = isUser ? "YOU" : (dropdownModel ? dropdownModel.options[dropdownModel.selectedIndex].text.toUpperCase() : "T1ERA AI");
         const headerClass = isUser ? "user" : "assistant";
+        const alignClass = isUser ? "text-center" : "text-left"; // USER IS CENTERED, ASSISTANT IS LEFT-ALIGNED
 
         wrapper.innerHTML = `
             <div class="max-w-3xl w-full mx-auto flex flex-col gap-2">
@@ -486,8 +487,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         </button>
                     </div>
 
-                    <!-- BODY SECTION (Message Text Content) -->
-                    <div class="ai-studio-box-body text-left">
+                    <!-- BODY SECTION (Message Text Content - Center for User, Left for AI) -->
+                    <div class="ai-studio-box-body ${alignClass}">
                         ${content}
                     </div>
 
@@ -557,6 +558,18 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
+        // Bind Image Download triggers dynamically
+        const imgDownloadBtns = wrapper.querySelectorAll(".btn-download-studio-img");
+        imgDownloadBtns.forEach(btn => {
+            btn.addEventListener("click", function(e) {
+                e.stopPropagation();
+                const url = btn.getAttribute("data-url");
+                if (url) {
+                    initiateSecureImageDownload(url, `t1era_studio_graphic_${Date.now()}.webp`);
+                }
+            });
+        });
+
         if (chatFeed) {
             chatFeed.appendChild(wrapper);
             chatFeed.scrollTop = chatFeed.scrollHeight;
@@ -616,6 +629,60 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    // Dynamic zoom using existing Dashboard Lightbox modal
+    window.zoomAIStudioImage = function(src) {
+        const lightbox = document.getElementById("story-image-lightbox");
+        const lightboxImg = document.getElementById("lightbox-img");
+        const lightboxCaption = document.getElementById("lightbox-caption");
+        const lightboxTag = document.getElementById("lightbox-scene-tag");
+        
+        if (lightbox && lightboxImg) {
+            lightboxImg.src = src;
+            if (lightboxCaption) lightboxCaption.innerText = "T1ERA Prompt Lab Generated Widescreen Asset";
+            if (lightboxTag) lightboxTag.innerText = "PLAYGROUND CANVAS";
+            lightbox.classList.remove("hidden");
+            logToTerminal("Opened graphic asset zoom lightbox overlay.", "system");
+        }
+    };
+
+    // Client-side secure downloader bypassing standard browser CORS navigation locks
+    function initiateSecureImageDownload(url, filename) {
+        logToTerminal("Preparing binary graphic download stream...", "system");
+        
+        if (url.startsWith("data:")) {
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToastNotification("Image downloaded successfully!");
+        } else {
+            // Fetch remote CDN resource as blob to force browser download stream
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) throw new Error();
+                    return response.blob();
+                })
+                .then(blob => {
+                    const blobUrl = window.URL.createObjectURL(blob);
+                    const link = document.createElement("a");
+                    link.href = blobUrl;
+                    link.download = filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(blobUrl);
+                    showToastNotification("Image downloaded successfully!");
+                })
+                .catch(() => {
+                    // Fallback to direct tab opening if CDN CORS fails
+                    window.open(url, "_blank");
+                    showToastNotification("Opened original asset in new tab.");
+                });
+        }
+    }
+
     // Serializes active chatHistory stack straight to local browser storage
     function savePersistedHistory() {
         localStorage.setItem("t1era_ai_studio_chat_history", JSON.stringify(chatHistory));
@@ -640,7 +707,21 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (turn.role === "user") {
                         createCenteredMessageBubble("user", turn.content, "0.0", false);
                     } else if (turn.role === "assistant") {
-                        createCenteredMessageBubble("assistant", parseMarkdownToHTML(turn.content), "0.0", false);
+                        // Support both text and dynamic image render parsing in storage hydration
+                        if (turn.content.startsWith("Image generation: ")) {
+                            // Extract prompt and rebuild image payload mock if re-loaded
+                            const promptText = turn.content.substring(18);
+                            createCenteredMessageBubble("assistant", `
+                                <div class="space-y-3 w-full flex flex-col items-center">
+                                    <p class="text-xs text-neutral-300 w-full text-left">Auto-restored drawing illustration for prompt: "<em>${promptText}</em>"</p>
+                                    <div class="rounded-lg overflow-hidden border border-[#1f1f29] shadow-2xl w-full my-2 bg-neutral-900">
+                                        <p class="p-4 text-[10px] font-mono text-neutral-500 text-center">Reference URL expired. Request a new image to re-render.</p>
+                                    </div>
+                                </div>
+                            `, "0.0", false);
+                        } else {
+                            createCenteredMessageBubble("assistant", parseMarkdownToHTML(turn.content), "0.0", false);
+                        }
                     }
                 });
                 logToTerminal(`Restored ${chatHistory.length} active discussion bubbles from LocalStorage thread memory.`, "success");
@@ -802,7 +883,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const loadingStatusEl = assistantBubble.querySelector(".loading-status-text");
 
-        // Case 1: Handle live Image Generation Route
+        // Case 1: Handle live Image Generation Route (Centered Full-Width rendering with download tool)
         if (imagePrompt) {
             if (loadingStatusEl) loadingStatusEl.innerText = "Connecting to universal graphic engine (DALL-E)...";
             logToTerminal(`AI Studio Image: Requesting universal graphic model for prompt: "${imagePrompt}"`, "system");
@@ -821,11 +902,20 @@ document.addEventListener("DOMContentLoaded", function () {
                 const imgData = await imgResponse.json();
                 if (imgData.success) {
                     const duration = ((performance.now() - startTime) / 1000).toFixed(1);
+                    
+                    // Rendered full-width (w-full) centered inside padded block container
                     const htmlCard = `
-                        <div class="space-y-3">
-                            <p class="text-xs text-neutral-300">Here is your auto-generated drawing illustration:</p>
-                            <div class="rounded-lg overflow-hidden border border-[#1f1f29] shadow-2xl max-w-sm my-2 bg-neutral-900">
-                                <img src="${imgData.image_url}" class="w-full h-auto object-cover cursor-zoom-in" alt="Universal generated card" onclick="window.open(this.src)">
+                        <div class="space-y-4 w-full flex flex-col items-center">
+                            <p class="text-xs text-neutral-300 w-full text-left">Here is your auto-generated drawing illustration:</p>
+                            <div class="rounded-lg overflow-hidden border border-[#1f1f29] shadow-2xl w-full my-2 bg-neutral-900">
+                                <img src="${imgData.image_url}" class="w-full h-auto object-cover cursor-zoom-in max-h-[480px]" alt="Universal generated card" onclick="zoomAIStudioImage(this.src)">
+                            </div>
+                            <!-- Centered Action buttons below image block -->
+                            <div class="flex items-center justify-center gap-2 w-full">
+                                <button class="btn-download-studio-img flex items-center gap-1.5 px-3 py-1.5 bg-[#17171e] hover:bg-neutral-800 border border-[#1f1f29] rounded text-[10px] text-neutral-300 font-mono font-bold transition-all" data-url="${imgData.image_url}">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                    <span>DOWNLOAD ASSET</span>
+                                </button>
                             </div>
                         </div>
                     `;
@@ -839,6 +929,15 @@ document.addEventListener("DOMContentLoaded", function () {
                         outsideMeta.innerHTML = `<span>[${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}]</span><span>•</span><span>${duration}s response</span>`;
                     }
 
+                    // Re-bind download trigger for newly rendered image card
+                    const dlBtn = assistantBubble.querySelector(".btn-download-studio-img");
+                    if (dlBtn) {
+                        dlBtn.addEventListener("click", function(e) {
+                            e.stopPropagation();
+                            initiateSecureImageDownload(imgData.image_url, `t1era_studio_graphic_${Date.now()}.webp`);
+                        });
+                    }
+
                     // Save assistant message to chat history
                     chatHistory.push({ role: "assistant", content: `Image generation: ${imagePrompt}` });
                     savePersistedHistory();
@@ -847,7 +946,7 @@ document.addEventListener("DOMContentLoaded", function () {
             } catch (err) {
                 logToTerminal(`AI Studio graphic process failed: ${err.message}`, "error");
                 const contentBody = assistantBubble.querySelector(".ai-studio-box-body");
-                if (contentBody) contentBody.innerHTML = `<span class="text-red-400 font-mono">Image Generation Failure: ${err.message}</span>`;
+                if (contentBody) contentBody.innerHTML = `<span class="text-red-400 font-mono flex items-center justify-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>Image Generation Failure: ${err.message}</span>`;
             }
             return;
         }
