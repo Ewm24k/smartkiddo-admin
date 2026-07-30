@@ -48,6 +48,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     messages: List[ChatMessage]
     workspace_context: Optional[str] = ""
+    system_prompt: Optional[str] = None
 
 # Request schema for the Bedtime Story pipeline
 class BedtimeStoryRequest(BaseModel):
@@ -461,6 +462,9 @@ async def ai_chat_completion(chat_req: ChatRequest):
         return {"error": "OpenAI Client is not initialized on backend. Please configure OPENAI_API_KEY environment variable on Render.", "success": False}
     try:
         openai_input_str = ""
+        if chat_req.system_prompt:
+            openai_input_str += f"=== INSTRUCTIONS ===\n{chat_req.system_prompt}\n\n"
+
         if chat_req.workspace_context:
             openai_input_str += f"=== ACTIVE WORKSPACE MANIFEST && SESSION FILE CACHE ===\n{chat_req.workspace_context}\n\n"
             
@@ -915,7 +919,7 @@ async def generate_single_scene(req: SingleSceneGenerationRequest):
         elif hasattr(img_item, "url") and img_item.url:
             image_url = img_item.url
         else:
-            raise ValueError("No valid image payload (b64_json or url) found in OpenAI response data.")
+            raise ValueError("No valid image payload found in OpenAI response data.")
         
         return {
             "success": True,
