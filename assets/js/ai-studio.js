@@ -799,9 +799,9 @@ document.addEventListener("DOMContentLoaded", function () {
         
         // 2. Semantic RegEx matching standard prompts
         const patterns = [
-            /^(?:generate|create|draw|paint|illustrate|make)\s+(?:an?\s+)?(?:image|picture|drawing|painting|graphic|illustration)\s+(?:of\s+)?(.*)$/i,
-            /^(?:draw|paint|illustrate|make)\s+(?:an?\s+)?(.*)$/i,
-            /^(?:create|generate)\s+(?:an?\s+)?(.*)\s+(?:image|picture|drawing|illustration)$/i
+            /^(?:generate|create|draw|paint|illustrate|make|design)\s+(?:an?\s+)?(?:image|picture|drawing|painting|graphic|illustration|poster|logo|banner|flyer|art|sketch|photo|photograph|wallpaper|icon|avatar)\s+(?:of|about|for\s+)?(.*)$/i,
+            /^(?:draw|paint|illustrate|make|design)\s+(?:an?\s+)?(.*)$/i,
+            /^(?:create|generate)\s+(?:an?\s+)?(.*)\s+(?:image|picture|drawing|illustration|poster|logo|banner|flyer|art|sketch|photo|photograph|wallpaper|icon|avatar)$/i
         ];
         
         for (const regex of patterns) {
@@ -813,7 +813,11 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         
         // 3. Fallback: simple keyword prefix checks
-        const simpleTriggers = ["create image", "generate image", "draw", "paint", "illustrate"];
+        const simpleTriggers = [
+            "create image", "generate image", "create poster", "generate poster", 
+            "create logo", "generate logo", "create banner", "generate banner",
+            "draw", "paint", "illustrate", "design"
+        ];
         for (const trigger of simpleTriggers) {
             if (clean.startsWith(trigger)) {
                 return promptText.substring(trigger.length).trim();
