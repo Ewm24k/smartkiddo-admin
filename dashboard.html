@@ -220,7 +220,7 @@
                                 <div class="flex items-center gap-1.5 bg-[#17171e] px-2 py-1 rounded border border-[#1f1f29]">
                                     <span id="story-status-indicator" class="w-2.5 h-2.5 rounded-full bg-neutral-600"></span>
                                     <span id="story-status-text" class="text-[10px] font-mono text-neutral-400 uppercase tracking-wide">Ready</span>
-                               </div>
+                                </div>
                             </div>
                             <div class="flex items-center gap-2">
                                 <!-- Studio Full Screen Toggle Button -->
@@ -574,7 +574,7 @@
                                             <option value="onyx">Onyx (Deep & Authoritative)</option>
                                             <option value="sage">Sage (Wise & Measured)</option>
                                             <option value="shimmer">Shimmer (Bright & Cheerful)</option>
-                                            <option value="verse">Verse (Poetic & Expressive)</option>
+                                            <option value="verse">Voice (Poetic & Expressive)</option>
                                         </select>
                                     </div>
                                     <!-- Narration style -->
@@ -799,10 +799,1042 @@
                                         </select>
                                     </div>
 
-                                    <!-- System instructions panel -->
+                                    <!-- System instructions panel (Pre-populated on load to strictly enforce code block wrapping rules) -->
                                     <div class="space-y-1.5">
                                         <label class="text-[9px] font-bold text-neutral-500 uppercase tracking-wide block">System Prompt / Instructions</label>
-                                        <textarea id="setting-ai-studio-system" rows="4" placeholder="e.g. You are a creative sandbox AI. Be concise, structure outputs cleanly, and respect standard Malaysian Malay constraints..." class="w-full bg-[#0d0d11] border border-[#1f1f29] rounded-lg p-2.5 text-xs text-white placeholder-neutral-600 outline-none focus:border-indigo-500 leading-relaxed resize-none font-sans"></textarea>
+                                        <textarea id="setting-ai-studio-system" rows="4" placeholder="e.g. You are a creative sandbox AI..." class="w-full bg-[#0d0d11] border border-[#1f1f29] rounded-lg p-2.5 text-xs text-white placeholder-neutral-600 outline-none focus:border-indigo-500 leading-relaxed resize-none font-sans">You are T1ERA, an advanced developer prompt assistant. When outputting any programming code, configuration scripts, assert examples, or files (such as Python, JavaScript, CSS, or HTML), you must ALWAYS wrap the code strictly inside standard markdown triple backtick blocks (```) specified with the language identifier on the opening line (e.g., ```python). Preserve all line indentations and structures.</textarea>
+                                    </div>
+
+                                    <hr class="border-[#1f1f29]">
+
+                                    <!-- Temperature parameter slide controls -->
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between items-center text-[9px] font-bold uppercase tracking-wide">
+                                            <span class="text-neutral-500">Temperature</span>
+                                            <span id="val-ai-studio-temp" class="text-indigo-400 font-mono">0.7</span>
+                                        </div>
+                                        <input type="range" id="range-ai-studio-temp" min="0" max="2" step="0.1" value="0.7" class="w-full h-1 bg-[#09090c] rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                                        <p class="text-[9.5px] text-neutral-600 leading-relaxed">Higher temperature yields increasingly random, highly creative concept drafts.</p>
+                                    </div>
+
+                                    <!-- Max tokens limit controls -->
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between items-center text-[9px] font-bold uppercase tracking-wide">
+                                            <span class="text-neutral-500">Max Tokens</span>
+                                            <span id="val-ai-studio-tokens" class="text-indigo-400 font-mono">2048</span>
+                                        </div>
+                                        <input type="range" id="range-ai-studio-tokens" min="256" max="4096" step="128" value="2048" class="w-full h-1 bg-[#09090c] rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                                    </div>
+
+                                    <!-- Constraint Safety Toggle Switch -->
+                                    <div class="flex items-center justify-between py-1 bg-[#17171e]/50 border border-[#1f1f29]/30 rounded-lg p-2.5">
+                                        <div>
+                                            <span class="text-[9px] font-bold text-neutral-400 uppercase tracking-wide block">Vocabulary Sanitizer</span>
+                                            <span class="text-[8.5px] text-neutral-600 block">Autofilter Indonesian drift</span>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer select-none">
+                                            <input type="checkbox" id="check-ai-studio-sanitizer" checked class="sr-only peer">
+                                            <div class="w-7 h-4 bg-neutral-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-neutral-400 after:border-neutral-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
+                                        </label>
+                                    </div>
+
+                                </div>
+                                <div class="p-3 border-t border-[#1f1f29] bg-[#17171e] flex-shrink-0">
+                                    <div class="text-[9px] text-neutral-500 text-center font-mono select-none">Changes take effect dynamically in real-time.</div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </section>
+
+                <!-- VIEW: LIST USER -->
+                <section id="view-list-user" class="space-y-8 hidden">
+                    <div>
+                        <h1 class="text-3xl font-extrabold text-white tracking-tight">List User</h1>
+                        <p class="text-neutral-400 mt-2 text-sm">Manage user accounts, check subscription tiers, and review child progress metrics.</p>
+                    </div>
+                    <div class="p-8 border border-neutral-800 rounded-xl bg-[#111115] text-center text-neutral-500 text-sm">
+                        This section is a functional placeholder. Select "T1ERA Studio" or "Statistic" in the sidebar to review active dashboard environments.
+                    </div>
+                </section>
+
+                <!-- VIEW: STATISTIC -->
+                <section id="view-statistic" class="space-y-8 hidden">
+                    <div>
+                        <h1 class="text-3xl font-extrabold text-white tracking-tight">Statistics</h1>
+                        <p class="text-neutral-400 mt-2 max-w-2xl text-sm leading-relaxed">
+                            Assess product reach, user engagement parameters, database records, and marketing traffic conversions.
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Card 1: Statistic Direct SmartKiddo -->
+                        <div class="glow-card p-6 rounded-xl flex flex-col justify-between h-48 cursor-pointer">
+                            <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
+                                <div class="w-12 h-12 rounded-lg bg-blue-500/10 border border-indigo-500/20 flex items-center justify-center text-blue-400">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                                </div>
+                                <h3 class="text-lg font-bold text-white tracking-wide">Statistic Direct SmartKiddo</h3>
+                            </div>
+                            <div>
+                                <p class="text-sm text-neutral-400 leading-relaxed">
+                                    Review first-party platform data including real-time active daily logs, cloud storage parameters, in-app actions, and system uptime diagnostics.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Card 2: statistic Google analytics -->
+                        <div class="glow-card p-6 rounded-xl flex flex-col justify-between h-48 cursor-pointer">
+                            <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
+                                <div class="w-12 h-12 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                </div>
+                                <h3 class="text-lg font-bold text-white tracking-wide">statistic Google analytics</h3>
+                            </div>
+                            <div>
+                                <p class="text-sm text-neutral-400 leading-relaxed">
+                                    Analyze external landing page performance, audience acquisition sources, regional demographics, retention percentages, and conversion funnels.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW: WEBSOURCES CODE -->
+                <section id="view-websources-code" class="hidden h-full">
+                    <div id="studio-workspace" class="studio-layout flex border border-[#1f1f29] rounded-xl overflow-hidden bg-[#0d0d11] h-[580px] w-full relative font-sans">
+                        
+                        <!-- DYNAMIC LOADER SCREEN OVERLAY -->
+                        <div id="studio-loader-overlay" class="absolute inset-0 bg-[#0d0d11]/90 z-50 flex flex-col items-center justify-center gap-4 transition-opacity duration-300 hidden">
+                            <div class="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
+                            <p id="studio-loader-text" class="text-sm font-mono text-neutral-400">Connecting to Render Server...</p>
+                        </div>
+
+                        <!-- Subside 1: Explorer Column (Left column of parent) -->
+                        <div class="w-64 bg-[#111115] border-r border-[#1f1f29] flex flex-col h-full flex-shrink-0 select-none">
+                            <!-- Explorer Header -->
+                            <div class="px-4 py-3 border-b border-[#1f1f29] flex items-center justify-between">
+                                <span class="text-xs font-bold tracking-wider text-neutral-400 uppercase">Explorer</span>
+                                
+                                <!-- File Explorer Action Controls -->
+                                <div class="flex items-center gap-1">
+                                    <button id="explorer-new-file" title="New File" class="p-1 text-neutral-500 hover:text-white rounded transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                    </button>
+                                    <button id="explorer-new-folder" title="New Folder" class="p-1 text-neutral-500 hover:text-white rounded transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1H4a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2zM9 5H2v14a2 2 0 002 2h16a2 2 0 002-2V8a2 2 0 00-2-2h-8L9 5z"></path></svg>
+                                    </button>
+                                    <label title="Upload File" class="p-1 text-neutral-500 hover:text-white rounded transition-colors cursor-pointer mr-1">
+                                        <input type="file" id="explorer-file-upload" class="hidden">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                                    </label>
+                                    
+                                    <div class="h-4 border-l border-neutral-700 mx-1"></div>
+
+                                    <!-- CLOUD SYNC CONTROLS -->
+                                    <button id="explorer-sync-pull" title="Sync (Fetch from GitHub)" class="p-1 text-indigo-400 hover:text-indigo-300 rounded transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path></svg>
+                                    </button>
+                                    <button id="explorer-sync-push" title="Send & Sync (Backup to GitHub)" class="p-1 text-emerald-400 hover:text-emerald-300 rounded transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- File tree structure -->
+                            <div id="explorer-file-tree" class="flex-1 overflow-y-auto py-2 text-sm text-neutral-400">
+                                <!-- Dynamically populated by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Subside 2: COLLAPSIBLE AI CHAT AGENT SIDEBAR (Middle column) -->
+                        <div id="ai-chat-sidebar" class="w-80 bg-[#121216] border-r border-[#1f1f29] flex flex-col h-full flex-shrink-0 select-none transition-all duration-300 relative">
+                            <!-- AI Header Section -->
+                            <div class="px-4 py-2 bg-[#17171e] border-b border-[#1f1f29] flex flex-col gap-1.5 flex-shrink-0">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-5 h-5 rounded bg-indigo-600 flex items-center justify-center text-[10px] text-white font-bold">AI</div>
+                                        <span class="text-xs font-bold text-neutral-200 tracking-wide">SmartKiddo AI Agent</span>
+                                    </div>
+                                    <span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">gpt-5.4-mini</span>
+                                </div>
+                                <!-- Token Tracker Display -->
+                                <div class="flex items-center justify-between text-[10px] font-mono text-neutral-500 border-t border-[#252533] pt-1.5 pb-1">
+                                    <span>Tokens: <span id="ai-token-count" class="text-neutral-400">0</span></span>
+                                    <span class="text-neutral-600">|</span>
+                                    <span>In: <span id="ai-token-input" class="text-neutral-400">0</span></span>
+                                    <span class="text-neutral-600">|</span>
+                                    <span>Out: <span id="ai-token-output" class="text-neutral-400">0</span></span>
+                                </div>
+                                <!-- Agent Utilities Subheader & Buttons -->
+                                <div class="border-t border-[#252533] pt-2 flex flex-col gap-1.5">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Quick Actions</span>
+                                        <!-- Maximize Chat Panel button -->
+                                        <button id="ai-chat-maximize-btn" class="p-1 text-neutral-500 hover:text-indigo-400 rounded transition-colors" title="Maximize Chat Panel">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4m12 4V4h-4M4 16v4h4m12-4v4h-4"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <!-- Fast Result Trigger Button -->
+                                    <button id="ai-quick-analyze-btn" class="w-full bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/25 text-indigo-300 rounded py-1.5 px-2 text-[10px] font-mono font-bold tracking-wide transition-colors flex items-center justify-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                        </svg>
+                                        Analyze File Structure & Links
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Scrollable Conversation area -->
+                            <div id="ai-chat-output-container" class="flex-1 overflow-y-auto p-4 space-y-4">
+                                <!-- Default Greeting -->
+                                <div class="flex items-start gap-3">
+                                    <div class="w-6 h-6 rounded bg-indigo-600/20 flex items-center justify-center text-xs text-indigo-400 font-bold flex-shrink-0">AI</div>
+                                    <div class="bg-[#1a1a24] p-3 rounded-lg text-xs text-neutral-300 leading-relaxed max-w-[85%] border border-[#1f1f29]">
+                                        Hi! I am your SmartKiddo AI Agent. I can write and optimize code, perform search functions, and analyze all files within your active directory structure. How can I help you today?
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- File Context Attachment Popup -->
+                            <div id="ai-context-menu" class="absolute bottom-16 left-4 right-4 bg-[#17171e] border border-[#1f1f29] rounded-lg shadow-xl p-2 z-50 hidden max-h-48 overflow-y-auto">
+                                <p class="text-[10px] text-neutral-500 font-bold px-2 py-1 uppercase tracking-wider border-b border-[#252533] mb-1">Select File to Attach:</p>
+                                <div id="ai-context-items-list" class="space-y-0.5 text-xs text-neutral-400">
+                                    <!-- Populated on upload button click -->
+                                </div>
+                            </div>
+
+                            <!-- AI Footer Input Box Section -->
+                            <div class="p-3 border-t border-[#1f1f29] bg-[#17171e] flex flex-col gap-2 flex-shrink-0">
+                                <div class="flex items-center gap-2">
+                                    <!-- Selected Context Indicator -->
+                                    <div id="ai-attachment-badge" class="hidden flex items-center gap-1.5 px-2 py-1 rounded bg-indigo-500/10 border border-indigo-500/20 text-[10px] text-indigo-400 font-mono w-full">
+                                        <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                                        <span id="ai-attachment-name" class="truncate flex-1">file.js</span>
+                                        <button id="ai-attachment-remove" class="text-neutral-500 hover:text-red-400">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="flex items-end gap-2 bg-[#121216] border border-[#1f1f29] rounded-lg p-1.5">
+                                    <!-- Context upload button -->
+                                    <button id="ai-context-attach-btn" class="p-1.5 text-neutral-500 hover:text-white rounded transition-colors" title="Attach Workspace File as Context">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 a9 9 0 0118 0z"></path></svg>
+                                    </button>
+                                    <!-- Text Input -->
+                                    <textarea id="ai-chat-input" rows="1" placeholder="Ask AI..." class="flex-1 bg-transparent border-0 outline-none text-xs text-white max-h-24 resize-none py-1 leading-relaxed font-sans placeholder-neutral-500"></textarea>
+                                    <!-- Voice Recognition Button -->
+                                    <button id="ai-voice-btn" class="p-1.5 text-neutral-500 hover:text-indigo-400 rounded transition-colors relative" title="Speech to Text (English / Malay)">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                                        <span id="ai-voice-active-indicator" class="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-red-500 border border-[#121216] hidden"></span>
+                                    </button>
+                                    <!-- Send Button -->
+                                    <button id="ai-send-btn" class="p-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md transition-colors flex items-center justify-center">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Editor / Media Area wrapper (Right column of parent) -->
+                        <div class="flex-1 flex flex-col h-full bg-[#09090c] overflow-hidden relative">
+                            
+                            <!-- Tab Bar Header -->
+                            <div class="h-10 bg-[#111115] border-b border-[#1f1f29] px-4 flex items-center justify-between flex-shrink-0 select-none">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                                    <span id="editor-active-filename" class="text-xs font-mono text-neutral-300">index.html</span>
+                                </div>
+                                <div class="flex items-center gap-4">
+                                    <!-- EXPANDABLE SEARCH COMPONENT -->
+                                    <div class="flex items-center gap-2">
+                                        <div id="editor-search-bar" class="flex items-center bg-[#17171e] border border-[#1f1f29] rounded px-2 py-1 hidden transition-all duration-200">
+                                            <svg class="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                            <input type="text" id="editor-search-input" placeholder="Search in file..." class="bg-transparent text-xs text-white outline-none ml-1.5 w-32 sm:w-48 font-mono">
+                                            <span id="editor-search-count" class="text-[10px] font-mono text-neutral-500 ml-2 select-none">0 found</span>
+                                        </div>
+                                        <button id="editor-search-toggle" class="p-1 text-neutral-500 hover:text-white hover:bg-[#1a1a22] rounded transition-all focus:outline-none animate-pulse" title="Search Code">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                        </button>
+                                    </div>
+
+                                    <!-- AI AGENT TOGGLE VIEW CONTROL -->
+                                    <button id="tab-ai-toggle-btn" class="p-1 text-neutral-500 hover:text-white hover:bg-[#1a1a22] rounded transition-all focus:outline-none" title="Toggle AI Agent Panel">
+                                        <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 01-2 2h0a2 2 0 01-2-2v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                                        </svg>
+                                    </button>
+
+                                    <span class="text-[10px] text-neutral-500 font-semibold tracking-wider uppercase hidden sm:inline">T1ERA Code Studio</span>
+                                    
+                                    <!-- TERMINAL SHOW/HIDE TOGGLE BUTTON -->
+                                    <button id="tab-terminal-toggle-btn" class="p-1 text-neutral-500 hover:text-white hover:bg-[#1a1a22] rounded transition-all focus:outline-none" title="Toggle Terminal Output Panel">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        </svg>
+                                    </button>
+
+                                    <!-- Maximize/Minimize Action Button -->
+                                    <button id="studio-maximize-btn" class="p-1 text-neutral-500 hover:text-white hover:bg-[#1a1a22] rounded transition-all focus:outline-none" title="Maximize Workspace">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4m12 4V4h-4M4 16v4h4m12-4v4h-4"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Combined Viewport & Console Layout Container -->
+                            <div class="flex-1 flex flex-col overflow-hidden relative">
+                                
+                                <!-- Editor Area Content Viewports -->
+                                <div class="flex-1 relative overflow-hidden" id="editor-viewport">
+                                    <!-- CODE FORMAT VIEW -->
+                                    <div id="code-editor-pane" class="w-full h-full flex">
+                                        <!-- Line Numbers Container -->
+                                        <div id="editor-line-numbers" class="w-12 bg-[#09090c] text-neutral-600 select-none text-right pr-3 border-r border-[#1f1f29]">
+                                            <div>1</div>
+                                        </div>
+                                        
+                                        <!-- Unified Editor Container Layer -->
+                                        <div class="flex-1 relative h-full" id="editor-container">
+                                            <!-- Synchronized Line Highlights Layer Behind Text -->
+                                            <div id="editor-highlight-lines-layer" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
+                                            
+                                            <textarea id="editor-textarea" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"></textarea>
+                                            <pre id="editor-pre" class="pointer-events-none"><code id="editor-highlight-target"></code></pre>
+                                        </div>
+                                    </div>
+
+                                    <!-- MEDIA VIEW LAYOUT -->
+                                    <div id="media-viewer-pane" class="w-full h-full flex items-center justify-center bg-[#07070a] hidden">
+                                        <div id="media-content-wrapper" class="max-w-md max-h-[300px] rounded-lg overflow-hidden border border-[#1f1f29] shadow-lg flex items-center justify-center p-4">
+                                            <!-- Rendered dynamically -->
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- INTEGRATED TERMINAL LOG PANEL (At bottom of editor area) -->
+                                <div id="studio-terminal" class="h-40 bg-[#0d0d11] border-t border-[#1f1f29] flex flex-col transition-all duration-300">
+                                    <!-- Terminal Header Bar -->
+                                    <div class="h-8 bg-[#111115] border-b border-[#1f1f29] px-4 flex items-center justify-between select-none flex-shrink-0">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-[10px] font-bold tracking-wider text-neutral-400 uppercase font-mono">Terminal Output</span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <!-- Toggle (Minimize / Unminimize) Button -->
+                                            <button id="terminal-toggle-btn" class="p-1 text-neutral-500 hover:text-white rounded transition-colors" title="Minimize/Restore Terminal">
+                                                <svg id="terminal-toggle-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                </svg>
+                                            </button>
+                                            <!-- Close Button (Completely closes the panel) -->
+                                            <button id="terminal-close-btn" class="p-1 text-neutral-500 hover:text-red-400 rounded transition-colors" title="Close Terminal Panel">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <!-- Scrollable output area -->
+                                    <div id="terminal-log-output" class="flex-1 overflow-y-auto p-4 font-mono text-[11px] text-neutral-400 space-y-1.5 select-text bg-[#09090c]">
+                                        <!-- Real-time logs will populate here -->
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW: T1ERA AI STUDIO (ChatGPT + Gemini + Claude Hybrid Viewport) -->
+                <section id="view-t1era-ai-studio" class="hidden h-full flex-1 flex flex-col">
+                    <div class="studio-layout flex border border-[#1f1f29] rounded-xl overflow-hidden bg-[#0d0d11] h-full w-full relative flex-col font-sans flex-1">
+                        
+                        <!-- Top Navigation / Status Header Bar -->
+                        <div class="h-14 bg-[#111115] border-b border-[#1f1f29] px-4 flex items-center justify-between select-none flex-shrink-0">
+                            <div class="flex items-center gap-3">
+                                <button id="btn-ai-studio-back" class="p-1.5 text-neutral-400 hover:text-white rounded hover:bg-neutral-800 transition-colors" title="Back to T1ERA Studio">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                                    </svg>
+                                </button>
+                                <span class="text-xs font-bold text-white bg-amber-600/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded uppercase tracking-wider font-mono">T1ERA AI Studio</span>
+                                <span class="text-neutral-500">/</span>
+                                <span class="text-xs font-semibold text-neutral-200">Interactive Prompt Lab</span>
+                            </div>
+                            
+                            <!-- Middle: Active Model Selector Pill -->
+                            <div class="hidden md:flex items-center gap-2 px-3 py-1 bg-[#17171e] rounded-full border border-[#1f1f29]">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span id="active-model-badge" class="text-[11px] font-mono font-bold text-neutral-300">T1ERA-Ultra-v2 (Auto)</span>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <!-- Collapsible Settings Toggle Button -->
+                                <button id="btn-ai-studio-settings-toggle" class="p-1.5 text-neutral-400 hover:text-white hover:bg-[#1a1a22] rounded transition-all focus:outline-none" title="Toggle Configuration Panel">
+                                    <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    </svg>
+                                </button>
+                                <button id="btn-ai-studio-clear" class="px-3 py-1.5 rounded bg-[#17171e] hover:bg-neutral-800 border border-[#1f1f29] text-xs text-neutral-400 font-medium transition-colors">Clear Chat</button>
+                            </div>
+                        </div>
+
+                        <!-- Main Studio Content Splitter Panel -->
+                        <div class="flex-1 flex overflow-hidden relative">
+                            
+                            <!-- CENTER PLAYGROUND CHAT AREA -->
+                            <div class="flex-1 bg-[#09090c] flex flex-col h-full overflow-hidden relative">
+                                
+                                <!-- Central Scrollable Chat Feed -->
+                                <div id="ai-studio-chat-feed" class="flex-1 overflow-y-auto px-6 py-8 space-y-8 scroll-smooth">
+                                    
+                                    <!-- Welcome panel generated centered in the reading canvas -->
+                                    <div class="ai-studio-welcome-pane max-w-3xl mx-auto text-center py-10 space-y-4">
+                                        <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center mx-auto shadow-lg">
+                                            <span class="text-white text-base font-black tracking-wider">T1</span>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <h2 class="text-lg font-bold text-white">Welcome to T1ERA Prompt Lab</h2>
+                                            <p class="text-xs text-neutral-400 max-w-md mx-auto leading-relaxed">
+                                                A sandbox combining Claude's structured parameters, Gemini's wide-centered layouts, and ChatGPT's fast conversational flows.
+                                            </p>
+                                        </div>
+                                        
+                                        <!-- Quick Template Prompts Card Grid -->
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl mx-auto pt-4 text-left">
+                                            <div class="studio-template-card p-3 rounded-lg border border-[#1f1f29] bg-[#111115] hover:border-indigo-500/40 cursor-pointer transition-all" data-prompt="Analyze the educational system metrics for age groups 5-7.">
+                                                <h4 class="text-xs font-bold text-neutral-200">Review Demographics</h4>
+                                                <p class="text-[10px] text-neutral-500 mt-1 truncate">Analyze the educational system metrics for age groups...</p>
+                                            </div>
+                                            <div class="studio-template-card p-3 rounded-lg border border-[#1f1f29] bg-[#111115] hover:border-indigo-500/40 cursor-pointer transition-all" data-prompt="Write a standard system constraint rule to enforce standard Malaysian vocabulary.">
+                                                <h4 class="text-xs font-bold text-neutral-200">Vocabulary Constraints</h4>
+                                                <p class="text-[10px] text-neutral-500 mt-1 truncate">Write a standard system constraint rule to enforce...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                <!-- Floating File Attachment Pending Area -->
+                                <div class="max-w-3xl mx-auto w-full px-6 flex-shrink-0">
+                                    <div id="ai-studio-upload-preview" class="hidden flex items-center gap-2 p-2 bg-[#121216] border border-[#1f1f29] rounded-lg text-xs text-neutral-300 font-mono mb-2">
+                                        <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                                        <span id="ai-studio-uploaded-file-name" class="truncate flex-1 text-neutral-400">Attached file.txt</span>
+                                        <button id="btn-ai-studio-remove-upload" class="p-1 text-neutral-500 hover:text-red-400 rounded">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- CENTER FLOATING PROMPT ENTRY CONTAINER (ChatGPT / Claude / Gemini Hybrid layout) -->
+                                <div class="px-6 pb-6 pt-2 flex-shrink-0 relative">
+                                    <div class="max-w-3xl mx-auto w-full bg-[#111115] border border-[#1f1f29] focus-within:border-indigo-500/50 rounded-2xl p-2.5 transition-all shadow-xl shadow-black/30">
+                                        
+                                        <!-- Invisible file input -->
+                                        <input type="file" id="ai-studio-file-upload-input" class="hidden">
+                                        
+                                        <!-- Input Field Text Area -->
+                                        <textarea id="ai-studio-prompt-input" rows="1" placeholder="Type a message, attach custom constraints, or query system behavior..." class="w-full bg-transparent border-0 outline-none text-xs text-white max-h-24 resize-none py-1.5 px-2.5 leading-relaxed font-sans placeholder-neutral-500" style="height: auto;"></textarea>
+                                        
+                                        <!-- Action Utility Toolbar Panel inside the prompt box -->
+                                        <div class="flex items-center justify-between border-t border-[#1f1f29]/50 pt-2 px-1.5 mt-1 select-none">
+                                            <div class="flex items-center gap-2.5">
+                                                <!-- Upload File button -->
+                                                <button id="btn-ai-studio-attach" class="p-1.5 text-neutral-500 hover:text-indigo-400 hover:bg-neutral-800/40 rounded-lg transition-colors relative" title="Upload File context">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                                    </svg>
+                                                </button>
+                                                <!-- Extension tools/plugins selector button -->
+                                                <button id="btn-ai-studio-extensions" class="p-1.5 text-neutral-500 hover:text-indigo-400 hover:bg-neutral-800/40 rounded-lg transition-colors relative" title="Active Extensions & Tools">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"></path>
+                                                    </svg>
+                                                    <span id="extension-active-dot" class="absolute top-1 right-1 w-2 h-2 rounded-full bg-indigo-500 border border-[#111115] hidden"></span>
+                                                </button>
+                                                <!-- Speech Input mic button -->
+                                                <button id="btn-ai-studio-voice" class="p-1.5 text-neutral-500 hover:text-indigo-400 hover:bg-neutral-800/40 rounded-lg transition-colors relative" title="Microphone Dictation (Speech-to-Text)">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                                                    </svg>
+                                                    <span id="ai-studio-mic-active-dot" class="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 border border-[#111115] hidden"></span>
+                                                </button>
+                                            </div>
+                                            
+                                            <!-- Send Message button -->
+                                            <button id="btn-ai-studio-send" class="p-1.5 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white border border-indigo-500/25 hover:border-transparent rounded-lg transition-all flex items-center justify-center">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+
+                                        <!-- Hidden dropup options for extension toggle -->
+                                        <div id="ai-studio-extensions-menu" class="absolute bottom-[72px] left-6 bg-[#17171e] border border-[#1f1f29] rounded-xl shadow-2xl p-2 z-50 hidden w-52 select-none">
+                                            <p class="text-[9px] text-neutral-500 font-bold px-2 py-1 uppercase tracking-wider border-b border-[#252533] mb-1">Extensions & Tools</p>
+                                            <label class="flex items-center justify-between px-2 py-1.5 hover:bg-[#21212c] rounded cursor-pointer text-xs text-neutral-300">
+                                                <span>Grep Code Scanner</span>
+                                                <input type="checkbox" id="ext-toggle-grep" class="accent-indigo-600">
+                                            </label>
+                                            <label class="flex items-center justify-between px-2 py-1.5 hover:bg-[#21212c] rounded cursor-pointer text-xs text-neutral-300">
+                                                <span>Session LRU Memory</span>
+                                                <input type="checkbox" id="ext-toggle-lru" checked class="accent-indigo-600">
+                                            </label>
+                                        </div>
+
+                                    </div>
+                                    <div class="text-[10px] text-neutral-600 text-center mt-2.5 select-none font-mono">T1ERA AI Studio may produce inaccurate physical descriptions. Verify parameters.</div>
+                                </div>
+
+                            </div>
+
+                            <!-- RIGHT PARAMETER DOCK (Claude / Google AI Studio Hybrid) -->
+                            <div id="ai-studio-settings-dock" class="w-72 bg-[#121216] border-l border-[#1f1f29] flex flex-col h-full flex-shrink-0 select-none transition-all duration-300">
+                                <div class="px-4 py-3 bg-[#17171e] border-b border-[#1f1f29] flex-shrink-0 flex items-center justify-between">
+                                    <span class="text-xs font-bold text-neutral-200 tracking-wide">Studio Settings</span>
+                                    <span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">Parameters</span>
+                                </div>
+                                
+                                <div class="flex-1 overflow-y-auto p-4 space-y-5">
+                                    
+                                    <!-- Model Selection Dropdown -->
+                                    <div class="space-y-1.5">
+                                        <label class="text-[9px] font-bold text-neutral-500 uppercase tracking-wide block">Active Generative LLM</label>
+                                        <select id="setting-ai-studio-model" class="w-full bg-[#0d0d11] border border-[#1f1f29] rounded-lg px-2.5 py-2 text-xs text-white outline-none focus:border-indigo-500 transition-colors">
+                                            <option value="t1era-ultra">T1ERA Ultra v2 (Creative-First)</option>
+                                            <option value="t1era-pro">T1ERA Pro Standard</option>
+                                            <option value="gpt-5.4-mini">GPT-5.4 Mini</option>
+                                            <option value="claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- System instructions panel (Pre-populated on load to strictly enforce code block wrapping rules) -->
+                                    <div class="space-y-1.5">
+                                        <label class="text-[9px] font-bold text-neutral-500 uppercase tracking-wide block">System Prompt / Instructions</label>
+                                        <textarea id="setting-ai-studio-system" rows="4" placeholder="e.g. You are a creative sandbox AI..." class="w-full bg-[#0d0d11] border border-[#1f1f29] rounded-lg p-2.5 text-xs text-white placeholder-neutral-600 outline-none focus:border-indigo-500 leading-relaxed resize-none font-sans">You are T1ERA, an advanced developer prompt assistant. When outputting any programming code, configuration scripts, assert examples, or files (such as Python, JavaScript, CSS, or HTML), you must ALWAYS wrap the code strictly inside standard markdown triple backtick blocks (```) specified with the language identifier on the opening line (e.g., ```python). Preserve all line indentations and structures.</textarea>
+                                    </div>
+
+                                    <hr class="border-[#1f1f29]">
+
+                                    <!-- Temperature parameter slide controls -->
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between items-center text-[9px] font-bold uppercase tracking-wide">
+                                            <span class="text-neutral-500">Temperature</span>
+                                            <span id="val-ai-studio-temp" class="text-indigo-400 font-mono">0.7</span>
+                                        </div>
+                                        <input type="range" id="range-ai-studio-temp" min="0" max="2" step="0.1" value="0.7" class="w-full h-1 bg-[#09090c] rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                                        <p class="text-[9.5px] text-neutral-600 leading-relaxed">Higher temperature yields increasingly random, highly creative concept drafts.</p>
+                                    </div>
+
+                                    <!-- Max tokens limit controls -->
+                                    <div class="space-y-2">
+                                        <div class="flex justify-between items-center text-[9px] font-bold uppercase tracking-wide">
+                                            <span class="text-neutral-500">Max Tokens</span>
+                                            <span id="val-ai-studio-tokens" class="text-indigo-400 font-mono">2048</span>
+                                        </div>
+                                        <input type="range" id="range-ai-studio-tokens" min="256" max="4096" step="128" value="2048" class="w-full h-1 bg-[#09090c] rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                                    </div>
+
+                                    <!-- Constraint Safety Toggle Switch -->
+                                    <div class="flex items-center justify-between py-1 bg-[#17171e]/50 border border-[#1f1f29]/30 rounded-lg p-2.5">
+                                        <div>
+                                            <span class="text-[9px] font-bold text-neutral-400 uppercase tracking-wide block">Vocabulary Sanitizer</span>
+                                            <span class="text-[8.5px] text-neutral-600 block">Autofilter Indonesian drift</span>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer select-none">
+                                            <input type="checkbox" id="check-ai-studio-sanitizer" checked class="sr-only peer">
+                                            <div class="w-7 h-4 bg-neutral-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-neutral-400 after:border-neutral-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
+                                        </label>
+                                    </div>
+
+                                </div>
+                                <div class="p-3 border-t border-[#1f1f29] bg-[#17171e] flex-shrink-0">
+                                    <div class="text-[9px] text-neutral-500 text-center font-mono select-none">Changes take effect dynamically in real-time.</div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </section>
+
+                <!-- VIEW: LIST USER -->
+                <section id="view-list-user" class="space-y-8 hidden">
+                    <div>
+                        <h1 class="text-3xl font-extrabold text-white tracking-tight">List User</h1>
+                        <p class="text-neutral-400 mt-2 text-sm">Manage user accounts, check subscription tiers, and review child progress metrics.</p>
+                    </div>
+                    <div class="p-8 border border-neutral-800 rounded-xl bg-[#111115] text-center text-neutral-500 text-sm">
+                        This section is a functional placeholder. Select "T1ERA Studio" or "Statistic" in the sidebar to review active dashboard environments.
+                    </div>
+                </section>
+
+                <!-- VIEW: STATISTIC -->
+                <section id="view-statistic" class="space-y-8 hidden">
+                    <div>
+                        <h1 class="text-3xl font-extrabold text-white tracking-tight">Statistics</h1>
+                        <p class="text-neutral-400 mt-2 max-w-2xl text-sm leading-relaxed">
+                            Assess product reach, user engagement parameters, database records, and marketing traffic conversions.
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Card 1: Statistic Direct SmartKiddo -->
+                        <div class="glow-card p-6 rounded-xl flex flex-col justify-between h-48 cursor-pointer">
+                            <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
+                                <div class="w-12 h-12 rounded-lg bg-blue-500/10 border border-indigo-500/20 flex items-center justify-center text-blue-400">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                                </div>
+                                <h3 class="text-lg font-bold text-white tracking-wide">Statistic Direct SmartKiddo</h3>
+                            </div>
+                            <div>
+                                <p class="text-sm text-neutral-400 leading-relaxed">
+                                    Review first-party platform data including real-time active daily logs, cloud storage parameters, in-app actions, and system uptime diagnostics.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Card 2: statistic Google analytics -->
+                        <div class="glow-card p-6 rounded-xl flex flex-col justify-between h-48 cursor-pointer">
+                            <div class="grid grid-cols-[auto_1fr] gap-4 items-center">
+                                <div class="w-12 h-12 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                </div>
+                                <h3 class="text-lg font-bold text-white tracking-wide">statistic Google analytics</h3>
+                            </div>
+                            <div>
+                                <p class="text-sm text-neutral-400 leading-relaxed">
+                                    Analyze external landing page performance, audience acquisition sources, regional demographics, retention percentages, and conversion funnels.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW: WEBSOURCES CODE -->
+                <section id="view-websources-code" class="hidden h-full">
+                    <div id="studio-workspace" class="studio-layout flex border border-[#1f1f29] rounded-xl overflow-hidden bg-[#0d0d11] h-[580px] w-full relative font-sans">
+                        
+                        <!-- DYNAMIC LOADER SCREEN OVERLAY -->
+                        <div id="studio-loader-overlay" class="absolute inset-0 bg-[#0d0d11]/90 z-50 flex flex-col items-center justify-center gap-4 transition-opacity duration-300 hidden">
+                            <div class="w-10 h-10 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
+                            <p id="studio-loader-text" class="text-sm font-mono text-neutral-400">Connecting to Render Server...</p>
+                        </div>
+
+                        <!-- Subside 1: Explorer Column (Left column of parent) -->
+                        <div class="w-64 bg-[#111115] border-r border-[#1f1f29] flex flex-col h-full flex-shrink-0 select-none">
+                            <!-- Explorer Header -->
+                            <div class="px-4 py-3 border-b border-[#1f1f29] flex items-center justify-between">
+                                <span class="text-xs font-bold tracking-wider text-neutral-400 uppercase">Explorer</span>
+                                
+                                <!-- File Explorer Action Controls -->
+                                <div class="flex items-center gap-1">
+                                    <button id="explorer-new-file" title="New File" class="p-1 text-neutral-500 hover:text-white rounded transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                    </button>
+                                    <button id="explorer-new-folder" title="New Folder" class="p-1 text-neutral-500 hover:text-white rounded transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1H4a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2zM9 5H2v14a2 2 0 002 2h16a2 2 0 002-2V8a2 2 0 00-2-2h-8L9 5z"></path></svg>
+                                    </button>
+                                    <label title="Upload File" class="p-1 text-neutral-500 hover:text-white rounded transition-colors cursor-pointer mr-1">
+                                        <input type="file" id="explorer-file-upload" class="hidden">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                                    </label>
+                                    
+                                    <div class="h-4 border-l border-neutral-700 mx-1"></div>
+
+                                    <!-- CLOUD SYNC CONTROLS -->
+                                    <button id="explorer-sync-pull" title="Sync (Fetch from GitHub)" class="p-1 text-indigo-400 hover:text-indigo-300 rounded transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path></svg>
+                                    </button>
+                                    <button id="explorer-sync-push" title="Send & Sync (Backup to GitHub)" class="p-1 text-emerald-400 hover:text-emerald-300 rounded transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- File tree structure -->
+                            <div id="explorer-file-tree" class="flex-1 overflow-y-auto py-2 text-sm text-neutral-400">
+                                <!-- Dynamically populated by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Subside 2: COLLAPSIBLE AI CHAT AGENT SIDEBAR (Middle column) -->
+                        <div id="ai-chat-sidebar" class="w-80 bg-[#121216] border-r border-[#1f1f29] flex flex-col h-full flex-shrink-0 select-none transition-all duration-300 relative">
+                            <!-- AI Header Section -->
+                            <div class="px-4 py-2 bg-[#17171e] border-b border-[#1f1f29] flex flex-col gap-1.5 flex-shrink-0">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-5 h-5 rounded bg-indigo-600 flex items-center justify-center text-[10px] text-white font-bold">AI</div>
+                                        <span class="text-xs font-bold text-neutral-200 tracking-wide">SmartKiddo AI Agent</span>
+                                    </div>
+                                    <span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">gpt-5.4-mini</span>
+                                </div>
+                                <!-- Token Tracker Display -->
+                                <div class="flex items-center justify-between text-[10px] font-mono text-neutral-500 border-t border-[#252533] pt-1.5 pb-1">
+                                    <span>Tokens: <span id="ai-token-count" class="text-neutral-400">0</span></span>
+                                    <span class="text-neutral-600">|</span>
+                                    <span>In: <span id="ai-token-input" class="text-neutral-400">0</span></span>
+                                    <span class="text-neutral-600">|</span>
+                                    <span>Out: <span id="ai-token-output" class="text-neutral-400">0</span></span>
+                                </div>
+                                <!-- Agent Utilities Subheader & Buttons -->
+                                <div class="border-t border-[#252533] pt-2 flex flex-col gap-1.5">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[10px] font-bold text-neutral-500 uppercase tracking-wider">Quick Actions</span>
+                                        <!-- Maximize Chat Panel button -->
+                                        <button id="ai-chat-maximize-btn" class="p-1 text-neutral-500 hover:text-indigo-400 rounded transition-colors" title="Maximize Chat Panel">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4m12 4V4h-4M4 16v4h4m12-4v4h-4"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <!-- Fast Result Trigger Button -->
+                                    <button id="ai-quick-analyze-btn" class="w-full bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/25 text-indigo-300 rounded py-1.5 px-2 text-[10px] font-mono font-bold tracking-wide transition-colors flex items-center justify-center gap-1.5">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                        </svg>
+                                        Analyze File Structure & Links
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Scrollable Conversation area -->
+                            <div id="ai-chat-output-container" class="flex-1 overflow-y-auto p-4 space-y-4">
+                                <!-- Default Greeting -->
+                                <div class="flex items-start gap-3">
+                                    <div class="w-6 h-6 rounded bg-indigo-600/20 flex items-center justify-center text-xs text-indigo-400 font-bold flex-shrink-0">AI</div>
+                                    <div class="bg-[#1a1a24] p-3 rounded-lg text-xs text-neutral-300 leading-relaxed max-w-[85%] border border-[#1f1f29]">
+                                        Hi! I am your SmartKiddo AI Agent. I can write and optimize code, perform search functions, and analyze all files within your active directory structure. How can I help you today?
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- File Context Attachment Popup -->
+                            <div id="ai-context-menu" class="absolute bottom-16 left-4 right-4 bg-[#17171e] border border-[#1f1f29] rounded-lg shadow-xl p-2 z-50 hidden max-h-48 overflow-y-auto">
+                                <p class="text-[10px] text-neutral-500 font-bold px-2 py-1 uppercase tracking-wider border-b border-[#252533] mb-1">Select File to Attach:</p>
+                                <div id="ai-context-items-list" class="space-y-0.5 text-xs text-neutral-400">
+                                    <!-- Populated on upload button click -->
+                                </div>
+                            </div>
+
+                            <!-- AI Footer Input Box Section -->
+                            <div class="p-3 border-t border-[#1f1f29] bg-[#17171e] flex flex-col gap-2 flex-shrink-0">
+                                <div class="flex items-center gap-2">
+                                    <!-- Selected Context Indicator -->
+                                    <div id="ai-attachment-badge" class="hidden flex items-center gap-1.5 px-2 py-1 rounded bg-indigo-500/10 border border-indigo-500/20 text-[10px] text-indigo-400 font-mono w-full">
+                                        <svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                                        <span id="ai-attachment-name" class="truncate flex-1">file.js</span>
+                                        <button id="ai-attachment-remove" class="text-neutral-500 hover:text-red-400">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="flex items-end gap-2 bg-[#121216] border border-[#1f1f29] rounded-lg p-1.5">
+                                    <!-- Context upload button -->
+                                    <button id="ai-context-attach-btn" class="p-1.5 text-neutral-500 hover:text-white rounded transition-colors" title="Attach Workspace File as Context">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 a9 9 0 0118 0z"></path></svg>
+                                    </button>
+                                    <!-- Text Input -->
+                                    <textarea id="ai-chat-input" rows="1" placeholder="Ask AI..." class="flex-1 bg-transparent border-0 outline-none text-xs text-white max-h-24 resize-none py-1 leading-relaxed font-sans placeholder-neutral-500"></textarea>
+                                    <!-- Voice Recognition Button -->
+                                    <button id="ai-voice-btn" class="p-1.5 text-neutral-500 hover:text-indigo-400 rounded transition-colors relative" title="Speech to Text (English / Malay)">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                                        <span id="ai-voice-active-indicator" class="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-red-500 border border-[#121216] hidden"></span>
+                                    </button>
+                                    <!-- Send Button -->
+                                    <button id="ai-send-btn" class="p-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md transition-colors flex items-center justify-center">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Editor / Media Area wrapper (Right column of parent) -->
+                        <div class="flex-1 flex flex-col h-full bg-[#09090c] overflow-hidden relative">
+                            
+                            <!-- Tab Bar Header -->
+                            <div class="h-10 bg-[#111115] border-b border-[#1f1f29] px-4 flex items-center justify-between flex-shrink-0 select-none">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                                    <span id="editor-active-filename" class="text-xs font-mono text-neutral-300">index.html</span>
+                                </div>
+                                <div class="flex items-center gap-4">
+                                    <!-- EXPANDABLE SEARCH COMPONENT -->
+                                    <div class="flex items-center gap-2">
+                                        <div id="editor-search-bar" class="flex items-center bg-[#17171e] border border-[#1f1f29] rounded px-2 py-1 hidden transition-all duration-200">
+                                            <svg class="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                            <input type="text" id="editor-search-input" placeholder="Search in file..." class="bg-transparent text-xs text-white outline-none ml-1.5 w-32 sm:w-48 font-mono">
+                                            <span id="editor-search-count" class="text-[10px] font-mono text-neutral-500 ml-2 select-none">0 found</span>
+                                        </div>
+                                        <button id="editor-search-toggle" class="p-1 text-neutral-500 hover:text-white hover:bg-[#1a1a22] rounded transition-all focus:outline-none animate-pulse" title="Search Code">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                        </button>
+                                    </div>
+
+                                    <!-- AI AGENT TOGGLE VIEW CONTROL -->
+                                    <button id="tab-ai-toggle-btn" class="p-1 text-neutral-500 hover:text-white hover:bg-[#1a1a22] rounded transition-all focus:outline-none" title="Toggle AI Agent Panel">
+                                        <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 01-2 2h0a2 2 0 01-2-2v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                                        </svg>
+                                    </button>
+
+                                    <span class="text-[10px] text-neutral-500 font-semibold tracking-wider uppercase hidden sm:inline">T1ERA Code Studio</span>
+                                    
+                                    <!-- TERMINAL SHOW/HIDE TOGGLE BUTTON -->
+                                    <button id="tab-terminal-toggle-btn" class="p-1 text-neutral-500 hover:text-white hover:bg-[#1a1a22] rounded transition-all focus:outline-none" title="Toggle Terminal Output Panel">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                        </svg>
+                                    </button>
+
+                                    <!-- Maximize/Minimize Action Button -->
+                                    <button id="studio-maximize-btn" class="p-1 text-neutral-500 hover:text-white hover:bg-[#1a1a22] rounded transition-all focus:outline-none" title="Maximize Workspace">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4h4m12 4V4h-4M4 16v4h4m12-4v4h-4"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Combined Viewport & Console Layout Container -->
+                            <div class="flex-1 flex flex-col overflow-hidden relative">
+                                
+                                <!-- Editor Area Content Viewports -->
+                                <div class="flex-1 relative overflow-hidden" id="editor-viewport">
+                                    <!-- CODE FORMAT VIEW -->
+                                    <div id="code-editor-pane" class="w-full h-full flex">
+                                        <!-- Line Numbers Container -->
+                                        <div id="editor-line-numbers" class="w-12 bg-[#09090c] text-neutral-600 select-none text-right pr-3 border-r border-[#1f1f29]">
+                                            <div>1</div>
+                                        </div>
+                                        
+                                        <!-- Unified Editor Container Layer -->
+                                        <div class="flex-1 relative h-full" id="editor-container">
+                                            <!-- Synchronized Line Highlights Layer Behind Text -->
+                                            <div id="editor-highlight-lines-layer" class="absolute inset-0 pointer-events-none overflow-hidden"></div>
+                                            
+                                            <textarea id="editor-textarea" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"></textarea>
+                                            <pre id="editor-pre" class="pointer-events-none"><code id="editor-highlight-target"></code></pre>
+                                        </div>
+                                    </div>
+
+                                    <!-- MEDIA VIEW LAYOUT -->
+                                    <div id="media-viewer-pane" class="w-full h-full flex items-center justify-center bg-[#07070a] hidden">
+                                        <div id="media-content-wrapper" class="max-w-md max-h-[300px] rounded-lg overflow-hidden border border-[#1f1f29] shadow-lg flex items-center justify-center p-4">
+                                            <!-- Rendered dynamically -->
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- INTEGRATED TERMINAL LOG PANEL (At bottom of editor area) -->
+                                <div id="studio-terminal" class="h-40 bg-[#0d0d11] border-t border-[#1f1f29] flex flex-col transition-all duration-300">
+                                    <!-- Terminal Header Bar -->
+                                    <div class="h-8 bg-[#111115] border-b border-[#1f1f29] px-4 flex items-center justify-between select-none flex-shrink-0">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-[10px] font-bold tracking-wider text-neutral-400 uppercase font-mono">Terminal Output</span>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <!-- Toggle (Minimize / Unminimize) Button -->
+                                            <button id="terminal-toggle-btn" class="p-1 text-neutral-500 hover:text-white rounded transition-colors" title="Minimize/Restore Terminal">
+                                                <svg id="terminal-toggle-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                                </svg>
+                                            </button>
+                                            <!-- Close Button (Completely closes the panel) -->
+                                            <button id="terminal-close-btn" class="p-1 text-neutral-500 hover:text-red-400 rounded transition-colors" title="Close Terminal Panel">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <!-- Scrollable output area -->
+                                    <div id="terminal-log-output" class="flex-1 overflow-y-auto p-4 font-mono text-[11px] text-neutral-400 space-y-1.5 select-text bg-[#09090c]">
+                                        <!-- Real-time logs will populate here -->
+                                    </div>
+                                </div>
+
+                            </div>
+
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW: T1ERA AI STUDIO (ChatGPT + Gemini + Claude Hybrid Viewport) -->
+                <section id="view-t1era-ai-studio" class="hidden h-full flex-1 flex flex-col">
+                    <div class="studio-layout flex border border-[#1f1f29] rounded-xl overflow-hidden bg-[#0d0d11] h-full w-full relative flex-col font-sans flex-1">
+                        
+                        <!-- Top Navigation / Status Header Bar -->
+                        <div class="h-14 bg-[#111115] border-b border-[#1f1f29] px-4 flex items-center justify-between select-none flex-shrink-0">
+                            <div class="flex items-center gap-3">
+                                <button id="btn-ai-studio-back" class="p-1.5 text-neutral-400 hover:text-white rounded hover:bg-neutral-800 transition-colors" title="Back to T1ERA Studio">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                                    </svg>
+                                </button>
+                                <span class="text-xs font-bold text-white bg-amber-600/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded uppercase tracking-wider font-mono">T1ERA AI Studio</span>
+                                <span class="text-neutral-500">/</span>
+                                <span class="text-xs font-semibold text-neutral-200">Interactive Prompt Lab</span>
+                            </div>
+                            
+                            <!-- Middle: Active Model Selector Pill -->
+                            <div class="hidden md:flex items-center gap-2 px-3 py-1 bg-[#17171e] rounded-full border border-[#1f1f29]">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span id="active-model-badge" class="text-[11px] font-mono font-bold text-neutral-300">T1ERA-Ultra-v2 (Auto)</span>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <!-- Collapsible Settings Toggle Button -->
+                                <button id="btn-ai-studio-settings-toggle" class="p-1.5 text-neutral-400 hover:text-white hover:bg-[#1a1a22] rounded transition-all focus:outline-none" title="Toggle Configuration Panel">
+                                    <svg class="w-4 h-4 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    </svg>
+                                </button>
+                                <button id="btn-ai-studio-clear" class="px-3 py-1.5 rounded bg-[#17171e] hover:bg-neutral-800 border border-[#1f1f29] text-xs text-neutral-400 font-medium transition-colors">Clear Chat</button>
+                            </div>
+                        </div>
+
+                        <!-- Main Studio Content Splitter Panel -->
+                        <div class="flex-1 flex overflow-hidden relative">
+                            
+                            <!-- CENTER PLAYGROUND CHAT AREA -->
+                            <div class="flex-1 bg-[#09090c] flex flex-col h-full overflow-hidden relative">
+                                
+                                <!-- Central Scrollable Chat Feed -->
+                                <div id="ai-studio-chat-feed" class="flex-1 overflow-y-auto px-6 py-8 space-y-8 scroll-smooth">
+                                    
+                                    <!-- Welcome panel generated centered in the reading canvas -->
+                                    <div class="ai-studio-welcome-pane max-w-3xl mx-auto text-center py-10 space-y-4">
+                                        <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-500 to-indigo-600 flex items-center justify-center mx-auto shadow-lg">
+                                            <span class="text-white text-base font-black tracking-wider">T1</span>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <h2 class="text-lg font-bold text-white">Welcome to T1ERA Prompt Lab</h2>
+                                            <p class="text-xs text-neutral-400 max-w-md mx-auto leading-relaxed">
+                                                A sandbox combining Claude's structured parameters, Gemini's wide-centered layouts, and ChatGPT's fast conversational flows.
+                                            </p>
+                                        </div>
+                                        
+                                        <!-- Quick Template Prompts Card Grid -->
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl mx-auto pt-4 text-left">
+                                            <div class="studio-template-card p-3 rounded-lg border border-[#1f1f29] bg-[#111115] hover:border-indigo-500/40 cursor-pointer transition-all" data-prompt="Analyze the educational system metrics for age groups 5-7.">
+                                                <h4 class="text-xs font-bold text-neutral-200">Review Demographics</h4>
+                                                <p class="text-[10px] text-neutral-500 mt-1 truncate">Analyze the educational system metrics for age groups...</p>
+                                            </div>
+                                            <div class="studio-template-card p-3 rounded-lg border border-[#1f1f29] bg-[#111115] hover:border-indigo-500/40 cursor-pointer transition-all" data-prompt="Write a standard system constraint rule to enforce standard Malaysian vocabulary.">
+                                                <h4 class="text-xs font-bold text-neutral-200">Vocabulary Constraints</h4>
+                                                <p class="text-[10px] text-neutral-500 mt-1 truncate">Write a standard system constraint rule to enforce...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+
+                                <!-- Floating File Attachment Pending Area -->
+                                <div class="max-w-3xl mx-auto w-full px-6 flex-shrink-0">
+                                    <div id="ai-studio-upload-preview" class="hidden flex items-center gap-2 p-2 bg-[#121216] border border-[#1f1f29] rounded-lg text-xs text-neutral-300 font-mono mb-2">
+                                        <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                                        <span id="ai-studio-uploaded-file-name" class="truncate flex-1 text-neutral-400">Attached file.txt</span>
+                                        <button id="btn-ai-studio-remove-upload" class="p-1 text-neutral-500 hover:text-red-400 rounded">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- CENTER FLOATING PROMPT ENTRY CONTAINER (ChatGPT / Claude / Gemini Hybrid layout) -->
+                                <div class="px-6 pb-6 pt-2 flex-shrink-0 relative">
+                                    <div class="max-w-3xl mx-auto w-full bg-[#111115] border border-[#1f1f29] focus-within:border-indigo-500/50 rounded-2xl p-2.5 transition-all shadow-xl shadow-black/30">
+                                        
+                                        <!-- Invisible file input -->
+                                        <input type="file" id="ai-studio-file-upload-input" class="hidden">
+                                        
+                                        <!-- Input Field Text Area -->
+                                        <textarea id="ai-studio-prompt-input" rows="1" placeholder="Type a message, attach custom constraints, or query system behavior..." class="w-full bg-transparent border-0 outline-none text-xs text-white max-h-24 resize-none py-1.5 px-2.5 leading-relaxed font-sans placeholder-neutral-500" style="height: auto;"></textarea>
+                                        
+                                        <!-- Action Utility Toolbar Panel inside the prompt box -->
+                                        <div class="flex items-center justify-between border-t border-[#1f1f29]/50 pt-2 px-1.5 mt-1 select-none">
+                                            <div class="flex items-center gap-2.5">
+                                                <!-- Upload File button -->
+                                                <button id="btn-ai-studio-attach" class="p-1.5 text-neutral-500 hover:text-indigo-400 hover:bg-neutral-800/40 rounded-lg transition-colors relative" title="Upload File context">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                                    </svg>
+                                                </button>
+                                                <!-- Extension tools/plugins selector button -->
+                                                <button id="btn-ai-studio-extensions" class="p-1.5 text-neutral-500 hover:text-indigo-400 hover:bg-neutral-800/40 rounded-lg transition-colors relative" title="Active Extensions & Tools">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"></path>
+                                                    </svg>
+                                                    <span id="extension-active-dot" class="absolute top-1 right-1 w-2 h-2 rounded-full bg-indigo-500 border border-[#111115] hidden"></span>
+                                                </button>
+                                                <!-- Speech Input mic button -->
+                                                <button id="btn-ai-studio-voice" class="p-1.5 text-neutral-500 hover:text-indigo-400 hover:bg-neutral-800/40 rounded-lg transition-colors relative" title="Microphone Dictation (Speech-to-Text)">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                                                    </svg>
+                                                    <span id="ai-studio-mic-active-dot" class="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 border border-[#111115] hidden"></span>
+                                                </button>
+                                            </div>
+                                            
+                                            <!-- Send Message button -->
+                                            <button id="btn-ai-studio-send" class="p-1.5 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white border border-indigo-500/25 hover:border-transparent rounded-lg transition-all flex items-center justify-center">
+                                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                                                </svg>
+                                            </button>
+                                        </div>
+
+                                        <!-- Hidden dropup options for extension toggle -->
+                                        <div id="ai-studio-extensions-menu" class="absolute bottom-[72px] left-6 bg-[#17171e] border border-[#1f1f29] rounded-xl shadow-2xl p-2 z-50 hidden w-52 select-none">
+                                            <p class="text-[9px] text-neutral-500 font-bold px-2 py-1 uppercase tracking-wider border-b border-[#252533] mb-1">Extensions & Tools</p>
+                                            <label class="flex items-center justify-between px-2 py-1.5 hover:bg-[#21212c] rounded cursor-pointer text-xs text-neutral-300">
+                                                <span>Grep Code Scanner</span>
+                                                <input type="checkbox" id="ext-toggle-grep" class="accent-indigo-600">
+                                            </label>
+                                            <label class="flex items-center justify-between px-2 py-1.5 hover:bg-[#21212c] rounded cursor-pointer text-xs text-neutral-300">
+                                                <span>Session LRU Memory</span>
+                                                <input type="checkbox" id="ext-toggle-lru" checked class="accent-indigo-600">
+                                            </label>
+                                        </div>
+
+                                    </div>
+                                    <div class="text-[10px] text-neutral-600 text-center mt-2.5 select-none font-mono">T1ERA AI Studio may produce inaccurate physical descriptions. Verify parameters.</div>
+                                </div>
+
+                            </div>
+
+                            <!-- RIGHT PARAMETER DOCK (Claude / Google AI Studio Hybrid) -->
+                            <div id="ai-studio-settings-dock" class="w-72 bg-[#121216] border-l border-[#1f1f29] flex flex-col h-full flex-shrink-0 select-none transition-all duration-300">
+                                <div class="px-4 py-3 bg-[#17171e] border-b border-[#1f1f29] flex-shrink-0 flex items-center justify-between">
+                                    <span class="text-xs font-bold text-neutral-200 tracking-wide">Studio Settings</span>
+                                    <span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-mono">Parameters</span>
+                                </div>
+                                
+                                <div class="flex-1 overflow-y-auto p-4 space-y-5">
+                                    
+                                    <!-- Model Selection Dropdown -->
+                                    <div class="space-y-1.5">
+                                        <label class="text-[9px] font-bold text-neutral-500 uppercase tracking-wide block">Active Generative LLM</label>
+                                        <select id="setting-ai-studio-model" class="w-full bg-[#0d0d11] border border-[#1f1f29] rounded-lg px-2.5 py-2 text-xs text-white outline-none focus:border-indigo-500 transition-colors">
+                                            <option value="t1era-ultra">T1ERA Ultra v2 (Creative-First)</option>
+                                            <option value="t1era-pro">T1ERA Pro Standard</option>
+                                            <option value="gpt-5.4-mini">GPT-5.4 Mini</option>
+                                            <option value="claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- System instructions panel (Pre-populated on load to strictly enforce code block wrapping rules) -->
+                                    <div class="space-y-1.5">
+                                        <label class="text-[9px] font-bold text-neutral-500 uppercase tracking-wide block">System Prompt / Instructions</label>
+                                        <textarea id="setting-ai-studio-system" rows="4" placeholder="e.g. You are a creative sandbox AI..." class="w-full bg-[#0d0d11] border border-[#1f1f29] rounded-lg p-2.5 text-xs text-white placeholder-neutral-600 outline-none focus:border-indigo-500 leading-relaxed resize-none font-sans">You are T1ERA, an advanced developer prompt assistant. When outputting any programming code, configuration scripts, assert examples, or files (such as Python, JavaScript, CSS, or HTML), you must ALWAYS wrap the code strictly inside standard markdown triple backtick blocks (```) specified with the language identifier on the opening line (e.g., ```python). Preserve all line indentations and structures.</textarea>
                                     </div>
 
                                     <hr class="border-[#1f1f29]">
@@ -1248,3 +2280,4 @@
     </div>
 
 </body>
+</html>
