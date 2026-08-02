@@ -56,6 +56,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const tokensGroup = rangeTokens ? rangeTokens.closest(".space-y-2") : null;
     const sanitizerGroup = checkSanitizer ? checkSanitizer.closest(".flex") : null;
 
+    // Content Generate & Split View Controls
+    const btnContentGen = document.getElementById("btn-ai-studio-content-gen");
+    const btnTitleReset = document.getElementById("btn-ai-studio-title-reset");
+    const mainSplitter = document.getElementById("ai-studio-main-splitter");
+
     let isRecordingSpeech = false;
     let attachedFileMetadata = null;
     let chatHistory = []; // Local history log storage for T1ERA Studio playground
@@ -138,8 +143,39 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 3. UI Controls and Custom Sliders Binding (Model Locks Handler)
+    // 3. UI Controls, Sliders & Split View Handlers
     // -----------------------------------------------------------------
+    
+    // Click "Content Generate": Split layout (25% Studio Left, 75% Content Pane Right)
+    if (btnContentGen && mainSplitter) {
+        btnContentGen.addEventListener("click", function () {
+            mainSplitter.classList.add("split-mode-active");
+            btnContentGen.classList.add("active-split");
+            
+            logToTerminal("Split screen activated: Current studio pushed to left 25%, Content Generate active on right 75%.", "system");
+            
+            if (typeof showToastNotification === 'function') {
+                showToastNotification("Content Generate Split View Active (25% / 75%)");
+            }
+        });
+    }
+
+    // Click "T1ERA AI Studio" on top left header: Reset back to default original layout
+    if (btnTitleReset && mainSplitter) {
+        btnTitleReset.addEventListener("click", function () {
+            mainSplitter.classList.remove("split-mode-active");
+            if (btnContentGen) {
+                btnContentGen.classList.remove("active-split");
+            }
+            
+            logToTerminal("Restored T1ERA AI Studio to default original layout.", "system");
+            
+            if (typeof showToastNotification === 'function') {
+                showToastNotification("Restored original studio layout");
+            }
+        });
+    }
+
     if (btnSettingsToggle && settingsDock) {
         btnSettingsToggle.addEventListener("click", function () {
             settingsDock.classList.toggle("collapsed");
@@ -168,17 +204,14 @@ document.addEventListener("DOMContentLoaded", function () {
         if (isMiniModel) {
             logToTerminal("Target 'gpt-5.4-mini' selected. Disabling unauthorized slide parameters.", "warning");
             
-            // Set input nodes to disabled
             if (rangeTemp) rangeTemp.disabled = true;
             if (rangeTokens) rangeTokens.disabled = true;
             if (checkSanitizer) checkSanitizer.disabled = true;
 
-            // Inject warning block styling rules
             if (tempGroup) tempGroup.classList.add("locked-parameter-group");
             if (tokensGroup) tokensGroup.classList.add("locked-parameter-group");
             if (sanitizerGroup) sanitizerGroup.classList.add("locked-parameter-group");
         } else {
-            // Restore default enabled settings for all other platforms
             if (rangeTemp) rangeTemp.disabled = false;
             if (rangeTokens) rangeTokens.disabled = false;
             if (checkSanitizer) checkSanitizer.disabled = false;
@@ -242,7 +275,6 @@ document.addEventListener("DOMContentLoaded", function () {
         return files;
     }
 
-    // Downsamples and compresses high-resolution images down to standard vision-friendly 20KB-40KB sizes
     function compressImageAndGetBase64(file, callback) {
         const reader = new FileReader();
         reader.onload = function (e) {
@@ -251,7 +283,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 const canvas = document.createElement("canvas");
                 let width = img.width;
                 let height = img.height;
-                const maxDimension = 600; // Standard vision model baseline width
+                const maxDimension = 600;
 
                 if (width > maxDimension || height > maxDimension) {
                     if (width > height) {
@@ -268,7 +300,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 const ctx = canvas.getContext("2d");
                 ctx.drawImage(img, 0, 0, width, height);
 
-                // Export as compressed standard JPEG to keep payload small
                 const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.7);
                 callback(compressedDataUrl);
             };
@@ -277,7 +308,6 @@ document.addEventListener("DOMContentLoaded", function () {
         reader.readAsDataURL(file);
     }
 
-    // Helper to render dynamic previews inside the attachment bar
     function renderUploadPreview(file, displayUrl) {
         if (uploadedFileName && uploadPreview) {
             let previewHTML = "";
@@ -286,7 +316,7 @@ document.addEventListener("DOMContentLoaded", function () {
             } else if (file.type.startsWith("video/")) {
                 previewHTML = `
                     <div class="w-8 h-8 rounded bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 flex-shrink-0">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 002-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                     </div>
                 `;
             } else {
@@ -337,21 +367,19 @@ document.addEventListener("DOMContentLoaded", function () {
                 };
                 reader.readAsText(file);
             } else if (isImageType) {
-                // Compress image asynchronously to protect the context window
-                const displayUrl = URL.createObjectURL(file); // Crisp fast local display URL
+                const displayUrl = URL.createObjectURL(file);
                 compressImageAndGetBase64(file, function(compressedBase64) {
                     attachedFileMetadata = {
                         name: file.name,
                         type: file.type,
                         size: file.size,
                         content: null,
-                        dataUrl: compressedBase64, // Small compressed payload (~30KB)
-                        displayUrl: displayUrl // Crisp high-res local preview
+                        dataUrl: compressedBase64,
+                        displayUrl: displayUrl
                     };
                     renderUploadPreview(file, displayUrl);
                 });
             } else {
-                // Standard binary file
                 reader.onload = function(evt) {
                     attachedFileMetadata = {
                         name: file.name,
@@ -406,12 +434,11 @@ document.addEventListener("DOMContentLoaded", function () {
     syncActiveExtensionsBadge();
 
     // -----------------------------------------------------------------
-    // 8. Markdown Parsing Utility (Protected Block Placeholder Token Pipeline)
+    // 8. Markdown Parsing Utility
     // -----------------------------------------------------------------
     function parseMarkdownToHTML(text) {
         let html = text;
 
-        // Escape raw HTML tags to prevent formatting injection attacks
         html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
         const placeholders = [];
@@ -421,12 +448,10 @@ document.addEventListener("DOMContentLoaded", function () {
             return `<!--T1ERA_PLACEHOLDER_${id}-->`;
         }
 
-        // 1. Extract Code Blocks into placeholders (handles CRLF line-endings and trailing whitespaces)
         html = html.replace(/```([a-zA-Z0-9_-]*)[ \t]*[\r\n]*([\s\S]*?)[\r\n]*```/g, function (match, lang, code) {
             const cleanLang = lang ? lang.toUpperCase() : "PLAINTEXT";
             const codeHTML = `
                 <div class="ai-studio-code-container border border-[#1f1f29] rounded-lg overflow-hidden my-3 bg-[#07070a]">
-                    <!-- Code Header -->
                     <div class="ai-studio-code-header flex items-center justify-between px-3 py-1.5 bg-[#111115] border-b border-[#1f1f29] text-[9px] font-bold text-neutral-400 font-mono select-none">
                         <span>${cleanLang}</span>
                         <button class="btn-copy-code flex items-center gap-1 hover:text-white transition-colors" title="Copy Code text">
@@ -434,36 +459,30 @@ document.addEventListener("DOMContentLoaded", function () {
                             <span>COPY CODE</span>
                         </button>
                     </div>
-                    <!-- Code Body -->
                     <pre class="p-3 m-0 overflow-x-auto"><code class="font-mono text-[11px] text-indigo-300 language-${lang || 'plaintext'}">${code.trim()}</code></pre>
                 </div>
             `;
             return addPlaceholder('code_block', codeHTML);
         });
 
-        // 2. Extract Inline Code blocks to protect nested double-equals symbols
         html = html.replace(/`([^`\r\n]+)`/g, function (match, code) {
             const inlineHTML = `<code class="bg-[#0b0b0f] border border-[#1f1f29] px-1 rounded text-[11px] text-pink-400 font-mono">${code}</code>`;
             return addPlaceholder('inline_code', inlineHTML);
         });
 
-        // 3. Extract Blockquotes
         html = html.replace(/^&gt;\s+(.*)$/gm, function (match, content) {
             const quoteHTML = `<blockquote class="border-l-3 border-indigo-500 bg-indigo-500/5 pl-3 py-1.5 italic text-neutral-400 rounded-r my-2">${content}</blockquote>`;
             return addPlaceholder('blockquote', quoteHTML);
         });
 
-        // 4. Process Header elements (before splitting paragraphs)
         html = html.replace(/^###\s+(.*)$/gm, '<h4 class="text-sm font-bold text-white mt-3 mb-1.5">$1</h4>');
         html = html.replace(/^##\s+(.*)$/gm, '<h3 class="text-base font-extrabold text-white mt-4 mb-2">$1</h3>');
         html = html.replace(/^#\s+(.*)$/gm, '<h2 class="text-lg font-black text-indigo-400 mt-5 mb-3 border-b border-[#1f1f29] pb-1">$1</h2>');
 
-        // 5. Process inline elements
         html = html.replace(/==([^==\r\n]+)==/g, '<mark class="bg-amber-500/15 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/20">$1</mark>');
         html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="text-white font-bold">$1</strong>');
         html = html.replace(/__([^_]+)__/g, '<span class="underline decoration-indigo-500/50">$1</span>');
 
-        // 6. Convert Double Newlines to Paragraphs safely (skipping block containers and headings)
         const parts = html.split(/[\r\n]{2,}/);
         const formattedParts = parts.map(part => {
             const trimmed = part.trim();
@@ -475,7 +494,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
         html = formattedParts.filter(p => p !== "").join('\n');
 
-        // 7. Restore Placeholders in reverse order to preserve nested tag hierarchies
         for (let i = placeholders.length - 1; i >= 0; i--) {
             const placeholderToken = `<!--T1ERA_PLACEHOLDER_${i}-->`;
             html = html.replace(placeholderToken, placeholders[i].html);
@@ -485,26 +503,23 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     // -----------------------------------------------------------------
-    // 9. EXACT MATCH Centered Chat Message Generation Layouts
+    // 9. Centered Chat Message Generation Layouts
     // -----------------------------------------------------------------
     function createCenteredMessageBubble(sender, content, generationTimeSec = "0.0", persist = true) {
         const now = new Date();
         const timestamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         const wrapper = document.createElement("div");
-        // Outer wrapper padding matches the prompt box area padding (`px-6`)
         wrapper.className = "w-full px-6 py-4";
 
         const isUser = sender === "user";
         const speakerLabel = isUser ? "YOU" : (dropdownModel ? dropdownModel.options[dropdownModel.selectedIndex].text.toUpperCase() : "T1ERA AI");
         const headerClass = isUser ? "user" : "assistant";
-        const alignClass = isUser ? "text-center" : "text-left"; // USER IS CENTERED, ASSISTANT IS LEFT-ALIGNED
+        const alignClass = isUser ? "text-center" : "text-left";
 
         wrapper.innerHTML = `
             <div class="max-w-3xl w-full mx-auto flex flex-col gap-2">
                 <div class="ai-studio-msg-box relative w-full">
-                    
-                    <!-- HEADER SECTION (Centered Alignment with copy button on top-right) -->
                     <div class="ai-studio-box-header ${headerClass}">
                         <span>${isUser ? '👤' : '✨'} ${speakerLabel}</span>
                         <button class="btn-copy-msg text-neutral-500 hover:text-white transition-colors" title="Copy Message text">
@@ -514,19 +529,15 @@ document.addEventListener("DOMContentLoaded", function () {
                         </button>
                     </div>
 
-                    <!-- BODY SECTION (Message Text Content - Center for User, Left for AI) -->
                     <div class="ai-studio-box-body ${alignClass}">
                         ${content}
                     </div>
 
-                    <!-- FOOTER SECTION (Centered Alignment, Small Font) -->
                     <div class="ai-studio-box-footer">
                         ${isUser ? 'CLIENT INFERENCE PIPELINE REQUEST' : 'PROMPT LAB CONTEXT INTERACTION LOG'}
                     </div>
-
                 </div>
                 
-                <!-- OUTSIDE BOTTOM LABEL (Below box outside on left corner) -->
                 <div class="ai-studio-outside-meta select-none flex items-center gap-1.5 font-mono w-full text-left">
                     <span>[${timestamp}]</span>
                     <span>•</span>
@@ -535,7 +546,6 @@ document.addEventListener("DOMContentLoaded", function () {
             </div>
         `;
 
-        // Bind Message Block copy to clipboard trigger
         const copyBtn = wrapper.querySelector(".btn-copy-msg");
         if (copyBtn) {
             copyBtn.addEventListener("click", function() {
@@ -557,7 +567,6 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         }
 
-        // Bind individual code block copy triggers
         const codeCopyBtns = wrapper.querySelectorAll(".btn-copy-code");
         codeCopyBtns.forEach(btn => {
             btn.addEventListener("click", function(e) {
@@ -585,7 +594,6 @@ document.addEventListener("DOMContentLoaded", function () {
             });
         });
 
-        // Bind Image Download triggers dynamically
         const imgDownloadBtns = wrapper.querySelectorAll(".btn-download-studio-img");
         imgDownloadBtns.forEach(btn => {
             btn.addEventListener("click", function(e) {
@@ -612,8 +620,6 @@ document.addEventListener("DOMContentLoaded", function () {
     // -----------------------------------------------------------------
     // 10. Intelligent Context, Memory & Notification Infrastructure
     // -----------------------------------------------------------------
-    
-    // Glassy floating transient notification toast popup
     function showToastNotification(message) {
         let container = document.getElementById("ai-studio-toast-container");
         if (!container) {
@@ -632,13 +638,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
         container.appendChild(toast);
 
-        // Animate In
         requestAnimationFrame(() => {
             toast.classList.remove("opacity-0", "translate-y-[-10px]");
             toast.classList.add("opacity-100", "translate-y-0");
         });
 
-        // Animate Out
         const removeToast = () => {
             toast.classList.remove("opacity-100", "translate-y-0");
             toast.classList.add("opacity-0", "translate-y-[-10px]");
@@ -649,14 +653,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const autoTimeout = setTimeout(removeToast, 2500);
 
-        // Click to dismiss instantly
         toast.addEventListener("click", () => {
             clearTimeout(autoTimeout);
             removeToast();
         });
     }
 
-    // Dynamic zoom using existing Dashboard Lightbox modal
     window.zoomAIStudioImage = function(src) {
         const lightbox = document.getElementById("story-image-lightbox");
         const lightboxImg = document.getElementById("lightbox-img");
@@ -672,7 +674,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     };
 
-    // Client-side secure downloader bypassing standard browser CORS navigation locks
     function initiateSecureImageDownload(url, filename) {
         logToTerminal("Preparing binary graphic download stream...", "system");
         
@@ -685,7 +686,6 @@ document.addEventListener("DOMContentLoaded", function () {
             document.body.removeChild(link);
             showToastNotification("Image downloaded successfully!");
         } else {
-            // Fetch remote CDN resource as blob to force browser download stream
             fetch(url)
                 .then(response => {
                     if (!response.ok) throw new Error();
@@ -703,19 +703,16 @@ document.addEventListener("DOMContentLoaded", function () {
                     showToastNotification("Image downloaded successfully!");
                 })
                 .catch(() => {
-                    // Fallback to direct tab opening if CDN CORS fails
                     window.open(url, "_blank");
                     showToastNotification("Opened original asset in new tab.");
                 });
         }
     }
 
-    // Serializes active chatHistory stack straight to local browser storage
     function savePersistedHistory() {
         localStorage.setItem("t1era_ai_studio_chat_history", JSON.stringify(chatHistory));
     }
 
-    // Deserializes and re-draws stored history blocks upon page hydration
     function loadPersistedHistory() {
         const saved = localStorage.getItem("t1era_ai_studio_chat_history");
         if (!saved) return;
@@ -724,7 +721,6 @@ document.addEventListener("DOMContentLoaded", function () {
             if (Array.isArray(parsed) && parsed.length > 0) {
                 chatHistory = parsed;
                 
-                // Collapse welcome banner immediately since active history exists
                 const welcomePane = document.querySelector(".ai-studio-welcome-pane");
                 if (welcomePane) {
                     welcomePane.style.display = "none";
@@ -734,9 +730,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (turn.role === "user") {
                         createCenteredMessageBubble("user", turn.content, "0.0", false);
                     } else if (turn.role === "assistant") {
-                        // Support both text and dynamic image render parsing in storage hydration
                         if (turn.content.startsWith("Image generation: ")) {
-                            // Extract prompt and rebuild image payload mock if re-loaded
                             const promptText = turn.content.substring(18);
                             createCenteredMessageBubble("assistant", `
                                 <div class="space-y-3 w-full flex flex-col items-center">
@@ -758,7 +752,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    // Resolves simple numerical selections (e.g. "5" -> "5 (Context Selection: Option 5 - 'Exit')")
     function resolveOptionSelectionContext(userInput) {
         const targetText = userInput.trim();
         const numMatch = targetText.match(/^(\d+)$/);
@@ -767,7 +760,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (!optionNumber) return userInput;
 
-        // Traverse history backward to extract the last AI instruction list block
         let lastAiContent = null;
         for (let i = chatHistory.length - 1; i >= 0; i--) {
             if (chatHistory[i].role === "assistant") {
@@ -778,7 +770,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (!lastAiContent) return userInput;
 
-        // Parse list formats matching `5.` or `5)`
         const lines = lastAiContent.split(/[\r\n]+/);
         const listPattern = new RegExp(`^\\s*${optionNumber}[\\.\\)]\\s*(.*)$`, 'i');
         
@@ -793,7 +784,6 @@ document.addEventListener("DOMContentLoaded", function () {
         return userInput;
     }
 
-    // Tracks keyword topic overlap changes, warning of context shifts in the terminal
     let activeTopicKeywords = [];
     function trackTopicKeywordsShift(newPromptText) {
         const stopWords = ["the", "and", "but", "for", "with", "this", "that", "you", "are", "have", "not", "make", "create", "write", "code"];
@@ -802,7 +792,7 @@ document.addEventListener("DOMContentLoaded", function () {
             .split(/\s+/)
             .filter(w => w.length > 2 && !stopWords.includes(w));
 
-        if (cleanWords.length === 0) return; // Short message/continuation
+        if (cleanWords.length === 0) return;
 
         if (activeTopicKeywords.length > 0) {
             const intersection = cleanWords.filter(w => activeTopicKeywords.includes(w));
@@ -815,16 +805,13 @@ document.addEventListener("DOMContentLoaded", function () {
         activeTopicKeywords = cleanWords;
     }
 
-    // Inspects user prompt for graphic drawing triggers using advanced regex patterns
     function detectImageGenerationIntent(promptText) {
         const clean = promptText.trim().toLowerCase();
         
-        // 1. Slash Command parsing
         if (clean.startsWith("/image")) {
             return promptText.substring(6).trim();
         }
         
-        // 2. Semantic RegEx matching standard prompts
         const patterns = [
             /^(?:generate|create|draw|paint|illustrate|make|design)\s+(?:an?\s+)?(?:image|picture|drawing|painting|graphic|illustration|poster|logo|banner|flyer|art|sketch|photo|photograph|wallpaper|icon|avatar)\s+(?:of|about|for\s+)?(.*)$/i,
             /^(?:draw|paint|illustrate|make|design)\s+(?:an?\s+)?(.*)$/i,
@@ -839,7 +826,6 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
         
-        // 3. Fallback: simple keyword prefix checks
         const simpleTriggers = [
             "create image", "generate image", "create poster", "generate poster", 
             "create logo", "generate logo", "create banner", "generate banner",
@@ -862,7 +848,6 @@ document.addEventListener("DOMContentLoaded", function () {
         const rawText = promptInput.value.strip ? promptInput.value.strip() : promptInput.value.trim();
         if (!rawText && !attachedFileMetadata) return;
 
-        // Clear welcome helper splash block on first execution run
         const welcomePane = document.querySelector(".ai-studio-welcome-pane");
         if (welcomePane) {
             welcomePane.style.display = "none";
@@ -870,24 +855,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const isMiniModel = dropdownModel && (dropdownModel.value === "gpt-5.4-mini");
 
-        // Step A: Parse user's selection context heuristics (Option tracking)
         const resolvedText = resolveOptionSelectionContext(rawText);
 
-        // Step B: Evaluate discussion context shifts
         trackTopicKeywordsShift(rawText);
 
-        // Step C: Check if intent is general image generation
         const imagePrompt = detectImageGenerationIntent(rawText);
 
-        // Format message appending references if attached
         let messageOutput = rawText;
         let attachmentSegment = "";
         if (attachedFileMetadata) {
-            // Support both Base64 inline segments and plain text code parsing beautifully
             if (attachedFileMetadata.dataUrl) {
                 let safeDataUrl = attachedFileMetadata.dataUrl;
                 
-                // Safe context window truncation guard
                 if (safeDataUrl.length > 120000) {
                     safeDataUrl = safeDataUrl.substring(0, 120000) + "\n... [Binary content truncated to protect model context window limits] ...";
                 }
@@ -896,7 +875,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 const isVideoFile = attachedFileMetadata.type.startsWith("video/");
                 
                 if (isImageFile) {
-                    // Send the highly compressed background dataUrl to the model, but render the high-res local image for display
                     attachmentSegment = `\n\n=== ATTACHED IMAGE CONTEXT ===\nFilename: ${attachedFileMetadata.name}\nMIME Type: ${attachedFileMetadata.type}\nData URL (Compressed Payload):\n${attachedFileMetadata.dataUrl}`;
                     
                     messageOutput += `
@@ -932,30 +910,25 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const startTime = performance.now();
 
-        // Append User Prompts Centered
         createCenteredMessageBubble("user", messageOutput, "0.0");
 
-        // Save into local history array for back-and-forth continuity
         chatHistory.push({ role: "user", content: resolvedText + attachmentSegment });
 
-        // Clear inputs
         promptInput.value = "";
         promptInput.style.height = "auto";
         attachedFileMetadata = null;
         if (uploadPreview) uploadPreview.classList.add("hidden");
         if (fileUploadInput) fileUploadInput.value = "";
 
-        // Setup empty assistant bubble placeholder
         const assistantBubble = createCenteredMessageBubble("assistant", `
             <div class="flex items-center gap-2 text-neutral-500 font-mono text-[11px] py-1">
                 <div class="w-1.5 h-1.5 bg-amber-400 rounded-full animate-ping"></div>
                 <span class="loading-status-text">Analyzing instructions & dispatching query...</span>
             </div>
-        `, "0.0", false); // Do not persist the loading state
+        `, "0.0", false);
 
         const loadingStatusEl = assistantBubble.querySelector(".loading-status-text");
 
-        // Case 1: Handle live Image Generation Route (Centered Full-Width rendering with download tool)
         if (imagePrompt) {
             if (loadingStatusEl) loadingStatusEl.innerText = "Connecting to universal graphic engine (DALL-E)...";
             logToTerminal(`AI Studio Image: Requesting universal graphic model for prompt: "${imagePrompt}"`, "system");
@@ -975,14 +948,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (imgData.success) {
                     const duration = ((performance.now() - startTime) / 1000).toFixed(1);
                     
-                    // Rendered full-width (w-full) centered inside padded block container
                     const htmlCard = `
                         <div class="space-y-4 w-full flex flex-col items-center">
                             <p class="text-xs text-neutral-300 w-full text-left">Here is your auto-generated drawing illustration:</p>
                             <div class="rounded-lg overflow-hidden border border-[#1f1f29] shadow-2xl w-full my-2 bg-neutral-900">
                                 <img src="${imgData.image_url}" class="w-full h-auto object-cover cursor-zoom-in max-h-[480px]" alt="Universal generated card" onclick="zoomAIStudioImage(this.src)">
                             </div>
-                            <!-- Centered Action buttons below image block -->
                             <div class="flex items-center justify-center gap-2 w-full">
                                 <button class="btn-download-studio-img flex items-center gap-1.5 px-3 py-1.5 bg-[#17171e] hover:bg-neutral-800 border border-[#1f1f29] rounded text-[10px] text-neutral-300 font-mono font-bold transition-all" data-url="${imgData.image_url}">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
@@ -1001,7 +972,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         outsideMeta.innerHTML = `<span>[${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}]</span><span>•</span><span>${duration}s response</span>`;
                     }
 
-                    // Re-bind download trigger for newly rendered image card
                     const dlBtn = assistantBubble.querySelector(".btn-download-studio-img");
                     if (dlBtn) {
                         dlBtn.addEventListener("click", function(e) {
@@ -1010,7 +980,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         });
                     }
 
-                    // Save assistant message to chat history
                     chatHistory.push({ role: "assistant", content: `Image generation: ${imagePrompt}` });
                     savePersistedHistory();
                     logToTerminal("AI Studio universal image retrieved.", "success");
@@ -1023,7 +992,6 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        // Case 2: Handle fallback mock model
         if (!isMiniModel) {
             setTimeout(() => {
                 const totalSec = "1.2";
@@ -1048,7 +1016,6 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        // Setup progressive status logging while request is pending
         let progressTicks = 0;
         const progressInterval = setInterval(() => {
             progressTicks += 5;
@@ -1064,19 +1031,16 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }, 5000);
 
-        // AbortController setup to prevent infinite waiting
         const controller = new AbortController();
         const safetyTimeout = setTimeout(() => {
             controller.abort();
-        }, 95000); // 95-second dynamic safety timeout for cold starts
+        }, 95000);
 
         try {
             logToTerminal("Dispatching playground prompt packet to live backend...", "system");
 
-            // Compile system settings variables
             const systemInstructions = document.getElementById("setting-ai-studio-system") ? document.getElementById("setting-ai-studio-system").value.trim() : "";
             
-            // Build lightweight directory context if LRU is enabled
             let contextPayload = "";
             const isLruActive = extToggleLru && extToggleLru.checked;
             if (isLruActive && typeof window.getWorkspaceFileSystem === 'function') {
@@ -1103,7 +1067,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 body: JSON.stringify(payload)
             });
 
-            // Stop loading logging & safety timeout triggers
             clearInterval(progressInterval);
             clearTimeout(safetyTimeout);
 
@@ -1119,19 +1082,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const aiText = data.content;
             
-            // Save inside local log history
             chatHistory.push({ role: "assistant", content: aiText });
 
             const endTime = performance.now();
             const totalSec = ((endTime - startTime) / 1000).toFixed(1);
 
-            // Print output inside bubble parsing markdown structures
             const contentBody = assistantBubble.querySelector(".ai-studio-box-body");
             if (contentBody) {
                 contentBody.innerHTML = parseMarkdownToHTML(aiText);
             }
 
-            // Sync dynamic latency seconds to the outside meta label
             const outsideMeta = assistantBubble.querySelector(".ai-studio-outside-meta");
             if (outsideMeta) {
                 const now = new Date();
@@ -1202,7 +1162,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Hydrate saved conversations straight out of storage on startup
     loadPersistedHistory();
 
 });
