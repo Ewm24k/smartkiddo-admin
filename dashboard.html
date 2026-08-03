@@ -723,6 +723,8 @@
                                         
                                         <!-- Invisible file input -->
                                         <input type="file" id="ai-studio-file-upload-input" class="hidden">
+                                        <!-- Hidden upload input dedicated to the Generate Contents Kids flow (image or short video clip only) -->
+                                        <input type="file" id="ai-studio-kids-upload-input" class="hidden" accept="image/*,video/*">
                                         
                                         <!-- Input Field Text Area -->
                                         <textarea id="ai-studio-prompt-input" rows="1" placeholder="Type a message, attach custom constraints, or query system behavior..." class="w-full bg-transparent border-0 outline-none text-xs text-white max-h-24 resize-none py-1.5 px-2.5 leading-relaxed font-sans placeholder-neutral-500" style="height: auto;"></textarea>
@@ -749,6 +751,13 @@
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
                                                     </svg>
                                                     <span id="ai-studio-mic-active-dot" class="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500 border border-[#111115] hidden"></span>
+                                                </button>
+                                                <!-- Generate Contents Kids button: bound to a fixed hidden prompt, just needs an image/video upload -->
+                                                <button id="btn-ai-studio-generate-kids" class="flex items-center gap-1 px-2 py-1.5 text-emerald-400 hover:text-white hover:bg-emerald-600/20 border border-emerald-500/25 rounded-lg transition-colors text-[10px] font-bold font-mono uppercase tracking-wide" title="Upload a screenshot or short clip — no prompt needed">
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                                                    </svg>
+                                                    <span>Generate Contents Kids</span>
                                                 </button>
                                             </div>
                                             
@@ -777,6 +786,28 @@
                                     <div class="text-[10px] text-neutral-600 text-center mt-2.5 select-none font-mono">T1ERA AI Studio may produce inaccurate physical descriptions. Verify parameters.</div>
                                 </div>
 
+                            </div>
+
+                            <!-- CODE / PREVIEW SPLIT PANEL (Claude Artifacts-style) -->
+                            <div id="ai-studio-code-panel" class="hidden w-1/2 bg-[#0d0d11] border-l border-[#1f1f29] h-full flex-shrink-0 flex-col">
+                                <div class="h-10 bg-[#111115] border-b border-[#1f1f29] px-3 flex items-center justify-between flex-shrink-0 select-none">
+                                    <div class="flex items-center gap-1 bg-[#17171e] border border-[#1f1f29] rounded-lg p-0.5">
+                                        <button id="btn-code-panel-tab-preview" class="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide bg-indigo-600 text-white transition-colors">Preview</button>
+                                        <button id="btn-code-panel-tab-code" class="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide text-neutral-400 hover:text-white transition-colors">Code</button>
+                                    </div>
+                                    <div class="flex items-center gap-1.5">
+                                        <button id="btn-code-panel-download" class="p-1.5 text-neutral-500 hover:text-white hover:bg-neutral-800/40 rounded-lg transition-colors" title="Download generated HTML file">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"></path></svg>
+                                        </button>
+                                        <button id="btn-code-panel-close" class="p-1.5 text-neutral-500 hover:text-red-400 hover:bg-neutral-800/40 rounded-lg transition-colors" title="Close panel">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="flex-1 relative overflow-hidden">
+                                    <iframe id="ai-studio-code-preview-frame" class="absolute inset-0 w-full h-full bg-white" title="Generated page preview" sandbox="allow-scripts"></iframe>
+                                    <pre id="ai-studio-code-view" class="hidden absolute inset-0 w-full h-full overflow-auto m-0 p-4 text-[11px] leading-relaxed font-mono bg-[#09090c] text-neutral-300"><code id="ai-studio-code-view-content" class="language-html"></code></pre>
+                                </div>
                             </div>
 
                             <!-- RIGHT PARAMETER DOCK (Claude / Google AI Studio Hybrid) -->
