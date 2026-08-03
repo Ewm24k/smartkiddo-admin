@@ -67,33 +67,6 @@ document.addEventListener("DOMContentLoaded", function () {
     ? checkSanitizer.closest(".flex")
     : null;
 
-  // Generate Contents Kids components (bound-prompt screenshot/clip-to-webapp flow)
-  const btnGenerateKids = document.getElementById(
-    "btn-ai-studio-generate-kids",
-  );
-  const kidsUploadInput = document.getElementById(
-    "ai-studio-kids-upload-input",
-  );
-
-  // Code / Preview split panel components (Claude Artifacts-style)
-  const codePanel = document.getElementById("ai-studio-code-panel");
-  const codePreviewFrame = document.getElementById(
-    "ai-studio-code-preview-frame",
-  );
-  const codeViewPre = document.getElementById("ai-studio-code-view");
-  const codeViewContent = document.getElementById(
-    "ai-studio-code-view-content",
-  );
-  const btnCodeTabPreview = document.getElementById(
-    "btn-code-panel-tab-preview",
-  );
-  const btnCodeTabCode = document.getElementById("btn-code-panel-tab-code");
-  const btnCodePanelClose = document.getElementById("btn-code-panel-close");
-  const btnCodePanelDownload = document.getElementById(
-    "btn-code-panel-download",
-  );
-  let lastGeneratedCode = "";
-
   let isRecordingSpeech = false;
   let attachedFileMetadata = null;
   let chatHistory = []; // Local history log storage for T1ERA Studio playground
@@ -442,139 +415,6 @@ document.addEventListener("DOMContentLoaded", function () {
           renderUploadPreview(file, null);
         };
         reader.readAsDataURL(file);
-      }
-    });
-  }
-
-  // -----------------------------------------------------------------
-  // 6b. Generate Contents Kids (bound-prompt screenshot/clip-to-webapp flow)
-  // -----------------------------------------------------------------
-
-  // Fixed prompt bound to the button so the user never has to type it.
-  // Adapted from the "Screenshot -> Clickable Webapp" recipe for this
-  // chat-only pipeline: there is no server-side PIL/crop tool here, so the
-  // model is told to keep the uploaded image whole as the single background
-  // layer and lay real, transparent-background buttons on top of it instead
-  // of trying to fabricate cropped asset files it cannot actually produce.
-  const KIDS_CONTENT_HIDDEN_PROMPT = `You are given a screenshot (or a representative frame from a short clip) of a webpage UI, attached as an image. Turn it into a clickable, kid-friendly HTML/CSS/JS webapp.
-
-Since you cannot crop or export separate image files in this chat, do NOT invent references to cropped asset files. Instead:
-1. Use the attached image, unmodified, as the ONE full-bleed background layer, positioned with a #stage element locked to the source image's exact aspect ratio (letterboxed/pillarboxed inside a fixed #stage-wrapper) so nothing drifts at any window size:
-   html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; }
-   #stage-wrapper { position:fixed; inset:0; width:100vw; height:100vh; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-   #stage { position:relative; aspect-ratio: <source width> / <source height>; width:100%; height:100%; max-width:calc(100vh * <source width> / <source height>); max-height:calc(100vw * <source height> / <source width>); background-image:url(<the attached image's own data URL>); background-size:100% 100%; background-repeat:no-repeat; }
-2. Identify each clickable element visible in the screenshot (buttons, cards, icons) and lay a real <button> over each one, absolutely positioned inside #stage using PERCENTAGE left/top/width/height (estimated visually against the full image), not pixels.
-3. Reset all button chrome so none of them show a stray white/gray box: border:none; outline:none; padding:0; margin:0; background-color:transparent; -webkit-tap-highlight-color:transparent; appearance:none;
-4. Add gentle, kid-friendly hover/active feedback (slight scale-up, soft drop-shadow, a little bounce) — nothing jarring or flashing.
-5. Wire an onclick handler for every button. If the button's purpose isn't obvious from its label/icon in the screenshot, default to a friendly on-screen message confirming what was tapped rather than leaving it dead.
-6. Deliver the ENTIRE result as ONE self-contained file: inline all CSS in a <style> tag and all JS in a <script> tag in the same document, no external files or relative paths. Output nothing except that file, wrapped in a single \`\`\`html fenced code block — no commentary before or after.`;
-
-  // Extracts a still frame from an uploaded video (first loaded frame) and
-  // compresses it the same way compressImageAndGetBase64 compresses images,
-  // so a video upload can flow through the exact same image-based pipeline.
-  function extractVideoFrameAndGetBase64(file, callback) {
-    const videoEl = document.createElement("video");
-    videoEl.preload = "metadata";
-    videoEl.muted = true;
-    videoEl.playsInline = true;
-    const objectUrl = URL.createObjectURL(file);
-    videoEl.src = objectUrl;
-
-    videoEl.addEventListener(
-      "loadeddata",
-      function () {
-        try {
-          const canvas = document.createElement("canvas");
-          const maxDimension = 600;
-          let width = videoEl.videoWidth || 320;
-          let height = videoEl.videoHeight || 240;
-
-          if (width > maxDimension || height > maxDimension) {
-            if (width > height) {
-              height = Math.round((height * maxDimension) / width);
-              width = maxDimension;
-            } else {
-              width = Math.round((width * maxDimension) / height);
-              height = maxDimension;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(videoEl, 0, 0, width, height);
-          const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.7);
-          callback(compressedDataUrl, objectUrl);
-        } catch (err) {
-          logToTerminal(
-            `Generate Contents Kids: failed to extract a frame from the clip (${err.message}).`,
-            "error",
-          );
-        }
-      },
-      { once: true },
-    );
-    videoEl.addEventListener(
-      "error",
-      function () {
-        logToTerminal(
-          "Generate Contents Kids: could not read the uploaded clip.",
-          "error",
-        );
-      },
-      { once: true },
-    );
-    videoEl.currentTime = 0.1; // Nudge playback so loadeddata reliably fires on a frame
-  }
-
-  if (btnGenerateKids && kidsUploadInput) {
-    btnGenerateKids.addEventListener("click", function () {
-      kidsUploadInput.click();
-    });
-  }
-
-  if (kidsUploadInput) {
-    kidsUploadInput.addEventListener("change", function (e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const isImageType = file.type.startsWith("image/");
-      const isVideoType = file.type.startsWith("video/");
-      if (!isImageType && !isVideoType) {
-        logToTerminal(
-          "Generate Contents Kids requires an image or video file.",
-          "error",
-        );
-        kidsUploadInput.value = "";
-        return;
-      }
-
-      logToTerminal(
-        `Generate Contents Kids: processing "${file.name}"...`,
-        "info",
-      );
-
-      function proceedWithFrame(compressedBase64, displayUrl) {
-        attachedFileMetadata = {
-          name: file.name,
-          type: "image/jpeg",
-          size: file.size,
-          content: null,
-          dataUrl: compressedBase64,
-          displayUrl: displayUrl,
-        };
-        if (promptInput) promptInput.value = KIDS_CONTENT_HIDDEN_PROMPT;
-        kidsUploadInput.value = "";
-        handleSendPrompt();
-      }
-
-      if (isImageType) {
-        const displayUrl = URL.createObjectURL(file);
-        compressImageAndGetBase64(file, function (compressedBase64) {
-          proceedWithFrame(compressedBase64, displayUrl);
-        });
-      } else {
-        extractVideoFrameAndGetBase64(file, proceedWithFrame);
       }
     });
   }
@@ -977,97 +817,6 @@ Since you cannot crop or export separate image files in this chat, do NOT invent
     }
   }
 
-  // -----------------------------------------------------------------
-  // 6c. Code / Preview Split Panel (Claude Artifacts-style)
-  // -----------------------------------------------------------------
-
-  // Pulls the first fenced code block out of a reply (```html ... ``` or a
-  // bare ``` ... ``` block), since that's what the split panel renders.
-  function extractFirstCodeBlock(text) {
-    if (!text) return null;
-    const match = text.match(/```(?:html|htm)?\s*\r?\n([\s\S]*?)```/i);
-    return match ? match[1].trim() : null;
-  }
-
-  function showCodePanelTab(which) {
-    const showPreview = which === "preview";
-    if (codePreviewFrame)
-      codePreviewFrame.classList.toggle("hidden", !showPreview);
-    if (codeViewPre) codeViewPre.classList.toggle("hidden", showPreview);
-    if (btnCodeTabPreview) {
-      btnCodeTabPreview.classList.toggle("bg-indigo-600", showPreview);
-      btnCodeTabPreview.classList.toggle("text-white", showPreview);
-      btnCodeTabPreview.classList.toggle("text-neutral-400", !showPreview);
-    }
-    if (btnCodeTabCode) {
-      btnCodeTabCode.classList.toggle("bg-indigo-600", !showPreview);
-      btnCodeTabCode.classList.toggle("text-white", !showPreview);
-      btnCodeTabCode.classList.toggle("text-neutral-400", showPreview);
-    }
-  }
-
-  function openCodePanel() {
-    if (!codePanel) return;
-    codePanel.classList.remove("hidden");
-    codePanel.classList.add("flex");
-    showCodePanelTab("preview");
-  }
-
-  function closeCodePanel() {
-    if (!codePanel) return;
-    codePanel.classList.add("hidden");
-    codePanel.classList.remove("flex");
-  }
-
-  // Called after any live reply renders — if it contains a code block, open
-  // (or refresh) the split panel with a live iframe preview + code view.
-  function detectAndRenderCodePanel(aiText) {
-    const code = extractFirstCodeBlock(aiText);
-    if (!code) return;
-
-    lastGeneratedCode = code;
-    if (codeViewContent) {
-      codeViewContent.textContent = code;
-      if (typeof Prism !== "undefined") {
-        Prism.highlightElement(codeViewContent);
-      }
-    }
-    if (codePreviewFrame) codePreviewFrame.srcdoc = code;
-    openCodePanel();
-    logToTerminal(
-      "Code block detected in reply — opened split preview panel.",
-      "success",
-    );
-  }
-
-  if (btnCodeTabPreview) {
-    btnCodeTabPreview.addEventListener("click", function () {
-      showCodePanelTab("preview");
-    });
-  }
-  if (btnCodeTabCode) {
-    btnCodeTabCode.addEventListener("click", function () {
-      showCodePanelTab("code");
-    });
-  }
-  if (btnCodePanelClose) {
-    btnCodePanelClose.addEventListener("click", closeCodePanel);
-  }
-  if (btnCodePanelDownload) {
-    btnCodePanelDownload.addEventListener("click", function () {
-      if (!lastGeneratedCode) return;
-      const blob = new Blob([lastGeneratedCode], { type: "text/html" });
-      const blobUrl = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      link.download = `t1era_generated_page_${Date.now()}.html`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(blobUrl);
-    });
-  }
-
   // Serializes active chatHistory stack straight to local browser storage
   function savePersistedHistory() {
     localStorage.setItem(
@@ -1313,8 +1062,11 @@ Since you cannot crop or export separate image files in this chat, do NOT invent
         const isVideoFile = attachedFileMetadata.type.startsWith("video/");
 
         if (isImageFile) {
-          // Send the highly compressed background dataUrl to the model, but render the high-res local image for display
-          attachmentSegment = `\n\n=== ATTACHED IMAGE CONTEXT ===\nFilename: ${attachedFileMetadata.name}\nMIME Type: ${attachedFileMetadata.type}\nData URL (Compressed Payload):\n${attachedFileMetadata.dataUrl}`;
+          // NOTE: the actual dataUrl is sent separately (see currentImageDataUrl below)
+          // as a real vision image block, never inlined into text content — inlining it
+          // here would (a) get replayed as raw text on every future turn via chatHistory,
+          // and (b) never actually be seen as an image by the model, just burn tokens.
+          attachmentSegment = `\n\n[Attached Image: ${attachedFileMetadata.name}]`;
 
           messageOutput += `
                         <div class="mt-3 rounded-lg overflow-hidden border border-[#1f1f29] max-w-sm bg-neutral-900 shadow-lg">
@@ -1348,6 +1100,17 @@ Since you cannot crop or export separate image files in this chat, do NOT invent
     }
 
     const startTime = performance.now();
+
+    // Capture the actual image payload for THIS request only. It intentionally
+    // never gets stored in chatHistory (see push below) so it can't be replayed
+    // as text on future turns or bloat localStorage — it's attached directly to
+    // the outgoing API payload further down instead.
+    const currentImageDataUrl =
+      attachedFileMetadata &&
+      attachedFileMetadata.dataUrl &&
+      attachedFileMetadata.type.startsWith("image/")
+        ? attachedFileMetadata.dataUrl
+        : null;
 
     // Append User Prompts Centered
     createCenteredMessageBubble("user", messageOutput, "0.0");
@@ -1573,8 +1336,22 @@ Since you cannot crop or export separate image files in this chat, do NOT invent
         });
       }
 
+      // Build the outgoing messages array separately from chatHistory so the
+      // image (if any) is only ever sent once, on this turn — chatHistory
+      // itself stays lightweight text and is never mutated with it.
+      const outgoingMessages = chatHistory.map((m, idx) => {
+        if (idx === chatHistory.length - 1 && currentImageDataUrl) {
+          return {
+            role: m.role,
+            content: m.content,
+            image_data_url: currentImageDataUrl,
+          };
+        }
+        return { role: m.role, content: m.content };
+      });
+
       const payload = {
-        messages: chatHistory,
+        messages: outgoingMessages,
         workspace_context: contextPayload,
         system_prompt: systemInstructions || null,
       };
@@ -1615,9 +1392,6 @@ Since you cannot crop or export separate image files in this chat, do NOT invent
       if (contentBody) {
         contentBody.innerHTML = parseMarkdownToHTML(aiText);
       }
-
-      // If the reply contains a code block, mirror it into the split panel
-      detectAndRenderCodePanel(aiText);
 
       // Sync dynamic latency seconds to the outside meta label
       const outsideMeta = assistantBubble.querySelector(
