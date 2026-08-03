@@ -44,6 +44,7 @@ if OPENAI_API_KEY:
 class ChatMessage(BaseModel):
     role: str
     content: str
+    image_data_url: Optional[str] = None
 
 class ChatRequest(BaseModel):
     messages: List[ChatMessage]
@@ -500,9 +501,27 @@ def ai_chat_completion(chat_req: ChatRequest):
         openai_input_str += "- When you emit a tool tag, STOP writing immediately after it. Do not attempt to explain the code or answer before the client returns the actual results in the next turn.\n"
         openai_input_str += "- You can request multiple files simultaneously.\n\n"
 
+        latest_image_data_url = None
         if len(chat_req.messages) > 0:
             latest_msg = chat_req.messages[-1]
             openai_input_str += f"=== LATEST USER MESSAGE ===\nUser: {latest_msg.content}\n"
+            latest_image_data_url = latest_msg.image_data_url
+
+        # If the latest turn has an attached image, send it as a real vision
+        # content block (not inlined base64 text) so the model actually sees
+        # it and it doesn't get counted as tens of thousands of text tokens.
+        if latest_image_data_url:
+            api_input = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "input_text", "text": openai_input_str},
+                        {"type": "input_image", "image_url": latest_image_data_url},
+                    ],
+                }
+            ]
+        else:
+            api_input = openai_input_str
 
         response = openai_client.responses.create(
             model="gpt-5.4-mini", 
@@ -510,7 +529,7 @@ def ai_chat_completion(chat_req: ChatRequest):
                 "id": "pmpt_6a64c46b5e5c8190bdb0b6f7aacbb7450b1160d1c16e4e6e",
                 "version": "1"
             },
-            input=openai_input_str,
+            input=api_input,
             reasoning={
                 "mode": "standard",
                 "summary": "auto"
