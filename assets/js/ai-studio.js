@@ -360,6 +360,12 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  if (btnAttach && fileUploadInput) {
+    btnAttach.addEventListener("click", function () {
+      fileUploadInput.click();
+    });
+  }
+
   if (fileUploadInput) {
     fileUploadInput.addEventListener("change", function (e) {
       const file = e.target.files[0];
